@@ -1,0 +1,41 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  podcasts  Podcast[]
+}
+
+model Podcast {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  episodes    Episode[]
+}
+
+model Episode {
+  id          String   @id @default(uuid())
+  title       String
+  duration    Int
+  audioUrl    String
+  publishedAt DateTime
+  podcastId   String
+  podcast     Podcast  @relation(fields: [podcastId], references: [id])
+}

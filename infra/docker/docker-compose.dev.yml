@@ -1,2 +1,56 @@
 version: "3.9"
-services: {}
+
+services:
+  backend:
+    build:
+      context: ../../
+      dockerfile: apps/backend/Dockerfile
+    env_file:
+      - ../../apps/backend/.env.development
+      - .env.shared
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ../../apps/backend/prisma:/app/apps/backend/prisma
+
+  admin:
+    build:
+      context: ../../
+      dockerfile: apps/admin/Dockerfile
+    env_file:
+      - ../../apps/admin/.env.development
+      - .env.shared
+    ports:
+      - "5173:5173"
+
+  mobile:
+    build:
+      context: ../../
+      dockerfile: apps/mobile/Dockerfile
+    env_file:
+      - ../../apps/mobile/.env.development
+      - .env.shared
+    ports:
+      - "19000:19000"
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: podcast_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - podcast_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  podcast_pgdata:

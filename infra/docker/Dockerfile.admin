@@ -1,7 +1,0 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY ../../apps/admin/package.json ./
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-COPY ../../ .
-RUN pnpm install --filter @podcast-app/admin... --frozen-lockfile && pnpm --filter @podcast-app/admin build
-CMD ["pnpm", "--filter", "@podcast-app/admin", "preview"]

@@ -1,9 +1,9 @@
 {
   "name": "@podcast-app/mobile",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --tunnel --port 19000",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -11,6 +11,9 @@
     "test": "jest"
   },
   "dependencies": {
+    "@podcast-app/api-client": "*",
+    "@podcast-app/shared-types": "*",
+    "@podcast-app/shared-utils": "*",
     "@reduxjs/toolkit": "^1.9.7",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",

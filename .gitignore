@@ -119,6 +119,9 @@ dist
 # Firebase cache directory
 .firebase/
 
+# IDE settings
+.idea/
+
 # TernJS port file
 .tern-port
 
@@ -137,3 +140,4 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+!infra/docker/.env.shared

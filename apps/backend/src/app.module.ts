@@ -27,6 +27,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { PrismaService } from './infra/prisma.service';
 
 @Module({
   imports: [
@@ -63,5 +64,6 @@ import { AdminModule } from './modules/admin/admin.module';
     StreamingModule,
     AdminModule,
   ],
+  providers: [PrismaService],
 })
 export class AppModule {}

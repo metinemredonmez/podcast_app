@@ -1,7 +1,0 @@
-FROM node:20-alpine
-WORKDIR /app
-COPY ../../apps/mobile/package.json ./
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-COPY ../../ .
-RUN pnpm install --filter @podcast-app/mobile... --frozen-lockfile
-CMD ["pnpm", "--filter", "@podcast-app/mobile", "start"]

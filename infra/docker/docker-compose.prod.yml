@@ -1,2 +1,50 @@
 version: "3.9"
-services: {}
+
+services:
+  backend:
+    build:
+      context: ../../
+      dockerfile: apps/backend/Dockerfile
+    env_file:
+      - ../../apps/backend/.env.production
+      - .env.shared
+    ports:
+      - "8080:3000"
+    restart: always
+
+  admin:
+    build:
+      context: ../../
+      dockerfile: apps/admin/Dockerfile
+    env_file:
+      - ../../apps/admin/.env.production
+      - .env.shared
+    ports:
+      - "8081:5173"
+    restart: always
+
+  mobile:
+    build:
+      context: ../../
+      dockerfile: apps/mobile/Dockerfile
+    env_file:
+      - ../../apps/mobile/.env.production
+      - .env.shared
+    ports:
+      - "8082:19000"
+    restart: always
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: podcast_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - podcast_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+
+volumes:
+  podcast_pgdata:

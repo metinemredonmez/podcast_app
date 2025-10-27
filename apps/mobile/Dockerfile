@@ -5,16 +5,14 @@ WORKDIR /app
 # Copy workspace manifests
 COPY ../../package.json ../../yarn.lock ./
 
-# Copy dependencies required for build
+# Copy dependencies required for the mobile workspace
 COPY ../../packages ./packages
 COPY ../../apps ./apps
 
 # Install dependencies
 RUN yarn install --frozen-lockfile --non-interactive --production=false
 
-# Build admin app
-WORKDIR /app/apps/admin
-RUN yarn build
+WORKDIR /app/apps/mobile
 
-EXPOSE 5173
-CMD ["yarn", "preview"]
+EXPOSE 19000
+CMD ["yarn", "start"]
