@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "paths": {
+      "@api/*": ["api/*"],
+      "@components/*": ["components/*"],
+      "@screens/*": ["screens/*"],
+      "@navigation/*": ["navigation/*"],
+      "@store/*": ["store/*"],
+      "@hooks/*": ["hooks/*"],
+      "@services/*": ["services/*"],
+      "@utils/*": ["utils/*"],
+      "@types/*": ["types/*"],
+      "@theme/*": ["theme/*"]
+    },
+    "jsx": "react-native",
+    "strict": true,
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
