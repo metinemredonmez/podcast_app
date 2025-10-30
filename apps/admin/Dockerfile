@@ -1,19 +1,23 @@
 FROM node:20-alpine
-
 WORKDIR /app
 
-# Copy root manifests and shared configuration
-COPY package.json yarn.lock ./
-COPY tsconfig.base.json ./tsconfig.base.json
+# Copy root package files
+COPY package.json yarn.lock tsconfig.base.json ./
 
-# Copy monorepo workspaces required for build
+# Copy packages and apps
 COPY packages ./packages
-COPY apps ./apps
+COPY apps/admin ./apps/admin
 
+# Install dependencies with type definitions
 RUN yarn install --frozen-lockfile --non-interactive --production=false
 
+# Add missing type definitions explicitly
+RUN yarn workspace @podcast-app/admin add -D @types/node @types/minimatch
+
+# Build
 WORKDIR /app/apps/admin
 RUN yarn build
 
 EXPOSE 5175
-CMD ["yarn", "preview"]
+
+CMD ["yarn", "preview", "--host", "0.0.0.0", "--port", "5175"]
