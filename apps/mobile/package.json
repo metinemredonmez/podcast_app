@@ -2,8 +2,10 @@
   "name": "@podcast-app/mobile",
   "version": "1.0.0",
   "private": true,
+  "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start --tunnel --port 19000",
+    "start": "expo start --tunnel --port 19005",
+    "build": "node ./scripts/build.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",

@@ -12,6 +12,8 @@ COPY apps/mobile ./apps/mobile
 RUN yarn install --frozen-lockfile --non-interactive --production=false
 
 WORKDIR /app/apps/mobile
+ARG BUILD_MODE=production
+RUN yarn build --mode ${BUILD_MODE}
 
 EXPOSE 19005
 

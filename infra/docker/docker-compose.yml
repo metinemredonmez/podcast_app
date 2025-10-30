@@ -1,41 +1,13 @@
-version: '3.9'
 services:
-  backend:
-    build:
-      context: ../..
-      dockerfile: apps/backend/Dockerfile
-    ports:
-      - '3300:3300'
-    env_file:
-      - .env.shared
-      - ../../apps/backend/.env.production
-    depends_on:
-      - postgres
-    healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3300/api/health/readiness || exit 1']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    command: sh -c "yarn prisma:migrate:deploy && yarn prisma db seed && yarn start:prod"
-    networks:
-      - podcast_network
-  admin:
-    build:
-      context: ../..
-      dockerfile: apps/admin/Dockerfile
-    ports:
-      - '5175:5175'
-    networks:
-      - podcast_network
   postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: podcast_app
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    image: postgres:15-alpine
+    container_name: podcast-postgres
+    env_file:
+      - ../../.env.shared
     ports:
       - '5435:5432'
+    volumes:
+      - podcast_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -d podcast_app -U postgres']
       interval: 10s
@@ -44,12 +16,41 @@ services:
       start_period: 20s
     networks:
       - podcast_network
+
   redis:
-    image: redis:7
+    image: redis:7-alpine
+    container_name: podcast-redis
+    env_file:
+      - ../../.env.shared
     ports:
       - '6390:6379'
     networks:
       - podcast_network
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: apps/backend/Dockerfile
+    container_name: podcast-backend
+    ports:
+      - '3300:3300'
+    env_file:
+      - ../../.env.shared
+      - ../../apps/backend/.env.dev
+    depends_on:
+      - postgres
+      - redis
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:3300/api/health/readiness || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - podcast_network
+
+volumes:
+  podcast_pgdata:
 
 networks:
   podcast_network:

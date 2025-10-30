@@ -6,23 +6,27 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:backend": "yarn workspace @podcast-app/backend start:dev",
+    "dev:admin": "yarn workspace @podcast-app/admin dev",
+    "dev:mobile": "yarn workspace @podcast-app/mobile start",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "backend:dev": "yarn workspace @podcast-app/backend dev",
+    "backend:dev": "yarn workspace @podcast-app/backend start:dev",
     "admin:dev": "yarn workspace @podcast-app/admin dev",
     "mobile:dev": "yarn workspace @podcast-app/mobile start",
     "install:all": "yarn install"
   },
   "devDependencies": {
     "@turbo/gen": "^1.10.0",
-    "turbo": "^1.10.0",
+    "eslint": "^8.49.0",
     "prettier": "^3.0.0",
-    "eslint": "^8.0.0",
-    "typescript": "^5.0.0"
+    "prisma": "^6.18.0",
+    "turbo": "^1.10.0",
+    "typescript": "^5.2.0"
   },
   "engines": {
     "node": ">=18.0.0",

@@ -6,21 +6,21 @@ import { WsModule } from './ws/ws.module';
 import { PrismaModule } from './infra/prisma/prisma.module';
 import { InfraModule } from './infra/infra.module';
 import { JobsModule } from './jobs/jobs.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth';
+import { UsersModule } from './modules/users';
 import { TenantsModule } from './modules/tenants/tenants.module';
-import { HocasModule } from './modules/hocas/hocas.module';
-import { PodcastsModule } from './modules/podcasts/podcasts.module';
-import { EpisodesModule } from './modules/episodes/episodes.module';
-import { CategoriesModule } from './modules/categories/categories.module';
-import { FollowsModule } from './modules/follows/follows.module';
-import { CommentsModule } from './modules/comments/comments.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
-import { SearchModule } from './modules/search/search.module';
-import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { StorageModule } from './modules/storage/storage.module';
-import { StreamingModule } from './modules/streaming/streaming.module';
-import { AdminModule } from './modules/admin/admin.module';
+import { HocasModule } from './modules/hocas';
+import { PodcastsModule } from './modules/podcasts';
+import { EpisodesModule } from './modules/episodes';
+import { CategoriesModule } from './modules/categories';
+import { FollowsModule } from './modules/follows';
+import { CommentsModule } from './modules/comments';
+import { NotificationsModule } from './modules/notifications';
+import { SearchModule } from './modules/search';
+import { AnalyticsModule } from './modules/analytics';
+import { StorageModule } from './modules/storage';
+import { StreamingModule } from './modules/streaming';
+import { AdminModule } from './modules/admin';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -28,7 +28,7 @@ import { RolesGuard } from './common/guards/roles.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: '.env.development',
+      envFilePath: ['.env.dev', '../../.env.shared'],
       isGlobal: true,
     }),
     ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),

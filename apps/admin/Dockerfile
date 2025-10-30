@@ -16,7 +16,10 @@ RUN yarn workspace @podcast-app/admin add -D @types/node @types/minimatch
 
 # Build
 WORKDIR /app/apps/admin
-RUN yarn build
+ARG BUILD_MODE=production
+ARG VITE_API_BASE_URL=http://localhost:3300/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+RUN yarn build --mode ${BUILD_MODE}
 
 EXPOSE 5175
 

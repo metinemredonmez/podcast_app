@@ -39,27 +39,44 @@ yarn install --frozen-lockfile
 yarn workspace @podcast-app/backend prisma:generate
 ```
 ### Environment Files
-- `apps/backend/.env.development` / `.env.production` – API, Prisma, Redis, JWT, S3, Elasticsearch, admin bootstrap (dev runs on port 3300).
-- `apps/admin/.env.development` / `.env.production` – Admin UI configuration (defaults to http://localhost:3300/api).
-- `apps/mobile/.env.development` / `.env.production` – Mobile Expo configuration (defaults to http://localhost:3300/api).
-- `infra/docker/.env.shared` – Shared local Docker variables.
+The stack uses a layered configuration model:
 
-Copy `.env.example` files and provide real secrets for production deployments.
+- `.env.shared` – global infrastructure defaults (Postgres, Redis, JWT, S3, analytics).
+- `apps/backend/.env.dev` / `.env.prod` – API-specific overrides (ports, logging, CORS).
+- `apps/admin/.env.dev` / `.env.prod` – Vite client configuration (API endpoint, mode).
+- `apps/mobile/.env.dev` / `.env.prod` – Expo client configuration (API endpoint, mode).
+- `infra/docker/.env` – Docker Compose project metadata (project name, timezone).
+
+Docker Compose loads `.env.shared` plus the matching `apps/*/.env.<env>` file for each service. Copy the `.env.example` files and adjust secrets before running locally or deploying.
+
+For a deeper dive into inheritance rules and CI/CD expectations, see `docs/guides/environment-hierarchy.md`.
 
 ## 4. Running Locally
 
-```bash
-cd infra/docker
-docker-compose -f docker-compose.dev.yml up --build -d
-```
-Access services:
-- Backend Swagger – http://localhost:3300/api/docs
-- Admin dashboard – http://localhost:5175
-- Mobile Expo dev server – http://localhost:19005
+1. Boot the infrastructure services (Postgres, Redis, Kafka, MinIO):
+   ```bash
+   cd infra/docker
+   docker-compose -f docker-compose.dev.yml up --build -d
+   ```
+2. From the repo root, start the applications locally:
+   ```bash
+   yarn dev
+   ```
 
-Stop the stack:
+Service port map:
+
+| Service  | Port |
+|----------|------|
+| Backend  | 3300 |
+| Admin    | 5175 |
+| Mobile   | 19005 |
+| Postgres | 5435 |
+| Redis    | 6390 |
+| Kafka    | 9092 |
+
+Stop the infra stack when you are done:
 ```bash
-docker-compose -f docker-compose.dev.yml down
+docker-compose -f infra/docker/docker-compose.dev.yml down
 ```
 ## 5. Testing & Linting
 

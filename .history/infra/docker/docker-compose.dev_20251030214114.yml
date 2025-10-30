@@ -1,12 +1,17 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: podcast-postgres
-    restart: always
-    env_file:
-      - ../../.env.shared
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: podcast_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
       - podcast_pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
       - "5435:5432"
     healthcheck:
@@ -21,9 +26,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: podcast-redis
-    restart: always
-    env_file:
-      - ../../.env.shared
+    restart: unless-stopped
     ports:
       - "6390:6379"
     healthcheck:
@@ -39,10 +42,10 @@ services:
       context: ../../
       dockerfile: apps/backend/Dockerfile
     container_name: podcast-backend
-    restart: always
+    restart: unless-stopped
     env_file:
-      - ../../.env.shared
-      - ../../apps/backend/.env.prod
+      - ../../apps/backend/.env.development
+      - .env.shared
     ports:
       - "3300:3300"
     depends_on:
@@ -52,10 +55,13 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3300/api/health/readiness || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
       start_period: 30s
+    volumes:
+      - ../../apps/backend/prisma:/app/apps/backend/prisma
+    command: sh -c "yarn prisma:migrate:deploy && yarn prisma db seed && yarn start:prod"
     networks:
       - podcast_network
 
@@ -63,13 +69,11 @@ services:
     build:
       context: ../../
       dockerfile: apps/admin/Dockerfile
-      args:
-        BUILD_MODE: production
     container_name: podcast-admin
-    restart: always
+    restart: unless-stopped
     env_file:
-      - ../../.env.shared
-      - ../../apps/admin/.env.prod
+      - ../../apps/admin/.env.development
+      - .env.shared
     ports:
       - "5175:5175"
     depends_on:
@@ -77,10 +81,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5175/ || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 20s
     networks:
       - podcast_network
 
@@ -88,13 +92,11 @@ services:
     build:
       context: ../../
       dockerfile: apps/mobile/Dockerfile
-      args:
-        BUILD_MODE: production
     container_name: podcast-mobile
-    restart: always
+    restart: unless-stopped
     env_file:
-      - ../../.env.shared
-      - ../../apps/mobile/.env.prod
+      - ../../apps/mobile/.env.development
+      - .env.shared
     ports:
       - "19005:19005"
     depends_on:
@@ -102,8 +104,8 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:19005/ || exit 1"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
       start_period: 30s
     networks:

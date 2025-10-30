@@ -1,14 +1,10 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15-alpine
     container_name: podcast-postgres
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: podcast_app
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    env_file:
+      - ../../.env.shared
     volumes:
       - podcast_pgdata:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
@@ -27,6 +23,8 @@ services:
     image: redis:7-alpine
     container_name: podcast-redis
     restart: unless-stopped
+    env_file:
+      - ../../.env.shared
     ports:
       - "6390:6379"
     healthcheck:
@@ -37,82 +35,71 @@ services:
     networks:
       - podcast_network
 
-  backend:
-    build:
-      context: ../../
-      dockerfile: apps/backend/Dockerfile
-    container_name: podcast-backend
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: podcast-zookeeper
     restart: unless-stopped
-    env_file:
-      - ../../apps/backend/.env.development
-      - .env.shared
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "3300:3300"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - "2181:2181"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3300/api/health/readiness || exit 1"]
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181 | grep imok"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
+    networks:
+      - podcast_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: podcast-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - podcast_network
+
+  minio:
+    image: minio/minio:RELEASE.2024-09-22T00-33-43Z
+    container_name: podcast-minio
+    restart: unless-stopped
+    env_file:
+      - ../../.env.shared
+    command: server /data --console-address ":9101"
+    ports:
+      - "9100:9000"
+      - "9101:9101"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     volumes:
-      - ../../apps/backend/prisma:/app/apps/backend/prisma
-    command: sh -c "yarn prisma:migrate:deploy && yarn prisma db seed && yarn start:prod"
-    networks:
-      - podcast_network
-
-  admin:
-    build:
-      context: ../../
-      dockerfile: apps/admin/Dockerfile
-    container_name: podcast-admin
-    restart: unless-stopped
-    env_file:
-      - ../../apps/admin/.env.development
-      - .env.shared
-    ports:
-      - "5175:5175"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5175/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    networks:
-      - podcast_network
-
-  mobile:
-    build:
-      context: ../../
-      dockerfile: apps/mobile/Dockerfile
-    container_name: podcast-mobile
-    restart: unless-stopped
-    env_file:
-      - ../../apps/mobile/.env.development
-      - .env.shared
-    ports:
-      - "19005:19005"
-    depends_on:
-      backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:19005/ || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - podcast_minio:/data
     networks:
       - podcast_network
 
 volumes:
   podcast_pgdata:
+  podcast_minio:
 
 networks:
   podcast_network:
