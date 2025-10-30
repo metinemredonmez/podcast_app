@@ -3,57 +3,53 @@ kind: Deployment
 metadata:
   name: {{ include "podcast-app.fullname" . }}-backend
   labels:
-    app.kubernetes.io/name: {{ include "podcast-app.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "podcast-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
-  replicas: {{ .Values.backend.replicas | default 2 }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "podcast-app.name" . }}
+      {{- include "podcast-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
-      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: {{ include "podcast-app.name" . }}
+        {{- include "podcast-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
-        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       initContainers:
         - name: prisma-migrate
-          image: {{ .Values.image | default "ghcr.io/podcast-app/backend:latest" }}
-          command: ["sh", "-c", "yarn prisma:migrate:deploy"]
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.backend.databaseSecretRef | default (printf "%s-backend-db" (include "podcast-app.fullname" .)) }}
-                  key: DATABASE_URL
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["sh", "-c", "yarn prisma migrate deploy"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "podcast-app.fullname" . }}-backend-config
+            - secretRef:
+                name: {{ include "podcast-app.fullname" . }}-backend-secrets
       containers:
         - name: backend
-          image: {{ .Values.image | default "ghcr.io/podcast-app/backend:latest" }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 3000
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.backend.databaseSecretRef | default (printf "%s-backend-db" (include "podcast-app.fullname" .)) }}
-                  key: DATABASE_URL
+            - name: http
+              containerPort: {{ .Values.backend.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "podcast-app.fullname" . }}-backend-config
+            - secretRef:
+                name: {{ include "podcast-app.fullname" . }}-backend-secrets
           livenessProbe:
             httpGet:
-              path: {{ default "/api/health/liveness" .Values.backend.probes.liveness.path }}
-              port: 3000
-            initialDelaySeconds: {{ default 10 .Values.backend.probes.liveness.initialDelaySeconds }}
-            periodSeconds: {{ default 10 .Values.backend.probes.liveness.periodSeconds }}
-            timeoutSeconds: {{ default 2 .Values.backend.probes.liveness.timeoutSeconds }}
-            failureThreshold: {{ default 3 .Values.backend.probes.liveness.failureThreshold }}
+              path: {{ .Values.backend.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds }}
           readinessProbe:
             httpGet:
-              path: {{ default "/api/health/readiness" .Values.backend.probes.readiness.path }}
-              port: 3000
-            initialDelaySeconds: {{ default 10 .Values.backend.probes.readiness.initialDelaySeconds }}
-            periodSeconds: {{ default 10 .Values.backend.probes.readiness.periodSeconds }}
-            timeoutSeconds: {{ default 3 .Values.backend.probes.readiness.timeoutSeconds }}
-            failureThreshold: {{ default 3 .Values.backend.probes.readiness.failureThreshold }}
+              path: {{ .Values.backend.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}

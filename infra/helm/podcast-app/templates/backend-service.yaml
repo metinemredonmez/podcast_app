@@ -1,1 +1,16 @@
 apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "podcast-app.fullname" . }}-backend
+  labels:
+    app.kubernetes.io/name: {{ include "podcast-app.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: backend
+spec:
+  selector:
+    app.kubernetes.io/name: {{ include "podcast-app.name" . }}
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: 80
+      targetPort: {{ .Values.backend.port | default 3300 }}

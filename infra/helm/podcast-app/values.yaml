@@ -1,25 +1,96 @@
-image: ghcr.io/podcast-app/backend:latest
+# Default values for podcast-app
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/podcast-backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
 backend:
-  replicas: 2
-  databaseSecretRef: "podcast-app-backend-db"
-  # base64-encoded DATABASE_URL; prefer to override via helm --set or external secret manager
-  databaseUrlB64: ""
-  externalSecret:
-    enabled: false
-    storeRef:
-      name: ""
-      kind: ClusterSecretStore
-    remoteKey: ""
+  port: 3300
+
+  env:
+    NODE_ENV: production
+    PORT: "3300"
+    JWT_ACCESS_TTL: "15m"
+    JWT_REFRESH_TTL: "7d"
+    BCRYPT_SALT_ROUNDS: "12"
+    SWAGGER_ENABLED: "false"
+    LOG_LEVEL: "info"
+
+  secrets:
+    # These should be provided via external secrets or sealed secrets
+    DATABASE_URL: ""
+    REDIS_URL: ""
+    JWT_ACCESS_SECRET: ""
+    JWT_REFRESH_SECRET: ""
+    CORS_ORIGINS: ""
+    S3_ENDPOINT: ""
+    S3_ACCESS_KEY: ""
+    S3_SECRET_KEY: ""
+    S3_BUCKET: ""
+    ADMIN_TENANT_NAME: ""
+    ADMIN_TENANT_SLUG: ""
+    ADMIN_EMAIL: ""
+    ADMIN_NAME: ""
+    ADMIN_PASSWORD: ""
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
   probes:
     liveness:
       path: /api/health/liveness
-      initialDelaySeconds: 10
+      initialDelaySeconds: 30
       periodSeconds: 10
-      timeoutSeconds: 2
-      failureThreshold: 3
     readiness:
       path: /api/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
-      timeoutSeconds: 3
-      failureThreshold: 3
+
+admin:
+  image:
+    repository: ghcr.io/your-org/podcast-admin
+    tag: latest
+  port: 5175
+  replicaCount: 2
+
+  env:
+    VITE_API_BASE_URL: ""
+
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: api.podcast-app.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+          port: 3300
+    - host: admin.podcast-app.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: admin
+          port: 5175
+  tls:
+    - secretName: podcast-app-tls
+      hosts:
+        - api.podcast-app.com
+        - admin.podcast-app.com

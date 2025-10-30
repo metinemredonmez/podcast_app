@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: admin
+  labels:
+    app: admin
 spec:
   replicas: 2
   selector:
@@ -14,6 +16,17 @@ spec:
     spec:
       containers:
         - name: admin
-          image: ghcr.io/podcast-app/admin:latest
+          image: ghcr.io/your-org/podcast-admin:latest
           ports:
-            - containerPort: 4173
+            - containerPort: 5175
+              name: http
+          envFrom:
+            - configMapRef:
+                name: admin-config
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

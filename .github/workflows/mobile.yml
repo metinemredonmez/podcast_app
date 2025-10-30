@@ -1,0 +1,52 @@
+name: Mobile CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "mobile/**"
+  pull_request:
+    branches:
+      - main
+      - develop
+      - "mobile/**"
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn workspace @podcast-app/mobile lint
+
+      - name: Test
+        run: yarn workspace @podcast-app/mobile test --passWithNoTests
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+
+      - name: EAS Build (Android)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-android-preview-${{ github.sha }}
+          path: |
+            dist/*.apk
+            dist/*.aab

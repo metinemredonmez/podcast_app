@@ -1,0 +1,97 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+      - develop
+      - "feature/**"
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: podcast-backend
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: podcast_app
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -d podcast_app -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/podcast_app?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn workspace @podcast-app/backend lint
+
+      - name: Test
+        run: yarn workspace @podcast-app/backend test --passWithNoTests
+
+      - name: Build
+        run: yarn workspace @podcast-app/backend build
+
+      - name: Prisma Generate
+        run: yarn workspace @podcast-app/backend prisma:generate
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Prisma Migrate Deploy
+        run: yarn workspace @podcast-app/backend prisma:migrate:deploy
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Docker Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Kubernetes
+        if: github.ref == 'refs/heads/main'
+        uses: azure/k8s-deploy@v5
+        with:
+          namespace: ${{ secrets.K8S_NAMESPACE }}
+          manifests: infra/k8s/backend/deployment.yaml
+          images: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+          strategy: rolling

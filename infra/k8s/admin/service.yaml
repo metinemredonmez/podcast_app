@@ -6,5 +6,6 @@ spec:
   selector:
     app: admin
   ports:
-    - port: 80
-      targetPort: 4173
+    - port: 5175
+      targetPort: 5175
+      name: http

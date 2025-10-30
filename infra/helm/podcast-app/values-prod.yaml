@@ -1,5 +1,31 @@
+replicaCount: 3
+
 backend:
-  databaseSecretRef: "podcast-app-backend-db"
-  # echo -n "postgresql://user:pass@prod-db:5432/db?schema=public&pgbouncer=true&connection_limit=20&pool_timeout=30" | base64
-  databaseUrlB64: ""
-replicaCount: 4
+  env:
+    LOG_LEVEL: "warn"
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+admin:
+  replicaCount: 3
+
+ingress:
+  hosts:
+    - host: api.podcast-app.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: backend
+          port: 3300
+    - host: admin.podcast-app.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: admin
+          port: 5175

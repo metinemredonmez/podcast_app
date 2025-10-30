@@ -10,14 +10,13 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      {{- $backendImage := printf "%s:%s" (.Values.image.repository | default "ghcr.io/podcast-app/backend") (.Values.image.tag | default "latest") }}
       containers:
         - name: prisma-migrate
-          image: {{ .Values.image | default "ghcr.io/podcast-app/backend:latest" }}
+          image: {{ $backendImage }}
           command: ["sh", "-c", "yarn prisma:migrate:deploy"]
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.backend.databaseSecretRef | default (printf "%s-backend-db" (include "podcast-app.fullname" .)) }}
-                  key: DATABASE_URL
-
+          envFrom:
+            - configMapRef:
+                name: {{ include "podcast-app.backendConfigMap" . }}
+            - secretRef:
+                name: {{ include "podcast-app.backendSecret" . }}

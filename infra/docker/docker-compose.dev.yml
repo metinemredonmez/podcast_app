@@ -1,56 +1,119 @@
 version: "3.9"
 
 services:
-  backend:
-    build:
-      context: ../../
-      dockerfile: apps/backend/Dockerfile
-    env_file:
-      - ../../apps/backend/.env.development
-      - .env.shared
-    ports:
-      - "3000:3000"
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ../../apps/backend/prisma:/app/apps/backend/prisma
-
-  admin:
-    build:
-      context: ../../
-      dockerfile: apps/admin/Dockerfile
-    env_file:
-      - ../../apps/admin/.env.development
-      - .env.shared
-    ports:
-      - "5173:5173"
-
-  mobile:
-    build:
-      context: ../../
-      dockerfile: apps/mobile/Dockerfile
-    env_file:
-      - ../../apps/mobile/.env.development
-      - .env.shared
-    ports:
-      - "19000:19000"
-
   postgres:
     image: postgres:15-alpine
+    container_name: podcast-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: podcast_app
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
       - podcast_pgdata:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "5432:5432"
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d podcast_app -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - podcast_network
 
   redis:
     image: redis:7-alpine
+    container_name: podcast-redis
+    restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6390:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - podcast_network
+
+  backend:
+    build:
+      context: ../../
+      dockerfile: apps/backend/Dockerfile
+    container_name: podcast-backend
+    restart: unless-stopped
+    env_file:
+      - ../../apps/backend/.env.development
+      - .env.shared
+    ports:
+      - "3300:3300"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3300/api/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - ../../apps/backend/prisma:/app/apps/backend/prisma
+    command: sh -c "yarn prisma:migrate:deploy && yarn prisma db seed && yarn start:prod"
+    networks:
+      - podcast_network
+
+  admin:
+    build:
+      context: ../../
+      dockerfile: apps/admin/Dockerfile
+    container_name: podcast-admin
+    restart: unless-stopped
+    env_file:
+      - ../../apps/admin/.env.development
+      - .env.shared
+    ports:
+      - "5175:5175"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5175/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - podcast_network
+
+  mobile:
+    build:
+      context: ../../
+      dockerfile: apps/mobile/Dockerfile
+    container_name: podcast-mobile
+    restart: unless-stopped
+    env_file:
+      - ../../apps/mobile/.env.development
+      - .env.shared
+    ports:
+      - "19005:19005"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:19005/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - podcast_network
 
 volumes:
   podcast_pgdata:
+
+networks:
+  podcast_network:
+    driver: bridge

@@ -3,5 +3,10 @@ kind: ConfigMap
 metadata:
   name: backend-config
 data:
-  NODE_ENV: production
-  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/podcast_app?schema=public
+  NODE_ENV: "production"
+  PORT: "3300"
+  JWT_ACCESS_TTL: "15m"
+  JWT_REFRESH_TTL: "7d"
+  BCRYPT_SALT_ROUNDS: "12"
+  SWAGGER_ENABLED: "false"
+  LOG_LEVEL: "info"
