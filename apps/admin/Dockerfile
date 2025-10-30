@@ -2,19 +2,18 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy workspace manifests
-COPY ../../package.json ../../yarn.lock ./
+# Copy root manifests and shared configuration
+COPY package.json yarn.lock ./
+COPY tsconfig.base.json ./tsconfig.base.json
 
-# Copy dependencies required for build
-COPY ../../packages ./packages
-COPY ../../apps ./apps
+# Copy monorepo workspaces required for build
+COPY packages ./packages
+COPY apps ./apps
 
-# Install dependencies
 RUN yarn install --frozen-lockfile --non-interactive --production=false
 
-# Build admin app
 WORKDIR /app/apps/admin
 RUN yarn build
 
-EXPOSE 5173
+EXPOSE 5175
 CMD ["yarn", "preview"]

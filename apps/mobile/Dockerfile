@@ -14,5 +14,5 @@ RUN yarn install --frozen-lockfile --non-interactive --production=false
 
 WORKDIR /app/apps/mobile
 
-EXPOSE 19000
+EXPOSE 19005
 CMD ["yarn", "start"]
