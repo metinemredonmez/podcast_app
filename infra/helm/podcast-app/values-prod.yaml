@@ -1,1 +1,5 @@
+backend:
+  databaseSecretRef: "podcast-app-backend-db"
+  # echo -n "postgresql://user:pass@prod-db:5432/db?schema=public&pgbouncer=true&connection_limit=20&pool_timeout=30" | base64
+  databaseUrlB64: ""
 replicaCount: 4

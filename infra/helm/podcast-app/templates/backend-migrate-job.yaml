@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "podcast-app.fullname" . }}-backend-migrate
+  labels:
+    app.kubernetes.io/name: {{ include "podcast-app.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: backend
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: prisma-migrate
+          image: {{ .Values.image | default "ghcr.io/podcast-app/backend:latest" }}
+          command: ["sh", "-c", "yarn prisma:migrate:deploy"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.backend.databaseSecretRef | default (printf "%s-backend-db" (include "podcast-app.fullname" .)) }}
+                  key: DATABASE_URL
+

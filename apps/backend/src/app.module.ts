@@ -12,7 +12,7 @@ import mailConfig from './config/mail.config';
 import { InfraModule } from './infra/infra.module';
 import { WsModule } from './ws/ws.module';
 import { JobsModule } from './jobs/jobs.module';
-import { DatabaseModule } from './database/database.module';
+// Removed DatabaseModule (TypeORM) in favor of Prisma
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { HocasModule } from './modules/hocas/hocas.module';
@@ -28,6 +28,11 @@ import { StorageModule } from './modules/storage/storage.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PrismaService } from './infra/prisma.service';
+import { HealthModule } from './modules/health/health.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ResponseTimeInterceptor } from './common/interceptors/response-time.interceptor';
 
 @Module({
   imports: [
@@ -48,7 +53,6 @@ import { PrismaService } from './infra/prisma.service';
     InfraModule,
     WsModule,
     JobsModule,
-    DatabaseModule,
     AuthModule,
     UsersModule,
     HocasModule,
@@ -63,7 +67,19 @@ import { PrismaService } from './infra/prisma.service';
     StorageModule,
     StreamingModule,
     AdminModule,
+    ThrottlerModule.forRoot({ ttl: 60, limit: 100 }),
+    HealthModule,
   ],
-  providers: [PrismaService],
+  providers: [
+    PrismaService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ResponseTimeInterceptor,
+    },
+  ],
 })
 export class AppModule {}

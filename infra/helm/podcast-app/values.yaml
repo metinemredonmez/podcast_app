@@ -1,1 +1,25 @@
 image: ghcr.io/podcast-app/backend:latest
+backend:
+  replicas: 2
+  databaseSecretRef: "podcast-app-backend-db"
+  # base64-encoded DATABASE_URL; prefer to override via helm --set or external secret manager
+  databaseUrlB64: ""
+  externalSecret:
+    enabled: false
+    storeRef:
+      name: ""
+      kind: ClusterSecretStore
+    remoteKey: ""
+  probes:
+    liveness:
+      path: /api/health/liveness
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    readiness:
+      path: /api/health/readiness
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 3
+      failureThreshold: 3

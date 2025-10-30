@@ -1,1 +1,5 @@
+backend:
+  databaseSecretRef: "podcast-app-backend-db"
+  # echo -n "postgresql://user:pass@staging-db:5432/db?schema=public" | base64
+  databaseUrlB64: ""
 replicaCount: 2

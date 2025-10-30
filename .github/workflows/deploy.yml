@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  post-deploy-health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check readiness
+        shell: bash
+        env:
+          API_URL: ${{ secrets.DEPLOYED_API_URL }}
+        run: |
+          set -e
+          tries=0
+          until [ $tries -ge 3 ]
+          do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/health/readiness" || true)
+            if [ "$status" = "200" ]; then
+              echo "Readiness OK"
+              exit 0
+            fi
+            tries=$((tries+1))
+            echo "Attempt $tries failed (status: $status). Retrying in 10s..."
+            sleep 10
+          done
+          echo "Readiness check failed"
+          exit 1
+

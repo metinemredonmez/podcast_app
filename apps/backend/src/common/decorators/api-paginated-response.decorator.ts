@@ -1,23 +1,16 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
 
-export const ApiPaginatedResponse = (model: unknown) =>
+export const ApiCursorPaginatedResponse = (itemSchema: Record<string, unknown>) =>
   applyDecorators(
     ApiOkResponse({
       schema: {
+        type: 'object',
         properties: {
-          data: {
-            type: 'array',
-            items: { $ref: model },
-          },
-          meta: {
-            type: 'object',
-            properties: {
-              total: { type: 'number' },
-              page: { type: 'number' },
-              pageSize: { type: 'number' },
-            },
-          },
+          data: { type: 'array', items: itemSchema },
+          nextCursor: { type: 'string', nullable: true, example: 'YWJjLTEyMw==' },
+          hasMore: { type: 'boolean', example: true },
+          total: { type: 'number', nullable: true, example: 123 },
         },
       },
     }),

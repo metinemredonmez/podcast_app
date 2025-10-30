@@ -1,3 +1,7 @@
+# Kubernetes secrets (do not commit real values)
+infra/k8s/base/secrets/*.yaml
+!infra/k8s/base/secrets/database-secret.yaml
+helm-secrets.*
 # Logs
 logs
 *.log
