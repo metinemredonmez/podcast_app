@@ -10,7 +10,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit(): Promise<void> {
-    const url = this.configService.get<string>('redis.url', 'redis://localhost:6379');
+    const url =
+      this.configService.get<string>('redis.url') ??
+      process.env.REDIS_URL ??
+      'redis://localhost:6390';
+
     this.client = new Redis(url, { lazyConnect: true });
     await this.client.connect();
   }

@@ -24,12 +24,32 @@ import { AdminModule } from './modules/admin';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import appConfig from './config/app.config';
+import databaseConfig from './config/database.config';
+import redisConfig from './config/redis.config';
+import queueConfig from './config/queue.config';
+import loggerConfig from './config/logger.config';
+import metricsConfig from './config/metrics.config';
+import storageConfig from './config/storage.config';
+import jwtConfig from './config/jwt.config';
+import mailConfig from './config/mail.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: ['.env.dev', '../../.env.shared'],
+      envFilePath: ['../../.env.shared', '.env.dev'],
       isGlobal: true,
+      load: [
+        appConfig,
+        databaseConfig,
+        redisConfig,
+        queueConfig,
+        loggerConfig,
+        metricsConfig,
+        storageConfig,
+        jwtConfig,
+        mailConfig,
+      ],
     }),
     ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
     PrismaModule,
