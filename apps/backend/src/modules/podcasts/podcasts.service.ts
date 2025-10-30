@@ -1,8 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Podcast } from '@prisma/client';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
-import { PODCASTS_REPOSITORY, PodcastDetail, PodcastsRepository } from './repositories/podcasts.repository';
+import { PODCASTS_REPOSITORY, PodcastDetail, PodcastsRepository, PodcastModel } from './repositories/podcasts.repository';
 import { CreatePodcastDto } from './dto/create-podcast.dto';
 import { PodcastResponseDto } from './dto/podcast-response.dto';
 import { slugify } from '../../common/utils/slug.util';
@@ -17,9 +16,9 @@ export class PodcastsService {
     const limit = query.limit ?? 20;
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
-    const sortableFields: (keyof Podcast)[] = ['createdAt', 'updatedAt', 'title', 'publishedAt'];
-    const orderBy = sortableFields.includes(query.orderBy as keyof Podcast)
-      ? (query.orderBy as keyof Podcast)
+    const sortableFields: (keyof PodcastModel)[] = ['createdAt', 'updatedAt', 'title', 'publishedAt'];
+    const orderBy = sortableFields.includes(query.orderBy as keyof PodcastModel)
+      ? (query.orderBy as keyof PodcastModel)
       : 'createdAt';
     const rows = await this.podcastsRepository.findMany({
       cursor: decoded,
@@ -70,7 +69,7 @@ export class PodcastsService {
     return this.toResponseDto(podcast);
   }
 
-  private toResponseDto(podcast: PodcastDetail | { id: string; tenantId: string; ownerId: string; title: string; slug: string; description: string | null; coverImageUrl: string | null; isPublished: boolean; publishedAt: Date | null; createdAt: Date; updatedAt: Date }): PodcastResponseDto {
+  private toResponseDto(podcast: PodcastDetail | PodcastModel): PodcastResponseDto {
     return plainToInstance(PodcastResponseDto, {
       id: podcast.id,
       tenantId: podcast.tenantId,

@@ -1,6 +1,19 @@
-import { User, UserRole } from '@prisma/client';
+import { UserRole } from '../../../common/enums/prisma.enums';
 
 export const USERS_REPOSITORY = Symbol('USERS_REPOSITORY');
+
+export interface UserModel {
+  id: string;
+  tenantId: string;
+  email: string;
+  passwordHash: string;
+  refreshTokenHash: string | null;
+  name: string | null;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export interface CreateUserInput {
   tenantId: string;
@@ -20,14 +33,14 @@ export interface UpdateUserInput {
 export interface PaginationOptions {
   cursor?: string;
   limit: number;
-  orderBy?: keyof User;
+  orderBy?: keyof UserModel;
   orderDirection?: 'asc' | 'desc';
 }
 
 export interface UsersRepository {
-  findMany(options: PaginationOptions): Promise<User[]>;
-  findById(id: string): Promise<User | null>;
-  findByEmail(email: string): Promise<User | null>;
-  create(payload: CreateUserInput): Promise<User>;
-  update(id: string, payload: UpdateUserInput): Promise<User>;
+  findMany(options: PaginationOptions): Promise<UserModel[]>;
+  findById(id: string): Promise<UserModel | null>;
+  findByEmail(email: string): Promise<UserModel | null>;
+  create(payload: CreateUserInput): Promise<UserModel>;
+  update(id: string, payload: UpdateUserInput): Promise<UserModel>;
 }

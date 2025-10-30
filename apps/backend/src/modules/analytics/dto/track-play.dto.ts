@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AnalyticsEventType } from '@prisma/client';
+import { AnalyticsEventType } from '../../../common/enums/prisma.enums';
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class TrackPlayDto {

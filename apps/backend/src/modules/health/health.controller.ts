@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheck, HealthCheckResult, HealthCheckService } from '@nestjs/terminus';
 import { PrismaService } from '../../infra/prisma.service';
 import { RedisHealthIndicator } from './indicators/redis.health';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -20,7 +20,7 @@ export class HealthController {
   @ApiOperation({ summary: 'Liveness probe (basic process health)' })
   @ApiResponse({ status: 200, description: 'Application is running', schema: { example: { liveness: { status: 'up' } } } })
   @ApiResponse({ status: 500, description: 'Application is not healthy' })
-  liveness(): Promise<HealthIndicatorResult[]> {
+  liveness(): Promise<HealthCheckResult> {
     return this.health.check([
       async () => ({ liveness: { status: 'up' } }),
     ]);
@@ -38,7 +38,7 @@ export class HealthController {
     },
   })
   @ApiResponse({ status: 503, description: 'One or more dependencies are down' })
-  readiness(): Promise<HealthIndicatorResult[]> {
+  readiness(): Promise<HealthCheckResult> {
     return this.health.check([
       async () => {
         // Prisma DB check
@@ -49,4 +49,3 @@ export class HealthController {
     ]);
   }
 }
-

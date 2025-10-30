@@ -1,16 +1,16 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { plainToInstance } from 'class-transformer';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto, AuthTokensDto, AuthUserDto } from './dto/auth-response.dto';
-import { USERS_REPOSITORY, UsersRepository } from '../users/repositories/users.repository';
+import { USERS_REPOSITORY, UsersRepository, UserModel } from '../users/repositories/users.repository';
 import { Inject } from '@nestjs/common';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @Injectable()
 export class AuthService {
@@ -64,6 +64,9 @@ export class AuthService {
 
   async refreshTokens(dto: RefreshTokenDto): Promise<AuthResponseDto> {
     const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+    if (!refreshSecret) {
+      throw new UnauthorizedException('Refresh token secret is not configured.');
+    }
     const payload = await this.jwtService
       .verifyAsync<JwtPayload>(dto.refreshToken, { secret: refreshSecret })
       .catch(() => {
@@ -79,7 +82,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token.');
     }
 
-    const tokenMatches = await bcrypt.compare(dto.refreshToken, user.refreshTokenHash);
+    const tokenMatches = await bcrypt.compare(dto.refreshToken, user.refreshTokenHash ?? '');
     if (!tokenMatches) {
       throw new UnauthorizedException('Invalid refresh token.');
     }
@@ -101,7 +104,7 @@ export class AuthService {
     return this.toAuthUser(user);
   }
 
-  private async issueTokens(user: User): Promise<AuthTokensDto> {
+  private async issueTokens(user: UserModel): Promise<AuthTokensDto> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -110,8 +113,12 @@ export class AuthService {
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+    const refreshSecret = this.configService.get<string>('jwt.refreshSecret');
+    if (!refreshSecret) {
+      throw new UnauthorizedException('Refresh token secret is not configured.');
+    }
     const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.get<string>('jwt.refreshSecret'),
+      secret: refreshSecret,
       expiresIn: this.configService.get<string>('jwt.refreshTokenTtl', '7d'),
     });
     return { accessToken, refreshToken };
@@ -122,7 +129,7 @@ export class AuthService {
     await this.usersRepository.update(userId, { refreshTokenHash: hashed });
   }
 
-  private toAuthUser(user: User): AuthUserDto {
+  private toAuthUser(user: UserModel): AuthUserDto {
     return plainToInstance(AuthUserDto, {
       id: user.id,
       tenantId: user.tenantId,

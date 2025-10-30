@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { StreamStatus } from '@prisma/client';
+import { StreamStatus } from '../../../common/enums/prisma.enums';
 
 export class StartStreamDto {
   @ApiProperty({ format: 'uuid' })

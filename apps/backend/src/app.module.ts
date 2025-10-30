@@ -68,7 +68,9 @@ import { RolesGuard } from './common/guards/roles.guard';
     StorageModule,
     StreamingModule,
     AdminModule,
-    ThrottlerModule.forRoot({ ttl: 60, limit: 100 }),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60, limit: 100 }],
+    }),
     HealthModule,
   ],
   providers: [

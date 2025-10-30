@@ -1,42 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, User } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma.service';
 import {
   CreateUserInput,
   PaginationOptions,
   UpdateUserInput,
   UsersRepository,
+  UserModel,
 } from './users.repository';
 
 @Injectable()
 export class UsersPrismaRepository implements UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(options: PaginationOptions): Promise<User[]> {
+  async findMany(options: PaginationOptions): Promise<UserModel[]> {
     const { cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
-    const where: Prisma.UserWhereInput = {};
     const paginationCursor = cursor ? { id: cursor } : undefined;
 
-    return this.prisma.user.findMany({
+    const rows = await this.prisma.user.findMany({
       take: limit + 1,
       skip: paginationCursor ? 1 : 0,
       cursor: paginationCursor,
-      where,
-      orderBy: { [orderBy]: orderDirection },
+      orderBy: { [orderBy]: orderDirection } as any,
     });
+    return rows as unknown as UserModel[];
   }
 
-  findById(id: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+  async findById(id: string): Promise<UserModel | null> {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    return user as UserModel | null;
   }
 
-  findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string): Promise<UserModel | null> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    return user as UserModel | null;
   }
 
-  create(payload: CreateUserInput): Promise<User> {
+  async create(payload: CreateUserInput): Promise<UserModel> {
     const { tenantId, email, passwordHash, name, role } = payload;
-    return this.prisma.user.create({
+    const created = await this.prisma.user.create({
       data: {
         tenantId,
         email,
@@ -45,12 +46,14 @@ export class UsersPrismaRepository implements UsersRepository {
         role,
       },
     });
+    return created as unknown as UserModel;
   }
 
-  update(id: string, payload: UpdateUserInput): Promise<User> {
-    return this.prisma.user.update({
+  async update(id: string, payload: UpdateUserInput): Promise<UserModel> {
+    const updated = await this.prisma.user.update({
       where: { id },
       data: payload,
     });
+    return updated as unknown as UserModel;
   }
 }

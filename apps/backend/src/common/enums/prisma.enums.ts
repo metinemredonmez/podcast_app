@@ -1,0 +1,27 @@
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  EDITOR = 'EDITOR',
+  CREATOR = 'CREATOR',
+  LISTENER = 'LISTENER',
+}
+
+export enum NotificationType {
+  EPISODE_PUBLISHED = 'EPISODE_PUBLISHED',
+  COMMENT_REPLY = 'COMMENT_REPLY',
+  SYSTEM = 'SYSTEM',
+}
+
+export enum AnalyticsEventType {
+  PODCAST_PLAY = 'PODCAST_PLAY',
+  PODCAST_COMPLETE = 'PODCAST_COMPLETE',
+  PODCAST_FOLLOW = 'PODCAST_FOLLOW',
+  PODCAST_SHARE = 'PODCAST_SHARE',
+  STREAM_JOIN = 'STREAM_JOIN',
+}
+
+export enum StreamStatus {
+  SCHEDULED = 'SCHEDULED',
+  LIVE = 'LIVE',
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED',
+}

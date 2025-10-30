@@ -1,9 +1,8 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Episode } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
-import { EPISODES_REPOSITORY, EpisodesRepository } from './repositories/episodes.repository';
+import { EPISODES_REPOSITORY, EpisodesRepository, EpisodeModel } from './repositories/episodes.repository';
 import { CreateEpisodeDto } from './dto/create-episode.dto';
 import { EpisodeResponseDto } from './dto/episode-response.dto';
 import { slugify } from '../../common/utils/slug.util';
@@ -17,9 +16,9 @@ export class EpisodesService {
     const limit = query.limit ?? 20;
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
-    const sortableFields: (keyof Episode)[] = ['publishedAt', 'createdAt', 'duration', 'title'];
-    const orderBy = sortableFields.includes(query.orderBy as keyof Episode)
-      ? (query.orderBy as keyof Episode)
+    const sortableFields: (keyof EpisodeModel)[] = ['publishedAt', 'createdAt', 'duration', 'title'];
+    const orderBy = sortableFields.includes(query.orderBy as keyof EpisodeModel)
+      ? (query.orderBy as keyof EpisodeModel)
       : 'publishedAt';
     const rows = await this.episodesRepository.findMany({
       cursor: decoded,
@@ -94,22 +93,7 @@ export class EpisodesService {
     return this.toResponseDto(updated);
   }
 
-  private toResponseDto(episode: {
-    id: string;
-    tenantId: string;
-    podcastId: string;
-    hostId: string | null;
-    title: string;
-    slug: string;
-    description: string | null;
-    duration: number;
-    audioUrl: string;
-    isPublished: boolean;
-    publishedAt: Date | null;
-    episodeNumber: number | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }): EpisodeResponseDto {
+  private toResponseDto(episode: EpisodeModel): EpisodeResponseDto {
     return plainToInstance(EpisodeResponseDto, {
       id: episode.id,
       tenantId: episode.tenantId,

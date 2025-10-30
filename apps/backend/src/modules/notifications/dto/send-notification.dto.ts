@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { NotificationType } from '@prisma/client';
+import { NotificationType } from '../../../common/enums/prisma.enums';
 import { IsEnum, IsJSON, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class SendNotificationDto {

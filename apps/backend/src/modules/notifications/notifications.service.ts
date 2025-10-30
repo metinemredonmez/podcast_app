@@ -14,4 +14,8 @@ export class NotificationsService {
     void payload;
     return {};
   }
+
+  async send(payload: unknown): Promise<void> {
+    await this.create(payload);
+  }
 }

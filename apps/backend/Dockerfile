@@ -1,22 +1,24 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root manifests
 COPY ../../package.json ../../yarn.lock ./
-
-# Copy shared workspaces needed for backend build
 COPY ../../packages ./packages
 COPY ../../apps ./apps
 
-# Install dependencies for the entire workspace
-RUN yarn install --frozen-lockfile --non-interactive --production=false
+RUN yarn install --frozen-lockfile --non-interactive
 
-# Generate Prisma Client and build backend
 WORKDIR /app/apps/backend
-RUN yarn prisma:generate \
- && yarn build
+RUN yarn prisma:generate && yarn build
 
-# Expose API port and start in production mode
-EXPOSE 3000
-CMD ["yarn", "start:prod"]
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+COPY --from=builder /app/apps/backend/node_modules ./node_modules
+COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/apps/backend/package.json ./package.json
+
+EXPOSE 3300
+CMD ["node", "dist/main.js"]

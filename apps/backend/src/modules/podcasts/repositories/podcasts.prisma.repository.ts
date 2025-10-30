@@ -1,25 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { Podcast } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma.service';
 import {
   CreatePodcastInput,
   PaginationOptions,
   PodcastDetail,
   PodcastsRepository,
+  PodcastModel,
 } from './podcasts.repository';
 
 @Injectable()
 export class PodcastsPrismaRepository implements PodcastsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findMany(options: PaginationOptions): Promise<Podcast[]> {
+  async findMany(options: PaginationOptions): Promise<PodcastModel[]> {
     const { cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
-    return this.prisma.podcast.findMany({
+    const rows = await this.prisma.podcast.findMany({
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      orderBy: { [orderBy]: orderDirection },
+      orderBy: { [orderBy]: orderDirection } as any,
     });
+    return rows as unknown as PodcastModel[];
   }
 
   async findDetailedById(id: string): Promise<PodcastDetail | null> {
@@ -60,21 +61,23 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
       updatedAt: podcast.updatedAt,
       owner: podcast.owner,
       episodes: podcast.episodes,
-      categories: podcast.categories.map(({ category }) => category),
+      categories: podcast.categories.map((relation: any) => relation.category),
     };
   }
 
-  findById(id: string): Promise<Podcast | null> {
-    return this.prisma.podcast.findUnique({ where: { id } });
+  async findById(id: string): Promise<PodcastModel | null> {
+    const podcast = await this.prisma.podcast.findUnique({ where: { id } });
+    return podcast as PodcastModel | null;
   }
 
-  findBySlug(tenantId: string, slug: string): Promise<Podcast | null> {
-    return this.prisma.podcast.findUnique({ where: { tenantId_slug: { tenantId, slug } } });
+  async findBySlug(tenantId: string, slug: string): Promise<PodcastModel | null> {
+    const podcast = await this.prisma.podcast.findUnique({ where: { tenantId_slug: { tenantId, slug } } });
+    return podcast as PodcastModel | null;
   }
 
-  async create(payload: CreatePodcastInput): Promise<Podcast> {
+  async create(payload: CreatePodcastInput): Promise<PodcastModel> {
     const { tenantId, ownerId, title, slug, description, coverImageUrl, isPublished, publishedAt, categoryIds } = payload;
-    return this.prisma.podcast.create({
+    const podcast = await this.prisma.podcast.create({
       data: {
         tenantId,
         ownerId,
@@ -91,5 +94,7 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
           : undefined,
       },
     });
+
+    return podcast as unknown as PodcastModel;
   }
 }

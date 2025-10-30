@@ -1,13 +1,13 @@
 import { Inject, Injectable, ConflictException, NotFoundException } from '@nestjs/common';
-import { User, UserRole } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
-import { USERS_REPOSITORY, UsersRepository } from './repositories/users.repository';
+import { USERS_REPOSITORY, UsersRepository, UserModel } from './repositories/users.repository';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @Injectable()
 export class UsersService {
@@ -19,10 +19,9 @@ export class UsersService {
     const limit = query.limit ?? 20;
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
-    const sortableFields: (keyof User)[] = ['createdAt', 'email', 'name'];
-    const orderBy = sortableFields.includes(query.orderBy as keyof User)
-      ? (query.orderBy as keyof User)
-      : 'createdAt';
+    const sortableFields: (keyof UserModel)[] = ['createdAt', 'email', 'name'];
+    const requestedOrder = (query.orderBy ?? 'createdAt') as keyof UserModel;
+    const orderBy = sortableFields.includes(requestedOrder) ? requestedOrder : 'createdAt';
     const rows = await this.usersRepository.findMany({
       cursor: decoded,
       limit,
@@ -74,7 +73,7 @@ export class UsersService {
     return this.toResponseDto(updated);
   }
 
-  private toResponseDto(user: User): UserResponseDto {
+  private toResponseDto(user: UserModel): UserResponseDto {
     return plainToInstance(UserResponseDto, {
       id: user.id,
       tenantId: user.tenantId,

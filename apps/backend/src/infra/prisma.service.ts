@@ -15,10 +15,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           : ['error'],
     });
     if (process.env.NODE_ENV !== 'production') {
-      this.$on('query', (e) => {
-        const duration = (e as any).duration as number | undefined;
-        if (typeof duration === 'number' && duration > 100) {
-          Logger.warn(`Slow query (${duration} ms): ${e.query}`, 'Prisma');
+      this.$on('query' as any, (event: any) => {
+        const duration = typeof event?.duration === 'number' ? event.duration : undefined;
+        const query = typeof event?.query === 'string' ? event.query : undefined;
+        if (duration && duration > 100 && query) {
+          Logger.warn(`Slow query (${duration} ms): ${query}`, 'Prisma');
         }
       });
     }
