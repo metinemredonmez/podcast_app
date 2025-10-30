@@ -1,29 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "types": ["node"],
-    "rootDir": "src",
-    "baseUrl": "./src",
-    "outDir": "dist",
-    "strict": true,
-    "esModuleInterop": true,
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "importHelpers": true,
-    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
     "skipLibCheck": true,
-    "paths": {
-      "@common/*": ["common/*"],
-      "@config/*": ["config/*"],
-      "@modules/*": ["modules/*"],
-      "@infra/*": ["infra/*"],
-      "@ws/*": ["ws/*"],
-      "@jobs/*": ["jobs/*"],
-      "@database/*": ["database/*"]
-    }
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   },
-  "include": ["src"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 }

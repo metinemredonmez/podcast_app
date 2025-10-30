@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
 import { NotificationsGateway } from './gateways/notifications.gateway';
-import { StreamingGateway } from './gateways/streaming.gateway';
 import { ChatGateway } from './gateways/chat.gateway';
-import { GatewayAdapter } from './gateway.adapter';
-import { WsAuthGuard } from './guards/ws-auth.guard';
+import { LiveStreamGateway } from './gateways/live-stream.gateway';
 
 @Module({
-  providers: [GatewayAdapter, NotificationsGateway, StreamingGateway, ChatGateway, WsAuthGuard],
-  exports: [GatewayAdapter],
+  providers: [NotificationsGateway, ChatGateway, LiveStreamGateway],
+  exports: [NotificationsGateway, ChatGateway, LiveStreamGateway],
 })
 export class WsModule {}

@@ -1,40 +1,33 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import helmet from 'helmet';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
-import { validateEnv } from './config/env.validation';
 
-validateEnv();
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
 
-async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
-  const configService = app.get(ConfigService);
-  const appConfig = configService.get<{ port: number; corsOrigins: string[] }>('app');
-  const corsOrigins =
-    appConfig?.corsOrigins && appConfig.corsOrigins.length > 0 ? appConfig.corsOrigins : true;
   app.setGlobalPrefix('api');
-  app.enableCors({ origin: corsOrigins, credentials: true });
-  app.use(helmet());
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidUnknownValues: false,
+      forbidNonWhitelisted: true,
     }),
   );
-  const config = new DocumentBuilder()
-    .setTitle('Podcast API')
-    .setDescription('API for Podcast app. Rate limit: 100 req/min per IP.')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-  const port = appConfig?.port ?? 3000;
-  await app.listen(port);
-  Logger.log(`Backend listening on port ${port}`, 'Bootstrap');
+
+  app.enableCors({
+    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    credentials: true,
+  });
+
+  await app.listen(process.env.PORT || 3300);
+
+  console.log(`🚀 Application is running on: ${await app.getUrl()}`);
+  console.log(`🔌 WebSocket namespaces:`);
+  console.log(`   - ws://localhost:${process.env.PORT || 3300}/notifications`);
+  console.log(`   - ws://localhost:${process.env.PORT || 3300}/chat`);
+  console.log(`   - ws://localhost:${process.env.PORT || 3300}/live`);
+  console.log(`📚 Swagger docs: ${await app.getUrl()}/api/docs`);
 }
 
-void bootstrap();
+bootstrap();
