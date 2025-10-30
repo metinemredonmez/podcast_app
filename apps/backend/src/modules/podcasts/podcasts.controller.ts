@@ -3,6 +3,9 @@ import { PodcastsService } from './podcasts.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginated-response.decorator';
+import { CreatePodcastDto } from './dto/create-podcast.dto';
+import { PodcastResponseDto } from './dto/podcast-response.dto';
+import { PodcastDetailDto } from './dto/podcast-detail.dto';
 
 @ApiTags('Podcasts')
 @ApiBearerAuth()
@@ -19,30 +22,33 @@ export class PodcastsController {
   @ApiCursorPaginatedResponse({
     type: 'object',
     properties: {
-      id: { type: 'string' },
+      id: { type: 'string', format: 'uuid' },
+      tenantId: { type: 'string', format: 'uuid' },
+      ownerId: { type: 'string', format: 'uuid' },
       title: { type: 'string' },
-      description: { type: 'string' },
-      userId: { type: 'string' },
+      slug: { type: 'string' },
+      description: { type: 'string', nullable: true },
+      isPublished: { type: 'boolean' },
+      publishedAt: { type: 'string', format: 'date-time', nullable: true },
       createdAt: { type: 'string', format: 'date-time' },
       updatedAt: { type: 'string', format: 'date-time' },
-      _count: { type: 'object', properties: { episodes: { type: 'number' } } },
     },
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
   @ApiResponse({ status: 500, description: 'Server error' })
-  findAll(@Query() query: CursorPaginationDto): Promise<PaginatedResponseDto<unknown>> {
+  findAll(@Query() query: CursorPaginationDto): Promise<PaginatedResponseDto<PodcastResponseDto>> {
     return this.service.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<unknown> {
+  findOne(@Param('id') id: string): Promise<PodcastDetailDto> {
     return this.service.findOne(id);
   }
 
   @Post()
-  create(@Body() payload: unknown): Promise<unknown> {
+  create(@Body() payload: CreatePodcastDto): Promise<PodcastResponseDto> {
     return this.service.create(payload);
   }
 }

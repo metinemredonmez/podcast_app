@@ -3,6 +3,7 @@ import { HealthCheck, HealthCheckService, HealthIndicatorResult } from '@nestjs/
 import { PrismaService } from '../../infra/prisma.service';
 import { RedisHealthIndicator } from './indicators/redis.health';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('Health')
 @Controller('health')
@@ -14,6 +15,7 @@ export class HealthController {
   ) {}
 
   @Get('liveness')
+  @Public()
   @HealthCheck()
   @ApiOperation({ summary: 'Liveness probe (basic process health)' })
   @ApiResponse({ status: 200, description: 'Application is running', schema: { example: { liveness: { status: 'up' } } } })
@@ -25,6 +27,7 @@ export class HealthController {
   }
 
   @Get('readiness')
+  @Public()
   @HealthCheck()
   @ApiOperation({ summary: 'Readiness probe (DB and Redis readiness)' })
   @ApiResponse({
@@ -46,5 +49,4 @@ export class HealthController {
     ]);
   }
 }
-
 

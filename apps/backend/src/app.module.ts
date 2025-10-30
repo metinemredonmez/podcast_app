@@ -27,12 +27,13 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { AdminModule } from './modules/admin/admin.module';
-import { PrismaService } from './infra/prisma.service';
 import { HealthModule } from './modules/health/health.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ResponseTimeInterceptor } from './common/interceptors/response-time.interceptor';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -71,10 +72,17 @@ import { ResponseTimeInterceptor } from './common/interceptors/response-time.int
     HealthModule,
   ],
   providers: [
-    PrismaService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_INTERCEPTOR,

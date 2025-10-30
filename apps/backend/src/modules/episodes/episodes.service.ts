@@ -1,42 +1,130 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../infra/prisma.service';
-import { episodeListSelect, podcastListSelect } from '../../common/prisma/select-configs';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Episode } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
+import { EPISODES_REPOSITORY, EpisodesRepository } from './repositories/episodes.repository';
+import { CreateEpisodeDto } from './dto/create-episode.dto';
+import { EpisodeResponseDto } from './dto/episode-response.dto';
+import { slugify } from '../../common/utils/slug.util';
+import { UpdateEpisodeDto } from './dto/update-episode.dto';
 
 @Injectable()
 export class EpisodesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(EPISODES_REPOSITORY) private readonly episodesRepository: EpisodesRepository) {}
 
-  async findAll(query: CursorPaginationDto): Promise<PaginatedResponseDto<unknown>> {
+  async findAll(query: CursorPaginationDto): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
     const limit = query.limit ?? 20;
-    const decoded = query.cursor ? decodeCursor(query.cursor) : undefined;
-    const rows = await this.prisma.episode.findMany({
-      take: limit + 1,
-      ...(decoded
-        ? {
-            cursor: { id: decoded },
-            skip: 1,
-          }
-        : {}),
-      select: { ...episodeListSelect, audioUrl: true, podcastId: true },
-      orderBy: { publishedAt: 'desc' },
+    const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
+    const decoded = decodedRaw || undefined;
+    const sortableFields: (keyof Episode)[] = ['publishedAt', 'createdAt', 'duration', 'title'];
+    const orderBy = sortableFields.includes(query.orderBy as keyof Episode)
+      ? (query.orderBy as keyof Episode)
+      : 'publishedAt';
+    const rows = await this.episodesRepository.findMany({
+      cursor: decoded,
+      limit,
+      orderBy,
+      orderDirection: query.orderDirection ?? 'desc',
     });
-    return buildPaginatedResponse(rows, limit, (e: any) => e.id);
+    const paginated = buildPaginatedResponse(rows, limit, (episode) => episode.id);
+    return {
+      ...paginated,
+      data: paginated.data.map((episode) => this.toResponseDto(episode)),
+    };
   }
 
-  async findOne(id: string): Promise<unknown> {
-    return this.prisma.episode.findUnique({
-      where: { id },
-      include: { podcast: { select: podcastListSelect } },
-    });
+  async findOne(id: string): Promise<EpisodeResponseDto> {
+    const episode = await this.episodesRepository.findById(id);
+    if (!episode) {
+      throw new NotFoundException(`Episode ${id} not found.`);
+    }
+    return this.toResponseDto(episode);
   }
 
-  async create(payload: any): Promise<unknown> {
-    const { title, duration, audioUrl, publishedAt, podcastId } = payload ?? {};
-    return this.prisma.episode.create({
-      data: { title, duration, audioUrl, publishedAt: new Date(publishedAt), podcastId },
-      select: { ...episodeListSelect, audioUrl: true, podcastId: true },
+  async create(payload: CreateEpisodeDto): Promise<EpisodeResponseDto> {
+    const slug = payload.slug ? slugify(payload.slug) : slugify(payload.title);
+    const existing = await this.episodesRepository.findBySlug(payload.podcastId, slug);
+    if (existing) {
+      throw new ConflictException(`Episode slug '${slug}' already exists for this podcast.`);
+    }
+
+    const publishedAt = payload.isPublished
+      ? payload.publishedAt
+        ? new Date(payload.publishedAt)
+        : new Date()
+      : undefined;
+
+    const created = await this.episodesRepository.create({
+      tenantId: payload.tenantId,
+      podcastId: payload.podcastId,
+      hostId: payload.hostId,
+      title: payload.title,
+      slug,
+      description: payload.description,
+      duration: payload.duration,
+      audioUrl: payload.audioUrl,
+      isPublished: payload.isPublished,
+      publishedAt,
+      episodeNumber: payload.episodeNumber,
+    });
+    return this.toResponseDto(created);
+  }
+
+  async update(id: string, payload: UpdateEpisodeDto): Promise<EpisodeResponseDto> {
+    const episode = await this.episodesRepository.findById(id);
+    if (!episode) {
+      throw new NotFoundException(`Episode ${id} not found.`);
+    }
+    const publishedAt = payload.isPublished
+      ? payload.publishedAt
+        ? new Date(payload.publishedAt)
+        : episode.publishedAt ?? new Date()
+      : payload.publishedAt
+      ? new Date(payload.publishedAt)
+      : undefined;
+    const updated = await this.episodesRepository.update(id, {
+      title: payload.title ?? undefined,
+      description: payload.description ?? undefined,
+      duration: payload.duration ?? undefined,
+      audioUrl: payload.audioUrl ?? undefined,
+      isPublished: payload.isPublished ?? undefined,
+      publishedAt,
+    });
+    return this.toResponseDto(updated);
+  }
+
+  private toResponseDto(episode: {
+    id: string;
+    tenantId: string;
+    podcastId: string;
+    hostId: string | null;
+    title: string;
+    slug: string;
+    description: string | null;
+    duration: number;
+    audioUrl: string;
+    isPublished: boolean;
+    publishedAt: Date | null;
+    episodeNumber: number | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }): EpisodeResponseDto {
+    return plainToInstance(EpisodeResponseDto, {
+      id: episode.id,
+      tenantId: episode.tenantId,
+      podcastId: episode.podcastId,
+      hostId: episode.hostId,
+      title: episode.title,
+      slug: episode.slug,
+      description: episode.description,
+      duration: episode.duration,
+      audioUrl: episode.audioUrl,
+      isPublished: episode.isPublished,
+      publishedAt: episode.publishedAt,
+      episodeNumber: episode.episodeNumber,
+      createdAt: episode.createdAt,
+      updatedAt: episode.updatedAt,
     });
   }
 }

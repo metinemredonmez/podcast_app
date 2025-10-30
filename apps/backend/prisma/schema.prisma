@@ -8,39 +8,304 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  name      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+enum UserRole {
+  ADMIN
+  EDITOR
+  CREATOR
+  LISTENER
+}
 
-  podcasts  Podcast[]
+enum NotificationType {
+  EPISODE_PUBLISHED
+  COMMENT_REPLY
+  SYSTEM
+}
+
+enum AnalyticsEventType {
+  PODCAST_PLAY
+  PODCAST_COMPLETE
+  PODCAST_FOLLOW
+  PODCAST_SHARE
+  STREAM_JOIN
+}
+
+enum StreamStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model User {
+  id               String   @id @default(uuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email            String   @unique
+  passwordHash     String
+  refreshTokenHash String?
+  name             String?
+  role             UserRole @default(LISTENER)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  podcasts          Podcast[]
+  episodes          Episode[]           @relation("EpisodeHosts")
+  follows           Follow[]
+  comments          Comment[]
+  notifications     Notification[]
+  events            AnalyticsEvent[]
+  progresses        ListeningProgress[]
+  streamingSessions StreamingSession[]  @relation("SessionHosts")
+  hocas             Hoca[]
+
+  @@index([tenantId])
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  podcasts      Podcast[]
+  categories    Category[]
+  hocas         Hoca[]
+  notifications Notification[]
+  events        AnalyticsEvent[]
+  episodes      Episode[]
+  follows       Follow[]
+  comments      Comment[]
+  progresses    ListeningProgress[]
+  assets        StorageAsset[]
+  sessions      StreamingSession[]
 }
 
 model Podcast {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  episodes    Episode[]
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId       String
+  owner         User      @relation(fields: [ownerId], references: [id])
+  title         String
+  slug          String
+  description   String?
+  coverImageUrl String?
+  isPublished   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  publishedAt   DateTime?
 
-  @@index([userId])
+  episodes   Episode[]
+  follows    Follow[]
+  categories PodcastCategory[]
+  comments   Comment[]
+  events     AnalyticsEvent[]
+  sessions   StreamingSession[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([ownerId])
 }
 
 model Episode {
-  id          String   @id @default(uuid())
-  title       String
-  duration    Int
-  audioUrl    String
-  publishedAt DateTime
-  podcastId   String
-  podcast     Podcast  @relation(fields: [podcastId], references: [id])
+  id            String    @id @default(uuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  podcastId     String
+  podcast       Podcast   @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  hostId        String?
+  host          User?     @relation("EpisodeHosts", fields: [hostId], references: [id])
+  title         String
+  slug          String
+  description   String?
+  duration      Int
+  audioUrl      String
+  publishedAt   DateTime?
+  isPublished   Boolean   @default(false)
+  episodeNumber Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
+  comments   Comment[]
+  progresses ListeningProgress[]
+  events     AnalyticsEvent[]
+  sessions   StreamingSession[]
+
+  @@unique([podcastId, slug])
+  @@index([tenantId])
   @@index([podcastId])
   @@index([publishedAt])
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  podcasts PodcastCategory[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model PodcastCategory {
+  podcastId  String
+  categoryId String
+
+  podcast  Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([podcastId, categoryId])
+}
+
+model Follow {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  podcastId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  podcast Podcast @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, podcastId])
+  @@index([tenantId])
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  episodeId String
+  episode   Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Podcast   Podcast?  @relation(fields: [podcastId], references: [id])
+  podcastId String?
+
+  @@index([tenantId])
+  @@index([episodeId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+}
+
+model AnalyticsEvent {
+  id         String             @id @default(uuid())
+  tenantId   String
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?              @relation(fields: [userId], references: [id])
+  podcastId  String?
+  podcast    Podcast?           @relation(fields: [podcastId], references: [id])
+  episodeId  String?
+  episode    Episode?           @relation(fields: [episodeId], references: [id])
+  eventType  AnalyticsEventType
+  metadata   Json?
+  occurredAt DateTime           @default(now())
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([userId])
+}
+
+model ListeningProgress {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episodeId       String
+  episode         Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  progressSeconds Int      @default(0)
+  completed       Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, episodeId])
+  @@index([tenantId])
+}
+
+model Hoca {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  name      String
+  bio       String?
+  avatarUrl String?
+  expertise String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model StorageAsset {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ownerId   String?
+  ownerType String?
+  bucket    String
+  objectKey String
+  url       String
+  mimeType  String?
+  sizeBytes Int?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([ownerId])
+}
+
+model StreamingSession {
+  id        String       @id @default(uuid())
+  tenantId  String
+  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  hostId    String
+  host      User         @relation("SessionHosts", fields: [hostId], references: [id], onDelete: Cascade)
+  podcastId String?
+  podcast   Podcast?     @relation(fields: [podcastId], references: [id])
+  episodeId String?
+  episode   Episode?     @relation(fields: [episodeId], references: [id])
+  status    StreamStatus @default(SCHEDULED)
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([tenantId])
+  @@index([hostId])
 }

@@ -3,11 +3,18 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { validateEnvironment } from './config/env.validation';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const configService = app.get(ConfigService);
+  validateEnvironment(process.env as Record<string, unknown>);
+  const appConfig = configService.get<{ port: number; corsOrigins: string[] }>('app');
+  const corsOrigins =
+    appConfig?.corsOrigins && appConfig.corsOrigins.length > 0 ? appConfig.corsOrigins : true;
   app.setGlobalPrefix('api');
-  app.enableCors({ origin: true, credentials: true });
+  app.enableCors({ origin: corsOrigins, credentials: true });
   app.use(helmet());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,7 +31,7 @@ async function bootstrap(): Promise<void> {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
-  const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+  const port = appConfig?.port ?? 3000;
   await app.listen(port);
   Logger.log(`Backend listening on port ${port}`, 'Bootstrap');
 }
