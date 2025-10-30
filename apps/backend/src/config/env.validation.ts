@@ -1,98 +1,64 @@
-import { plainToInstance } from 'class-transformer';
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Min, validateSync } from 'class-validator';
+import { z } from 'zod';
 
-class EnvironmentVariables {
-  @IsString()
-  NODE_ENV!: string;
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().positive().default(3300),
 
-  @IsNumber()
-  @Min(0)
-  PORT!: number;
+  // Database
+  DATABASE_URL: z.string().url(),
+  TEST_DATABASE_URL: z.string().url().optional(),
 
-  @IsString()
-  @IsNotEmpty()
-  DATABASE_URL!: string;
+  // Redis
+  REDIS_URL: z.string().url(),
 
-  @IsString()
-  @IsNotEmpty()
-  REDIS_URL!: string;
+  // JWT
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
+  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_REFRESH_TTL: z.string().default('7d'),
 
-  @IsString()
-  @IsNotEmpty()
-  JWT_ACCESS_SECRET!: string;
+  // Security
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
-  @IsString()
-  @IsNotEmpty()
-  JWT_REFRESH_SECRET!: string;
+  // CORS
+  CORS_ORIGINS: z.string(),
 
-  @IsString()
-  @IsNotEmpty()
-  JWT_ACCESS_TTL!: string;
+  // S3/MinIO
+  S3_ENDPOINT: z.string().url(),
+  S3_ACCESS_KEY: z.string().min(3),
+  S3_SECRET_KEY: z.string().min(8),
+  S3_BUCKET: z.string().min(3),
 
-  @IsString()
-  @IsNotEmpty()
-  JWT_REFRESH_TTL!: string;
+  // Elasticsearch (optional)
+  ELASTICSEARCH_NODE: z.string().url().optional(),
 
-  @IsNumber()
-  @Min(4)
-  BCRYPT_SALT_ROUNDS!: number;
+  // Admin Setup
+  ADMIN_TENANT_NAME: z.string().min(1),
+  ADMIN_TENANT_SLUG: z.string().min(1),
+  ADMIN_EMAIL: z.string().email(),
+  ADMIN_NAME: z.string().min(1),
+  ADMIN_PASSWORD: z.string().min(8),
+  ADMIN_PASSWORD_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
 
-  @IsString()
-  CORS_ORIGINS!: string;
+  // Application
+  SWAGGER_ENABLED: z.coerce.boolean().default(true),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+});
 
-  @IsString()
-  @IsNotEmpty()
-  S3_ENDPOINT!: string;
+export type EnvConfig = z.infer<typeof envSchema>;
 
-  @IsString()
-  @IsNotEmpty()
-  S3_ACCESS_KEY!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  S3_SECRET_KEY!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  ELASTICSEARCH_NODE!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  ADMIN_TENANT_NAME!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  ADMIN_TENANT_SLUG!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  ADMIN_EMAIL!: string;
-
-  @IsOptional()
-  @IsString()
-  ADMIN_PASSWORD?: string;
-
-  @IsOptional()
-  @IsString()
-  ADMIN_PASSWORD_HASH?: string;
-
-  @IsNumber()
-  @Min(4)
-  ADMIN_PASSWORD_SALT_ROUNDS!: number;
+export function validateEnv(): EnvConfig {
+  try {
+    const parsed = envSchema.parse(process.env);
+    return parsed;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('❌ Environment validation failed:');
+      console.error(JSON.stringify(error.errors, null, 2));
+      process.exit(1);
+    }
+    throw error;
+  }
 }
 
-export const validateEnvironment = (config: Record<string, unknown>) => {
-  const validatedConfig = plainToInstance(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-  });
-
-  const errors = validateSync(validatedConfig, {
-    skipMissingProperties: false,
-    forbidUnknownValues: true,
-  });
-
-  if (errors.length > 0) {
-    throw new Error(errors.toString());
-  }
-  return validatedConfig;
-};
+export const env = validateEnv();
