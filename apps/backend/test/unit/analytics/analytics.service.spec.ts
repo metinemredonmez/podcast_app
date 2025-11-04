@@ -5,12 +5,19 @@ import { PrismaService } from '../../../src/infra/prisma.service';
 import { AnalyticsQueueService } from '../../../src/jobs/queues/analytics.queue';
 import { CreateAnalyticsDto } from '../../../src/modules/analytics/dto/create-analytics.dto';
 import { FilterAnalyticsDto } from '../../../src/modules/analytics/dto/filter-analytics.dto';
-import { AnalyticsEventType } from '../../../src/common/enums/prisma.enums';
+import { AnalyticsEventType, UserRole } from '../../../src/common/enums/prisma.enums';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
 
 describe('AnalyticsService', () => {
   let prisma: jest.Mocked<PrismaService>;
   let queue: jest.Mocked<AnalyticsQueueService>;
   let service: AnalyticsService;
+  const adminActor: JwtPayload = {
+    sub: 'admin-1',
+    email: 'admin@example.com',
+    tenantId: 'tenant-1',
+    role: UserRole.ADMIN,
+  };
 
   beforeEach(() => {
     prisma = {
@@ -41,7 +48,7 @@ describe('AnalyticsService', () => {
     const createdEvent = { id: 'event-1', ...dto } as any;
     prisma.analyticsEvent.create.mockResolvedValue(createdEvent);
 
-    const result = await service.create(dto);
+    const result = await service.create(dto, adminActor);
 
     expect(prisma.analyticsEvent.create).toHaveBeenCalledWith({
       data: {
@@ -64,7 +71,7 @@ describe('AnalyticsService', () => {
       metadata: { foo: 'bar' },
     };
 
-    await service.queueEvent(dto);
+    await service.queueEvent(dto, adminActor);
 
     expect(queue.enqueue).toHaveBeenCalledWith({
       tenantId: dto.tenantId,
@@ -84,7 +91,7 @@ describe('AnalyticsService', () => {
       { eventType: AnalyticsEventType.PODCAST_FOLLOW, _count: { _all: 3 } },
     ] as any);
 
-    const stats = await service.getStats(filter);
+    const stats = await service.getStats(filter, adminActor);
 
     expect(prisma.analyticsEvent.groupBy).toHaveBeenCalledWith({
       by: ['eventType'],
@@ -101,10 +108,10 @@ describe('AnalyticsService', () => {
   it('removes analytics events and throws when missing', async () => {
     (prisma.analyticsEvent.deleteMany as jest.Mock).mockResolvedValue({ count: 1 });
 
-    await expect(service.remove('tenant-1', 'event-1')).resolves.toBeUndefined();
+    await expect(service.remove('tenant-1', 'event-1', adminActor)).resolves.toBeUndefined();
     expect(prisma.analyticsEvent.deleteMany).toHaveBeenCalledWith({ where: { id: 'event-1', tenantId: 'tenant-1' } });
 
     (prisma.analyticsEvent.deleteMany as jest.Mock).mockResolvedValue({ count: 0 });
-    await expect(service.remove('tenant-1', 'missing')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.remove('tenant-1', 'missing', adminActor)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

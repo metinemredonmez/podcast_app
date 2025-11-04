@@ -13,19 +13,20 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(options: PaginationOptions): Promise<PodcastModel[]> {
-    const { cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
+    const { tenantId, cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
     const rows = await this.prisma.podcast.findMany({
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
+      where: { tenantId },
       orderBy: { [orderBy]: orderDirection } as any,
     });
     return rows as unknown as PodcastModel[];
   }
 
-  async findDetailedById(id: string): Promise<PodcastDetail | null> {
-    const podcast = await this.prisma.podcast.findUnique({
-      where: { id },
+  async findDetailedById(id: string, tenantId: string): Promise<PodcastDetail | null> {
+    const podcast = await this.prisma.podcast.findFirst({
+      where: { id, tenantId },
       include: {
         owner: { select: { id: true, email: true, name: true } },
         episodes: {
@@ -65,8 +66,8 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
     };
   }
 
-  async findById(id: string): Promise<PodcastModel | null> {
-    const podcast = await this.prisma.podcast.findUnique({ where: { id } });
+  async findById(id: string, tenantId: string): Promise<PodcastModel | null> {
+    const podcast = await this.prisma.podcast.findFirst({ where: { id, tenantId } });
     return podcast as PodcastModel | null;
   }
 

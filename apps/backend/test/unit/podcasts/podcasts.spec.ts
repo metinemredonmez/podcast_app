@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import { PodcastsService } from '../../../src/modules/podcasts/podcasts.service';
 import { PODCASTS_REPOSITORY, PodcastsRepository } from '../../../src/modules/podcasts/repositories/podcasts.repository';
 import { CursorPaginationDto } from '../../../src/common/dto/cursor-pagination.dto';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../../src/common/enums/prisma.enums';
 
 describe('PodcastsService', () => {
   const mockRepo = (): jest.Mocked<PodcastsRepository> => ({
@@ -36,9 +38,10 @@ describe('PodcastsService', () => {
     }).compile();
 
     const service = moduleRef.get(PodcastsService);
-    const result = await service.findAll({ limit: 5 } as CursorPaginationDto);
+    const actor: JwtPayload = { sub: 'creator', email: 'creator@example.com', tenantId: 't1', role: UserRole.CREATOR };
+    const result = await service.findAll({ limit: 5 } as CursorPaginationDto, actor);
 
-    expect(repo.findMany).toHaveBeenCalledWith(expect.objectContaining({ limit: 5 }));
+    expect(repo.findMany).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't1', limit: 5 }));
     expect(result.data).toHaveLength(1);
   });
 
@@ -64,9 +67,11 @@ describe('PodcastsService', () => {
     }).compile();
 
     const service = moduleRef.get(PodcastsService);
-    const result = await service.create({ tenantId: 't1', ownerId: 'o1', title: 'My Podcast', isPublished: false } as any);
+    const creator: JwtPayload = { sub: 'o1', email: 'owner@example.com', tenantId: 't1', role: UserRole.CREATOR };
+    const result = await service.create({ tenantId: 't1', ownerId: 'o1', title: 'My Podcast', isPublished: false } as any, creator);
 
-    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ slug: 'my-podcast' }));
+    expect(repo.findBySlug).toHaveBeenCalledWith('t1', 'my-podcast');
+    expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't1', slug: 'my-podcast' }));
     expect(result.slug).toBe('my-podcast');
   });
 
@@ -78,10 +83,10 @@ describe('PodcastsService', () => {
       providers: [PodcastsService, { provide: PODCASTS_REPOSITORY, useValue: repo }],
     }).compile();
 
+    const creator: JwtPayload = { sub: 'o1', email: 'owner@example.com', tenantId: 't1', role: UserRole.CREATOR };
     const service = moduleRef.get(PodcastsService);
-
     await expect(
-      service.create({ tenantId: 't1', ownerId: 'o1', title: 'Existing', slug: 'existing' } as any),
+      service.create({ tenantId: 't1', ownerId: 'o1', title: 'Existing', slug: 'existing' } as any, creator),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -95,6 +100,7 @@ describe('PodcastsService', () => {
 
     const service = moduleRef.get(PodcastsService);
 
-    await expect(service.findOne('missing')).rejects.toBeInstanceOf(NotFoundException);
+    const admin: JwtPayload = { sub: 'admin', email: 'admin@example.com', tenantId: 't1', role: UserRole.ADMIN };
+    await expect(service.findOne('missing', admin, 't1')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

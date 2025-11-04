@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Notification, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma.service';
 import { NotificationQueueService } from '../../jobs/queues/notification.queue';
@@ -9,6 +9,8 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { MarkNotificationReadDto } from './dto/mark-notification-read.dto';
 import { NotificationJobPayload } from './interfaces/notification-job-payload.interface';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @Injectable()
 export class NotificationsService {
@@ -18,10 +20,17 @@ export class NotificationsService {
     private readonly gateway: NotificationsGateway,
   ) {}
 
-  async findAll(query: ListNotificationsDto): Promise<Notification[]> {
+  async findAll(query: ListNotificationsDto, actor: JwtPayload): Promise<Notification[]> {
+    const tenantId = this.resolveTenant(query.tenantId, actor, true);
+    const userFilter = query.userId
+      ? this.resolveUser(query.userId, actor)
+      : actor.role === UserRole.ADMIN
+      ? undefined
+      : actor.sub;
+
     const where: Prisma.NotificationWhereInput = {
-      tenantId: query.tenantId,
-      ...(query.userId ? { userId: query.userId } : {}),
+      tenantId,
+      ...(userFilter ? { userId: userFilter } : {}),
       ...(query.unreadOnly ? { readAt: null } : {}),
     };
 
@@ -31,20 +40,24 @@ export class NotificationsService {
     });
   }
 
-  async findOne(tenantId: string, id: string): Promise<Notification> {
+  async findOne(tenantId: string, id: string, actor: JwtPayload): Promise<Notification> {
+    const resolvedTenant = this.resolveTenant(tenantId, actor, true);
     const notification = await this.prisma.notification.findFirst({
-      where: { id, tenantId },
+      where: { id, tenantId: resolvedTenant },
     });
     if (!notification) {
       throw new NotFoundException(`Notification ${id} not found.`);
     }
+    this.ensureNotificationAccess(actor, notification);
     return notification;
   }
 
-  async create(dto: CreateNotificationDto): Promise<Notification> {
+  async create(dto: CreateNotificationDto, actor: JwtPayload): Promise<Notification> {
+    this.ensureAdmin(actor);
+    const tenantId = this.resolveTenant(dto.tenantId, actor, true);
     const notification = await this.prisma.notification.create({
       data: {
-        tenantId: dto.tenantId,
+        tenantId,
         userId: dto.userId,
         type: dto.type,
         payload: dto.payload as Prisma.JsonValue,
@@ -59,8 +72,10 @@ export class NotificationsService {
     tenantId: string,
     id: string,
     dto: UpdateNotificationDto,
+    actor: JwtPayload,
   ): Promise<Notification> {
-    const notification = await this.findOne(tenantId, id);
+    this.ensureAdmin(actor);
+    const notification = await this.findOne(tenantId, id, actor);
 
     const readAt =
       dto.read === undefined
@@ -84,12 +99,15 @@ export class NotificationsService {
   async markAsRead(
     notificationId: string,
     dto: MarkNotificationReadDto,
+    actor: JwtPayload,
   ): Promise<Notification> {
+    const tenantId = this.resolveTenant(dto.tenantId, actor, true);
+    const userId = this.resolveUser(dto.userId, actor);
     const result = await this.prisma.notification.updateMany({
       where: {
         id: notificationId,
-        tenantId: dto.tenantId,
-        userId: dto.userId,
+        tenantId,
+        userId,
       },
       data: { readAt: new Date() },
     });
@@ -98,23 +116,25 @@ export class NotificationsService {
       throw new NotFoundException(`Notification ${notificationId} not found.`);
     }
 
-    const updated = await this.findOne(dto.tenantId, notificationId);
+    const updated = await this.findOne(tenantId, notificationId, actor);
     this.gateway.emitNotification(updated);
     return updated;
   }
 
-  async markAllAsRead(dto: MarkNotificationReadDto) {
+  async markAllAsRead(dto: MarkNotificationReadDto, actor: JwtPayload) {
+    const tenantId = this.resolveTenant(dto.tenantId, actor, true);
+    const userId = this.resolveUser(dto.userId, actor);
     const result = await this.prisma.notification.updateMany({
       where: {
-        tenantId: dto.tenantId,
-        userId: dto.userId,
+        tenantId,
+        userId,
         readAt: null,
       },
       data: { readAt: new Date() },
     });
     if (result.count > 0) {
       const updatedNotifications = await this.prisma.notification.findMany({
-        where: { tenantId: dto.tenantId, userId: dto.userId, readAt: { not: null } },
+        where: { tenantId, userId, readAt: { not: null } },
         orderBy: { updatedAt: 'desc' },
         take: result.count,
       });
@@ -123,19 +143,60 @@ export class NotificationsService {
     return { updated: result.count };
   }
 
-  async delete(tenantId: string, id: string): Promise<void> {
-    await this.findOne(tenantId, id);
+  async delete(tenantId: string, id: string, actor: JwtPayload): Promise<void> {
+    this.ensureAdmin(actor);
+    await this.findOne(tenantId, id, actor);
     await this.prisma.notification.delete({ where: { id } });
   }
 
-  async send(dto: SendNotificationDto): Promise<void> {
+  async send(dto: SendNotificationDto, actor: JwtPayload): Promise<void> {
+    this.ensureAdmin(actor);
+    const tenantId = this.resolveTenant(dto.tenantId, actor, true);
     const payload: NotificationJobPayload = {
-      tenantId: dto.tenantId,
+      tenantId,
       userId: dto.userId,
       type: dto.type,
       payload: dto.payload,
     };
 
     await this.queue.enqueue(payload);
+  }
+
+  private resolveTenant(requestedTenantId: string | undefined, actor: JwtPayload, allowAdminOverride: boolean): string {
+    if (!requestedTenantId) {
+      return actor.tenantId;
+    }
+    if (requestedTenantId === actor.tenantId) {
+      return requestedTenantId;
+    }
+    if (allowAdminOverride && actor.role === UserRole.ADMIN) {
+      return requestedTenantId;
+    }
+    throw new ForbiddenException('Access to the requested tenant is not permitted.');
+  }
+
+  private resolveUser(requestedUserId: string | undefined, actor: JwtPayload): string {
+    if (!requestedUserId || requestedUserId === actor.sub) {
+      return actor.sub;
+    }
+    if (actor.role === UserRole.ADMIN) {
+      return requestedUserId;
+    }
+    throw new ForbiddenException('Cannot manage notifications for another user.');
+  }
+
+  private ensureNotificationAccess(actor: JwtPayload, notification: Notification) {
+    if (actor.role === UserRole.ADMIN) {
+      return;
+    }
+    if (notification.tenantId !== actor.tenantId || notification.userId !== actor.sub) {
+      throw new ForbiddenException('You do not have access to this notification.');
+    }
+  }
+
+  private ensureAdmin(actor: JwtPayload) {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins may perform this action.');
+    }
   }
 }

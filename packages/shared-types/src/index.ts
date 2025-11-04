@@ -13,3 +13,4 @@ export * from './models/notification.types';
 export * from './enums/user-role.enum';
 export * from './enums/notification-type.enum';
 export * from './enums/stream-status.enum';
+export * from './enums/analytics-event-type.enum';

@@ -6,7 +6,8 @@ import { PrismaService } from '../../../src/infra/prisma.service';
 import { CreateNotificationDto } from '../../../src/modules/notifications/dto/create-notification.dto';
 import { SendNotificationDto } from '../../../src/modules/notifications/dto/send-notification.dto';
 import { MarkNotificationReadDto } from '../../../src/modules/notifications/dto/mark-notification-read.dto';
-import { NotificationType } from '../../../src/common/enums/prisma.enums';
+import { NotificationType, UserRole } from '../../../src/common/enums/prisma.enums';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
 
 const createDto: CreateNotificationDto = {
   tenantId: 'tenant-1',
@@ -27,6 +28,18 @@ describe('NotificationsService', () => {
   let queue: jest.Mocked<NotificationQueueService>;
   let gateway: jest.Mocked<NotificationsGateway>;
   let service: NotificationsService;
+  const adminActor: JwtPayload = {
+    sub: 'admin-1',
+    email: 'admin@example.com',
+    tenantId: 'tenant-1',
+    role: UserRole.ADMIN,
+  };
+  const listenerActor: JwtPayload = {
+    sub: 'user-1',
+    email: 'listener@example.com',
+    tenantId: 'tenant-1',
+    role: UserRole.LISTENER,
+  };
 
   beforeEach(() => {
     prisma = {
@@ -55,7 +68,7 @@ describe('NotificationsService', () => {
     const notification = { id: 'n1', ...createDto, payload: createDto.payload, readAt: null, createdAt: new Date(), updatedAt: new Date() } as any;
     prisma.notification.create.mockResolvedValue(notification);
 
-    const result = await service.create(createDto);
+    const result = await service.create(createDto, adminActor);
 
     expect(prisma.notification.create).toHaveBeenCalledWith({
       data: {
@@ -70,7 +83,7 @@ describe('NotificationsService', () => {
   });
 
   it('enqueues notifications for async send()', async () => {
-    await service.send(sendDto);
+    await service.send(sendDto, adminActor);
 
     expect(queue.enqueue).toHaveBeenCalledWith({
       tenantId: sendDto.tenantId,
@@ -89,7 +102,7 @@ describe('NotificationsService', () => {
     ];
     (prisma.notification.findMany as jest.Mock).mockResolvedValue(updatedNotifications);
 
-    const result = await service.markAllAsRead(dto);
+    const result = await service.markAllAsRead(dto, listenerActor);
 
     expect(prisma.notification.updateMany).toHaveBeenCalledWith({
       where: {

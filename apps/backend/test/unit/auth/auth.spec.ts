@@ -20,6 +20,7 @@ describe('AuthService', () => {
     create: jest.fn(),
     findById: jest.fn(),
     update: jest.fn(),
+    findMany: jest.fn() as any,
   }) as unknown as jest.Mocked<UsersRepository>;
 
   const mockJwtService = (): Partial<JwtService> => ({
@@ -82,7 +83,7 @@ describe('AuthService', () => {
     expect(usersRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'user@example.com', passwordHash: 'hashed-password' }),
     );
-    expect(usersRepo.update).toHaveBeenCalledWith('user-1', { refreshTokenHash: expect.any(String) });
+    expect(usersRepo.update).toHaveBeenCalledWith('user-1', 'tenant-1', { refreshTokenHash: expect.any(String) });
   });
 
   it('throws conflict when registering existing email', async () => {

@@ -10,6 +10,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -19,6 +21,7 @@ export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   @Get()
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'List users with cursor-based pagination' })
   @ApiQuery({ name: 'cursor', required: false, description: 'Base64-encoded id cursor' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max items to return (1-100)', schema: { default: 20 } })
@@ -39,26 +42,33 @@ export class UsersController {
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
   @ApiResponse({ status: 500, description: 'Server error' })
-  findAll(@Query() query: CursorPaginationDto): Promise<PaginatedResponseDto<UserResponseDto>> {
-    return this.service.findAll(query);
+  findAll(@Query() query: CursorPaginationDto, @CurrentUser() user: JwtPayload): Promise<PaginatedResponseDto<UserResponseDto>> {
+    return this.service.findAll(query, user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<UserResponseDto> {
-    return this.service.findOne(id);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.findOne(id, user);
   }
 
   @Post()
   @Roles(UserRole.ADMIN)
-  create(@Body() payload: CreateUserDto): Promise<UserResponseDto> {
-    return this.service.create(payload);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  create(@Body() payload: CreateUserDto, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.create(payload, user);
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
-  update(@Param('id') id: string, @Body() payload: UpdateUserDto): Promise<UserResponseDto> {
-    return this.service.update(id, payload);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  update(@Param('id') id: string, @Body() payload: UpdateUserDto, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.update(id, payload, user);
   }
 }

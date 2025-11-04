@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CategoriesService } from './categories.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -23,7 +23,6 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { Public } from '../../common/decorators/public.decorator';
 
 @ApiTags('categories')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('categories')
 export class CategoriesController {
@@ -52,7 +51,10 @@ export class CategoriesController {
 
   @Post()
   @Roles(UserRole.ADMIN, UserRole.CREATOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Create category' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   create(@Body() dto: CreateCategoryDto, @CurrentUser() user: JwtPayload) {
     return this.service.create({
       ...dto,
@@ -62,7 +64,10 @@ export class CategoriesController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN, UserRole.CREATOR)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Update category' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   update(
     @Param('id') id: string,
     @Query('tenantId') tenantId: string | undefined,
@@ -74,7 +79,10 @@ export class CategoriesController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete category' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   remove(@Param('id') id: string, @Query('tenantId') tenantId: string | undefined, @CurrentUser() user: JwtPayload) {
     return this.service.delete(tenantId ?? user.tenantId, id);
   }

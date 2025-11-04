@@ -1,4 +1,4 @@
-import { Inject, Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
@@ -8,6 +8,7 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class UsersService {
@@ -15,7 +16,8 @@ export class UsersService {
 
   constructor(@Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository) {}
 
-  async findAll(query: CursorPaginationDto): Promise<PaginatedResponseDto<UserResponseDto>> {
+  async findAll(query: CursorPaginationDto, actor: JwtPayload): Promise<PaginatedResponseDto<UserResponseDto>> {
+    this.ensureAdmin(actor);
     const limit = query.limit ?? 20;
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
@@ -23,6 +25,7 @@ export class UsersService {
     const requestedOrder = (query.orderBy ?? 'createdAt') as keyof UserModel;
     const orderBy = sortableFields.includes(requestedOrder) ? requestedOrder : 'createdAt';
     const rows = await this.usersRepository.findMany({
+      tenantId: actor.tenantId,
       cursor: decoded,
       limit,
       orderBy,
@@ -35,15 +38,21 @@ export class UsersService {
     };
   }
 
-  async findOne(id: string): Promise<UserResponseDto> {
-    const user = await this.usersRepository.findById(id);
+  async findOne(id: string, actor: JwtPayload): Promise<UserResponseDto> {
+    const user = await this.usersRepository.findById(id, actor.tenantId);
     if (!user) {
       throw new NotFoundException(`User ${id} not found.`);
     }
+    this.ensureCanAccessUser(actor, user);
     return this.toResponseDto(user);
   }
 
-  async create(payload: CreateUserDto): Promise<UserResponseDto> {
+  async create(payload: CreateUserDto, actor: JwtPayload): Promise<UserResponseDto> {
+    this.ensureAdmin(actor);
+    if (payload.tenantId && payload.tenantId !== actor.tenantId) {
+      throw new ForbiddenException('Cannot create users in a different tenant.');
+    }
+
     const existing = await this.usersRepository.findByEmail(payload.email);
     if (existing) {
       throw new ConflictException('Email is already registered.');
@@ -51,7 +60,7 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(payload.password, this.passwordSaltRounds);
     const user = await this.usersRepository.create({
-      tenantId: payload.tenantId,
+      tenantId: actor.tenantId,
       email: payload.email,
       passwordHash,
       name: payload.name,
@@ -60,17 +69,33 @@ export class UsersService {
     return this.toResponseDto(user);
   }
 
-  async update(id: string, payload: UpdateUserDto): Promise<UserResponseDto> {
-    const user = await this.usersRepository.findById(id);
+  async update(id: string, payload: UpdateUserDto, actor: JwtPayload): Promise<UserResponseDto> {
+    this.ensureAdmin(actor);
+    const user = await this.usersRepository.findById(id, actor.tenantId);
     if (!user) {
       throw new NotFoundException(`User ${id} not found.`);
     }
-    const updated = await this.usersRepository.update(id, {
+    const updated = await this.usersRepository.update(id, actor.tenantId, {
       name: payload.name ?? undefined,
       role: payload.role ?? undefined,
       isActive: payload.isActive ?? undefined,
     });
     return this.toResponseDto(updated);
+  }
+
+  private ensureAdmin(actor: JwtPayload) {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only tenant admins may manage users.');
+    }
+  }
+
+  private ensureCanAccessUser(actor: JwtPayload, target: UserModel) {
+    if (actor.role === UserRole.ADMIN && target.tenantId === actor.tenantId) {
+      return;
+    }
+    if (actor.sub !== target.id) {
+      throw new ForbiddenException('You do not have access to this user.');
+    }
   }
 
   private toResponseDto(user: UserModel): UserResponseDto {

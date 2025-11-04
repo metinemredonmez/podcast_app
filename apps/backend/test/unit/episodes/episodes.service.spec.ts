@@ -4,6 +4,8 @@ import { EpisodesService } from '../../../src/modules/episodes/episodes.service'
 import { EpisodesRepository, EpisodeModel } from '../../../src/modules/episodes/repositories/episodes.repository';
 import { CursorPaginationDto } from '../../../src/common/dto/cursor-pagination.dto';
 import { EpisodeResponseDto } from '../../../src/modules/episodes/dto/episode-response.dto';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../../src/common/enums/prisma.enums';
 
 const createEpisode = (overrides: Partial<EpisodeModel> = {}): EpisodeModel => ({
   id: 'episode-1',
@@ -26,6 +28,12 @@ const createEpisode = (overrides: Partial<EpisodeModel> = {}): EpisodeModel => (
 describe('EpisodesService', () => {
   let repository: jest.Mocked<EpisodesRepository>;
   let service: EpisodesService;
+  const creatorActor: JwtPayload = {
+    sub: 'creator-1',
+    email: 'creator@example.com',
+    tenantId: 'tenant-1',
+    role: UserRole.CREATOR,
+  };
 
   beforeEach(() => {
     repository = {
@@ -50,9 +58,10 @@ describe('EpisodesService', () => {
       ];
       repository.findMany.mockResolvedValue(rows);
 
-      const result = await service.findAll(query);
+      const result = await service.findAll(query, creatorActor);
 
       expect(repository.findMany).toHaveBeenCalledWith({
+        tenantId: creatorActor.tenantId,
         cursor: undefined,
         limit: 2,
         orderBy: 'publishedAt',
@@ -71,9 +80,9 @@ describe('EpisodesService', () => {
       const episode = createEpisode({ id: 'episode-42', title: 'Answer' });
       repository.findById.mockResolvedValue(episode);
 
-      const result = await service.findOne('episode-42');
+      const result = await service.findOne('episode-42', creatorActor);
 
-      expect(repository.findById).toHaveBeenCalledWith('episode-42');
+      expect(repository.findById).toHaveBeenCalledWith('episode-42', creatorActor.tenantId);
       expect(result).toBeInstanceOf(EpisodeResponseDto);
       expect(result).toMatchObject({ id: 'episode-42', title: 'Answer' });
     });
@@ -81,7 +90,7 @@ describe('EpisodesService', () => {
     it('throws NotFoundException when episode missing', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findOne('missing')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.findOne('missing', creatorActor)).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
@@ -106,9 +115,9 @@ describe('EpisodesService', () => {
       repository.findBySlug.mockResolvedValue(null);
       repository.create.mockResolvedValue(createdEpisode);
 
-      const result = await service.create(basePayload);
+      const result = await service.create(basePayload, creatorActor);
 
-      expect(repository.findBySlug).toHaveBeenCalledWith('podcast-1', 'my-great-episode');
+      expect(repository.findBySlug).toHaveBeenCalledWith('tenant-1', 'podcast-1', 'my-great-episode');
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           slug: 'my-great-episode',
@@ -122,7 +131,7 @@ describe('EpisodesService', () => {
     it('throws ConflictException when slug already exists', async () => {
       repository.findBySlug.mockResolvedValue(createEpisode());
 
-      await expect(service.create(basePayload)).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.create(basePayload, creatorActor)).rejects.toBeInstanceOf(ConflictException);
       expect(repository.create).not.toHaveBeenCalled();
     });
   });
@@ -133,10 +142,11 @@ describe('EpisodesService', () => {
       repository.findById.mockResolvedValue(existing);
       repository.update.mockResolvedValue(createEpisode({ id: 'episode-1', isPublished: true }));
 
-      const result = await service.update('episode-1', { isPublished: true });
+      const result = await service.update('episode-1', { isPublished: true }, creatorActor);
 
       expect(repository.update).toHaveBeenCalledWith(
         'episode-1',
+        creatorActor.tenantId,
         expect.objectContaining({
           isPublished: true,
           publishedAt: expect.any(Date),
@@ -149,7 +159,7 @@ describe('EpisodesService', () => {
     it('throws NotFoundException when updating missing episode', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.update('missing', { title: 'New title' })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.update('missing', { title: 'New title' }, creatorActor)).rejects.toBeInstanceOf(NotFoundException);
       expect(repository.update).not.toHaveBeenCalled();
     });
   });

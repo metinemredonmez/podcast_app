@@ -15,7 +15,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:db:seed": "ts-node prisma/seed.ts",
     "db:reset": "cd apps/backend && npx prisma migrate reset --force && npx prisma db seed && npx prisma studio",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --coverage",
     "test:watch": "jest --watch"
   },
   "prisma": {

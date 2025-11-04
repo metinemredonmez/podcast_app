@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
-import { UserRole } from '../src/common/enums/prisma.enums';
+import { UserRole } from '@podcast-app/shared-types';
 
 const prisma = new PrismaClient();
 

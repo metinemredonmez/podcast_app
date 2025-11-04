@@ -3,9 +3,10 @@ import { UserRole } from '../../../common/enums/prisma.enums';
 import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-  @ApiProperty({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Defaults to current tenant when omitted' })
+  @IsOptional()
   @IsUUID()
-  tenantId!: string;
+  tenantId?: string;
 
   @ApiProperty({ example: 'listener@example.com' })
   @IsEmail()

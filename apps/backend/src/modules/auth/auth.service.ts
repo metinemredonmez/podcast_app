@@ -38,7 +38,7 @@ export class AuthService {
     });
 
     const tokens = await this.issueTokens(user);
-    await this.saveRefreshTokenHash(user.id, tokens.refreshToken);
+    await this.saveRefreshTokenHash(user.id, user.tenantId, tokens.refreshToken);
     return { tokens, user: this.toAuthUser(user) };
   }
 
@@ -58,7 +58,7 @@ export class AuthService {
     }
 
     const tokens = await this.issueTokens(user);
-    await this.saveRefreshTokenHash(user.id, tokens.refreshToken);
+    await this.saveRefreshTokenHash(user.id, user.tenantId, tokens.refreshToken);
     return { tokens, user: this.toAuthUser(user) };
   }
 
@@ -73,7 +73,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token.');
       });
 
-    const user = await this.usersRepository.findById(payload.sub);
+    const user = await this.usersRepository.findById(payload.sub, payload.tenantId);
     if (!user || !user.refreshTokenHash) {
       throw new UnauthorizedException('Invalid refresh token.');
     }
@@ -88,16 +88,16 @@ export class AuthService {
     }
 
     const tokens = await this.issueTokens(user);
-    await this.saveRefreshTokenHash(user.id, tokens.refreshToken);
+    await this.saveRefreshTokenHash(user.id, user.tenantId, tokens.refreshToken);
     return { tokens, user: this.toAuthUser(user) };
   }
 
-  async logout(userId: string): Promise<void> {
-    await this.usersRepository.update(userId, { refreshTokenHash: null });
+  async logout(userId: string, tenantId: string): Promise<void> {
+    await this.usersRepository.update(userId, tenantId, { refreshTokenHash: null });
   }
 
-  async getProfile(userId: string): Promise<AuthUserDto> {
-    const user = await this.usersRepository.findById(userId);
+  async getProfile(userId: string, tenantId: string): Promise<AuthUserDto> {
+    const user = await this.usersRepository.findById(userId, tenantId);
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
@@ -124,9 +124,9 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private async saveRefreshTokenHash(userId: string, refreshToken: string): Promise<void> {
+  private async saveRefreshTokenHash(userId: string, tenantId: string, refreshToken: string): Promise<void> {
     const hashed = await bcrypt.hash(refreshToken, this.passwordSaltRounds);
-    await this.usersRepository.update(userId, { refreshTokenHash: hashed });
+    await this.usersRepository.update(userId, tenantId, { refreshTokenHash: hashed });
   }
 
   private toAuthUser(user: UserModel): AuthUserDto {

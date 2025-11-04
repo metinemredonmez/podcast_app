@@ -3,10 +3,18 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { FollowsService } from '../../../src/modules/follows/follows.service';
 import { PrismaService } from '../../../src/infra/prisma.service';
 import { ListFollowsDto } from '../../../src/modules/follows/dto/list-follows.dto';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../../src/common/enums/prisma.enums';
 
 describe('FollowsService', () => {
   let prisma: jest.Mocked<PrismaService>;
   let service: FollowsService;
+  const listenerActor: JwtPayload = {
+    sub: 'user-1',
+    email: 'listener@example.com',
+    tenantId: 'tenant-1',
+    role: UserRole.LISTENER,
+  };
 
   beforeEach(() => {
     prisma = {
@@ -25,7 +33,7 @@ describe('FollowsService', () => {
     prisma.follow.findUnique.mockResolvedValue(null);
     prisma.follow.create.mockResolvedValue({ id: 'f1' } as any);
 
-    const result = await service.follow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' });
+    const result = await service.follow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }, listenerActor);
 
     expect(prisma.follow.findUnique).toHaveBeenCalledWith({
       where: {
@@ -42,14 +50,14 @@ describe('FollowsService', () => {
     prisma.follow.findUnique.mockResolvedValue({ id: 'f1' } as any);
 
     await expect(
-      service.follow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }),
+      service.follow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }, listenerActor),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('deletes follow when relationship exists', async () => {
-    prisma.follow.findUnique.mockResolvedValue({ id: 'f1' } as any);
+    prisma.follow.findUnique.mockResolvedValue({ id: 'f1', tenantId: 'tenant-1' } as any);
 
-    await service.unfollow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' });
+    await service.unfollow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }, listenerActor);
 
     expect(prisma.follow.delete).toHaveBeenCalledWith({ where: { id: 'f1' } });
   });
@@ -58,7 +66,7 @@ describe('FollowsService', () => {
     prisma.follow.findUnique.mockResolvedValue(null);
 
     await expect(
-      service.unfollow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }),
+      service.unfollow({ tenantId: 'tenant-1', userId: 'user-1', podcastId: 'pod-1' }, listenerActor),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -72,7 +80,7 @@ describe('FollowsService', () => {
       limit: 5,
     };
 
-    await service.listByUser(filter);
+    await service.listByUser(filter, listenerActor);
 
     expect(prisma.follow.findMany).toHaveBeenCalledWith({
       where: {

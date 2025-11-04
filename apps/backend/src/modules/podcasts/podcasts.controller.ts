@@ -10,6 +10,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Podcasts')
 @ApiBearerAuth()
@@ -24,6 +26,7 @@ export class PodcastsController {
   @ApiQuery({ name: 'limit', required: false, description: 'Max items to return (1-100)', schema: { default: 20 } })
   @ApiQuery({ name: 'orderBy', required: false, schema: { default: 'createdAt' } })
   @ApiQuery({ name: 'orderDirection', required: false, schema: { default: 'desc', enum: ['asc', 'desc'] } })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Override tenant (admins only)' })
   @ApiCursorPaginatedResponse({
     type: 'object',
     properties: {
@@ -43,18 +46,29 @@ export class PodcastsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 429, description: 'Rate limit exceeded' })
   @ApiResponse({ status: 500, description: 'Server error' })
-  findAll(@Query() query: CursorPaginationDto): Promise<PaginatedResponseDto<PodcastResponseDto>> {
-    return this.service.findAll(query);
+  findAll(
+    @Query() query: CursorPaginationDto & { tenantId?: string },
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PaginatedResponseDto<PodcastResponseDto>> {
+    return this.service.findAll(query, user);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<PodcastDetailDto> {
-    return this.service.findOne(id);
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  findOne(
+    @Param('id') id: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PodcastDetailDto> {
+    return this.service.findOne(id, user, tenantId);
   }
 
   @Post()
   @Roles(UserRole.CREATOR, UserRole.ADMIN)
-  create(@Body() payload: CreatePodcastDto): Promise<PodcastResponseDto> {
-    return this.service.create(payload);
+  @ApiOperation({ summary: 'Create a podcast' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  create(@Body() payload: CreatePodcastDto, @CurrentUser() user: JwtPayload): Promise<PodcastResponseDto> {
+    return this.service.create(payload, user);
   }
 }

@@ -13,20 +13,21 @@ export class UsersPrismaRepository implements UsersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(options: PaginationOptions): Promise<UserModel[]> {
-    const { cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
+    const { tenantId, cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
     const paginationCursor = cursor ? { id: cursor } : undefined;
 
     const rows = await this.prisma.user.findMany({
       take: limit + 1,
       skip: paginationCursor ? 1 : 0,
       cursor: paginationCursor,
+      where: { tenantId },
       orderBy: { [orderBy]: orderDirection } as any,
     });
     return rows as unknown as UserModel[];
   }
 
-  async findById(id: string): Promise<UserModel | null> {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+  async findById(id: string, tenantId: string): Promise<UserModel | null> {
+    const user = await this.prisma.user.findFirst({ where: { id, tenantId } });
     return user as UserModel | null;
   }
 
@@ -49,7 +50,11 @@ export class UsersPrismaRepository implements UsersRepository {
     return created as unknown as UserModel;
   }
 
-  async update(id: string, payload: UpdateUserInput): Promise<UserModel> {
+  async update(id: string, tenantId: string, payload: UpdateUserInput): Promise<UserModel> {
+    const existing = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!existing) {
+      throw new Error(`User ${id} not found within tenant ${tenantId}`);
+    }
     const updated = await this.prisma.user.update({
       where: { id },
       data: payload,

@@ -18,7 +18,8 @@
     "backend:dev": "yarn workspace @podcast-app/backend start:dev",
     "admin:dev": "yarn workspace @podcast-app/admin dev",
     "mobile:dev": "yarn workspace @podcast-app/mobile start",
-    "install:all": "yarn install"
+    "install:all": "yarn install",
+    "sync:enums": "node scripts/sync-prisma-enums.js"
   },
   "devDependencies": {
     "@turbo/gen": "^1.10.0",

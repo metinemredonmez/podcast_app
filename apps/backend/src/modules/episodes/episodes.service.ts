@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
@@ -7,12 +7,15 @@ import { CreateEpisodeDto } from './dto/create-episode.dto';
 import { EpisodeResponseDto } from './dto/episode-response.dto';
 import { slugify } from '../../common/utils/slug.util';
 import { UpdateEpisodeDto } from './dto/update-episode.dto';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @Injectable()
 export class EpisodesService {
   constructor(@Inject(EPISODES_REPOSITORY) private readonly episodesRepository: EpisodesRepository) {}
 
-  async findAll(query: CursorPaginationDto): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
+  async findAll(query: CursorPaginationDto & { tenantId?: string }, actor: JwtPayload): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
+    const tenantId = this.resolveTenant(query.tenantId, actor);
     const limit = query.limit ?? 20;
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
@@ -21,6 +24,7 @@ export class EpisodesService {
       ? (query.orderBy as keyof EpisodeModel)
       : 'publishedAt';
     const rows = await this.episodesRepository.findMany({
+      tenantId,
       cursor: decoded,
       limit,
       orderBy,
@@ -33,17 +37,20 @@ export class EpisodesService {
     };
   }
 
-  async findOne(id: string): Promise<EpisodeResponseDto> {
-    const episode = await this.episodesRepository.findById(id);
+  async findOne(id: string, actor: JwtPayload, tenantId?: string): Promise<EpisodeResponseDto> {
+    const resolvedTenant = this.resolveTenant(tenantId, actor);
+    const episode = await this.episodesRepository.findById(id, resolvedTenant);
     if (!episode) {
       throw new NotFoundException(`Episode ${id} not found.`);
     }
     return this.toResponseDto(episode);
   }
 
-  async create(payload: CreateEpisodeDto): Promise<EpisodeResponseDto> {
+  async create(payload: CreateEpisodeDto, actor: JwtPayload): Promise<EpisodeResponseDto> {
+    this.ensureCreator(actor);
+    const tenantId = this.resolveTenant(payload.tenantId, actor);
     const slug = payload.slug ? slugify(payload.slug) : slugify(payload.title);
-    const existing = await this.episodesRepository.findBySlug(payload.podcastId, slug);
+    const existing = await this.episodesRepository.findBySlug(tenantId, payload.podcastId, slug);
     if (existing) {
       throw new ConflictException(`Episode slug '${slug}' already exists for this podcast.`);
     }
@@ -55,7 +62,7 @@ export class EpisodesService {
       : undefined;
 
     const created = await this.episodesRepository.create({
-      tenantId: payload.tenantId,
+      tenantId,
       podcastId: payload.podcastId,
       hostId: payload.hostId,
       title: payload.title,
@@ -70,8 +77,9 @@ export class EpisodesService {
     return this.toResponseDto(created);
   }
 
-  async update(id: string, payload: UpdateEpisodeDto): Promise<EpisodeResponseDto> {
-    const episode = await this.episodesRepository.findById(id);
+  async update(id: string, payload: UpdateEpisodeDto, actor: JwtPayload): Promise<EpisodeResponseDto> {
+    this.ensureCreator(actor);
+    const episode = await this.episodesRepository.findById(id, actor.tenantId);
     if (!episode) {
       throw new NotFoundException(`Episode ${id} not found.`);
     }
@@ -82,7 +90,7 @@ export class EpisodesService {
       : payload.publishedAt
       ? new Date(payload.publishedAt)
       : undefined;
-    const updated = await this.episodesRepository.update(id, {
+    const updated = await this.episodesRepository.update(id, actor.tenantId, {
       title: payload.title ?? undefined,
       description: payload.description ?? undefined,
       duration: payload.duration ?? undefined,
@@ -110,5 +118,21 @@ export class EpisodesService {
       createdAt: episode.createdAt,
       updatedAt: episode.updatedAt,
     });
+  }
+
+  private resolveTenant(requestedTenantId: string | undefined, actor: JwtPayload): string {
+    if (!requestedTenantId || requestedTenantId === actor.tenantId) {
+      return actor.tenantId;
+    }
+    if (actor.role === UserRole.ADMIN) {
+      return requestedTenantId;
+    }
+    throw new ForbiddenException('Access to the requested tenant is not permitted.');
+  }
+
+  private ensureCreator(actor: JwtPayload) {
+    if (![UserRole.CREATOR, UserRole.ADMIN].includes(actor.role)) {
+      throw new ForbiddenException('Only creators or admins may manage episodes.');
+    }
   }
 }

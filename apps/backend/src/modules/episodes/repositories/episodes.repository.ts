@@ -18,6 +18,7 @@ export interface EpisodeModel {
 }
 
 export interface PaginationOptions {
+  tenantId: string;
   cursor?: string;
   limit: number;
   orderBy?: keyof EpisodeModel;
@@ -49,8 +50,8 @@ export interface UpdateEpisodeInput {
 
 export interface EpisodesRepository {
   findMany(options: PaginationOptions): Promise<EpisodeModel[]>;
-  findById(id: string): Promise<EpisodeModel | null>;
-  findBySlug(podcastId: string, slug: string): Promise<EpisodeModel | null>;
+  findById(id: string, tenantId: string): Promise<EpisodeModel | null>;
+  findBySlug(tenantId: string, podcastId: string, slug: string): Promise<EpisodeModel | null>;
   create(payload: CreateEpisodeInput): Promise<EpisodeModel>;
-  update(id: string, payload: UpdateEpisodeInput): Promise<EpisodeModel>;
+  update(id: string, tenantId: string, payload: UpdateEpisodeInput): Promise<EpisodeModel>;
 }

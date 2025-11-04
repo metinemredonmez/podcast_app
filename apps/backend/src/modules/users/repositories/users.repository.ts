@@ -31,6 +31,7 @@ export interface UpdateUserInput {
 }
 
 export interface PaginationOptions {
+  tenantId: string;
   cursor?: string;
   limit: number;
   orderBy?: keyof UserModel;
@@ -39,8 +40,8 @@ export interface PaginationOptions {
 
 export interface UsersRepository {
   findMany(options: PaginationOptions): Promise<UserModel[]>;
-  findById(id: string): Promise<UserModel | null>;
+  findById(id: string, tenantId: string): Promise<UserModel | null>;
   findByEmail(email: string): Promise<UserModel | null>;
   create(payload: CreateUserInput): Promise<UserModel>;
-  update(id: string, payload: UpdateUserInput): Promise<UserModel>;
+  update(id: string, tenantId: string, payload: UpdateUserInput): Promise<UserModel>;
 }

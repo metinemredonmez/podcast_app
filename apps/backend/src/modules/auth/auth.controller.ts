@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { AuthResponseDto, AuthUserDto } from './dto/auth-response.dto';
@@ -13,7 +13,6 @@ import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('Auth')
-@ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('auth')
 export class AuthController {
@@ -47,16 +46,21 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
+  @ApiBearerAuth()
   @ApiOkResponse({ description: 'Successfully logged out' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async logout(@CurrentUser() user: JwtPayload): Promise<{ success: boolean }> {
-    await this.service.logout(user.sub);
+    await this.service.logout(user.sub, user.tenantId);
     return { success: true };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @ApiBearerAuth()
   @ApiOkResponse({ type: AuthUserDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   me(@CurrentUser() user: JwtPayload): Promise<AuthUserDto> {
-    return this.service.getProfile(user.sub);
+    return this.service.getProfile(user.sub, user.tenantId);
   }
 }

@@ -7,7 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FollowsService } from './follows.service';
 import { FollowDto } from './dto/follow.dto';
 import { ListFollowsDto } from './dto/list-follows.dto';
@@ -27,34 +27,27 @@ export class FollowsController {
 
   @Get()
   @ApiOperation({ summary: 'List followed podcasts for the current user' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
   list(@Query() query: ListFollowsDto, @CurrentUser() user: JwtPayload) {
-    return this.service.listByUser({
-      ...query,
-      tenantId: query.tenantId ?? user.tenantId,
-      userId: query.userId ?? user.sub,
-    });
+    return this.service.listByUser(query, user);
   }
 
   @Post()
   @Roles(UserRole.LISTENER, UserRole.CREATOR, UserRole.ADMIN)
   @ApiOperation({ summary: 'Follow a podcast' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   follow(@Body() dto: FollowDto, @CurrentUser() user: JwtPayload) {
-    return this.service.follow({
-      tenantId: dto.tenantId ?? user.tenantId,
-      userId: dto.userId ?? user.sub,
-      podcastId: dto.podcastId,
-    });
+    return this.service.follow(dto, user);
   }
 
   @Delete()
   @Roles(UserRole.LISTENER, UserRole.CREATOR, UserRole.ADMIN)
   @ApiOperation({ summary: 'Unfollow a podcast' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   async unfollow(@Body() dto: FollowDto, @CurrentUser() user: JwtPayload) {
-    await this.service.unfollow({
-      tenantId: dto.tenantId ?? user.tenantId,
-      userId: dto.userId ?? user.sub,
-      podcastId: dto.podcastId,
-    });
+    await this.service.unfollow(dto, user);
     return { success: true };
   }
 }

@@ -5,6 +5,7 @@ import { UsersService } from '../../../src/modules/users/users.service';
 import { USERS_REPOSITORY, UsersRepository } from '../../../src/modules/users/repositories/users.repository';
 import { CursorPaginationDto } from '../../../src/common/dto/cursor-pagination.dto';
 import { UserRole } from '../../../src/common/enums/prisma.enums';
+import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
 import * as bcrypt from 'bcrypt';
 
 jest.mock('bcrypt', () => ({
@@ -21,6 +22,13 @@ describe('UsersService', () => {
     findById: jest.fn(),
     update: jest.fn(),
   }) as unknown as jest.Mocked<UsersRepository>;
+
+  const adminActor: JwtPayload = {
+    sub: 'admin-user',
+    email: 'admin@example.com',
+    tenantId: 't1',
+    role: UserRole.ADMIN,
+  };
 
   beforeEach(() => {
     jest.resetModules();
@@ -40,9 +48,9 @@ describe('UsersService', () => {
     }).compile();
 
     const service = moduleRef.get(UsersService);
-    const result = await service.findAll({ limit: 10 } as CursorPaginationDto);
+    const result = await service.findAll({ limit: 10 } as CursorPaginationDto, adminActor);
 
-    expect(repo.findMany).toHaveBeenCalledWith(expect.objectContaining({ limit: 10 }));
+    expect(repo.findMany).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 't1', limit: 10 }));
     expect(result.data).toHaveLength(1);
   });
 
@@ -66,10 +74,10 @@ describe('UsersService', () => {
     }).compile();
 
     const service = moduleRef.get(UsersService);
-    const result = await service.create({ tenantId: 't1', email: 'new@example.com', password: 'secret' } as any);
+    const result = await service.create({ tenantId: 't1', email: 'new@example.com', password: 'secret' } as any, adminActor);
 
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'new@example.com', passwordHash: 'hashed-password' }),
+      expect.objectContaining({ tenantId: 't1', email: 'new@example.com', passwordHash: 'hashed-password' }),
     );
     expect(result.email).toBe('new@example.com');
   });
@@ -85,7 +93,7 @@ describe('UsersService', () => {
     const service = moduleRef.get(UsersService);
 
     await expect(
-      service.create({ tenantId: 't1', email: 'taken@example.com', password: 'secret' } as any),
+      service.create({ tenantId: 't1', email: 'taken@example.com', password: 'secret' } as any, adminActor),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -99,9 +107,9 @@ describe('UsersService', () => {
     }).compile();
 
     const service = moduleRef.get(UsersService);
-    const result = await service.update('u1', { role: UserRole.ADMIN });
+    const result = await service.update('u1', { role: UserRole.ADMIN }, adminActor);
 
-    expect(repo.update).toHaveBeenCalledWith('u1', expect.objectContaining({ role: UserRole.ADMIN }));
+    expect(repo.update).toHaveBeenCalledWith('u1', 't1', expect.objectContaining({ role: UserRole.ADMIN }));
     expect(result.role).toBe(UserRole.ADMIN);
   });
 
@@ -115,6 +123,6 @@ describe('UsersService', () => {
 
     const service = moduleRef.get(UsersService);
 
-    await expect(service.update('missing', { role: UserRole.ADMIN })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.update('missing', { role: UserRole.ADMIN }, adminActor)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

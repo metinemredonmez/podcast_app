@@ -9,7 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -20,6 +20,8 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -30,60 +32,78 @@ export class NotificationsController {
 
   @Get()
   @ApiOperation({ summary: 'List notifications for a tenant (optionally scoped to a user)' })
-  findAll(@Query() query: ListNotificationsDto) {
-    return this.service.findAll(query);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  findAll(@Query() query: ListNotificationsDto, @CurrentUser() user: JwtPayload) {
+    return this.service.findAll(query, user);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a notification by id' })
-  findOne(@Param('id') id: string, @Query('tenantId') tenantId: string) {
-    return this.service.findOne(tenantId, id);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  findOne(@Param('id') id: string, @Query('tenantId') tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.service.findOne(tenantId, id, user);
   }
 
   @Post()
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a notification' })
-  create(@Body() dto: CreateNotificationDto) {
-    return this.service.create(dto);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  create(@Body() dto: CreateNotificationDto, @CurrentUser() user: JwtPayload) {
+    return this.service.create(dto, user);
   }
 
   @Post('send')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Enqueue a notification to be processed asynchronously' })
-  send(@Body() dto: SendNotificationDto) {
-    return this.service.send(dto);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  send(@Body() dto: SendNotificationDto, @CurrentUser() user: JwtPayload) {
+    return this.service.send(dto, user);
   }
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Update notification payload or read state' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   update(
     @Param('id') id: string,
     @Query('tenantId') tenantId: string,
     @Body() dto: UpdateNotificationDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.update(tenantId, id, dto);
+    return this.service.update(tenantId, id, dto, user);
   }
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a single notification as read' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   markAsRead(
     @Param('id') id: string,
     @Body() dto: MarkNotificationReadDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.markAsRead(id, dto);
+    return this.service.markAsRead(id, dto, user);
   }
 
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all notifications for a user as read' })
-  markAllAsRead(@Body() dto: MarkNotificationReadDto) {
-    return this.service.markAllAsRead(dto);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  markAllAsRead(@Body() dto: MarkNotificationReadDto, @CurrentUser() user: JwtPayload) {
+    return this.service.markAllAsRead(dto, user);
   }
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete a notification' })
-  remove(@Param('id') id: string, @Query('tenantId') tenantId: string) {
-    return this.service.delete(tenantId, id);
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  remove(@Param('id') id: string, @Query('tenantId') tenantId: string, @CurrentUser() user: JwtPayload) {
+    return this.service.delete(tenantId, id, user);
   }
 }

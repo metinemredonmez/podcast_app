@@ -1,14 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class FollowDto {
-  @ApiProperty({ format: 'uuid', required: false })
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
   @IsUUID()
-  tenantId!: string;
+  tenantId?: string;
 
-  @ApiProperty({ format: 'uuid', required: false })
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
   @IsUUID()
-  userId!: string;
+  userId?: string;
 
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
