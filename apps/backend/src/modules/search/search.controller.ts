@@ -1,22 +1,20 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SearchService } from './search.service';
+import { SearchQueryDto } from './dto/search-query.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
+@ApiTags('search')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('search')
 export class SearchController {
   constructor(private readonly service: SearchService) {}
 
   @Get()
-  findAll(): Promise<unknown[]> {
-    return this.service.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string): Promise<unknown> {
-    return this.service.findOne(id);
-  }
-
-  @Post()
-  create(@Body() payload: unknown): Promise<unknown> {
-    return this.service.create(payload);
+  @ApiOperation({ summary: 'Search podcasts and episodes' })
+  search(@Query() query: SearchQueryDto) {
+    return this.service.search(query);
   }
 }

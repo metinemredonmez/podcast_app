@@ -1,22 +1,60 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FollowsService } from './follows.service';
+import { FollowDto } from './dto/follow.dto';
+import { ListFollowsDto } from './dto/list-follows.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../../common/enums/prisma.enums';
+import { Roles } from '../../common/decorators/roles.decorator';
 
+@ApiTags('follows')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('follows')
 export class FollowsController {
   constructor(private readonly service: FollowsService) {}
 
   @Get()
-  findAll(): Promise<unknown[]> {
-    return this.service.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string): Promise<unknown> {
-    return this.service.findOne(id);
+  @ApiOperation({ summary: 'List followed podcasts for the current user' })
+  list(@Query() query: ListFollowsDto, @CurrentUser() user: JwtPayload) {
+    return this.service.listByUser({
+      ...query,
+      tenantId: query.tenantId ?? user.tenantId,
+      userId: query.userId ?? user.sub,
+    });
   }
 
   @Post()
-  create(@Body() payload: unknown): Promise<unknown> {
-    return this.service.create(payload);
+  @Roles(UserRole.LISTENER, UserRole.CREATOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Follow a podcast' })
+  follow(@Body() dto: FollowDto, @CurrentUser() user: JwtPayload) {
+    return this.service.follow({
+      tenantId: dto.tenantId ?? user.tenantId,
+      userId: dto.userId ?? user.sub,
+      podcastId: dto.podcastId,
+    });
+  }
+
+  @Delete()
+  @Roles(UserRole.LISTENER, UserRole.CREATOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Unfollow a podcast' })
+  async unfollow(@Body() dto: FollowDto, @CurrentUser() user: JwtPayload) {
+    await this.service.unfollow({
+      tenantId: dto.tenantId ?? user.tenantId,
+      userId: dto.userId ?? user.sub,
+      podcastId: dto.podcastId,
+    });
+    return { success: true };
   }
 }

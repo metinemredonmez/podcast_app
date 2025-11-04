@@ -14,7 +14,9 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:db:seed": "ts-node prisma/seed.ts",
-    "db:reset": "cd apps/backend && npx prisma migrate reset --force && npx prisma db seed && npx prisma studio"
+    "db:reset": "cd apps/backend && npx prisma migrate reset --force && npx prisma db seed && npx prisma studio",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -32,13 +34,16 @@
     "@nestjs/terminus": "^11.0.0",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/websockets": "^10.0.0",
+    "@podcast-app/shared-types": "^1.0.0",
     "@prisma/client": "6.18.0",
     "@types/bcrypt": "^6.0.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.62.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
+    "minio": "^8.0.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
@@ -49,11 +54,16 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
+    "@nestjs/testing": "^11.1.8",
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.14.0",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
     "@types/passport-jwt": "^4.0.1",
+    "jest": "^30.2.0",
     "prisma": "^6.18.0",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },

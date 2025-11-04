@@ -8,12 +8,19 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { WsAuthGuard } from '../guards/ws-auth.guard';
 
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5175', 'http://localhost:19005'],
     credentials: true,
   },
   namespace: '/chat',

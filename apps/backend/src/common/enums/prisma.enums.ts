@@ -18,10 +18,3 @@ export enum AnalyticsEventType {
   PODCAST_SHARE = 'PODCAST_SHARE',
   STREAM_JOIN = 'STREAM_JOIN',
 }
-
-export enum StreamStatus {
-  SCHEDULED = 'SCHEDULED',
-  LIVE = 'LIVE',
-  ENDED = 'ENDED',
-  CANCELLED = 'CANCELLED',
-}

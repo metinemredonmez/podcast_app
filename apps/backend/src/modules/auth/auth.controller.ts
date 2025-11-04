@@ -10,8 +10,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtPayload, RefreshPayload } from './interfaces/jwt-payload.interface';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('Auth')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('auth')
 export class AuthController {
   constructor(private readonly service: AuthService) {}
@@ -44,7 +47,6 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  @ApiBearerAuth()
   @ApiOkResponse({ description: 'Successfully logged out' })
   async logout(@CurrentUser() user: JwtPayload): Promise<{ success: boolean }> {
     await this.service.logout(user.sub);
@@ -53,7 +55,6 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  @ApiBearerAuth()
   @ApiOkResponse({ type: AuthUserDto })
   me(@CurrentUser() user: JwtPayload): Promise<AuthUserDto> {
     return this.service.getProfile(user.sub);

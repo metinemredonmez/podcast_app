@@ -23,12 +23,12 @@ export class CreateHocaDto {
   @MaxLength(2000)
   bio?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Mentor expertise area' })
   @IsOptional()
   @IsString()
   expertise?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Avatar URL' })
   @IsOptional()
   @IsString()
   avatarUrl?: string;

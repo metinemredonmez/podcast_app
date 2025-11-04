@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Length } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class UpdateCommentDto {
-  @ApiProperty({ minLength: 1, maxLength: 2000 })
+  @ApiPropertyOptional({ description: 'Updated comment content' })
+  @IsOptional()
   @IsString()
-  @Length(1, 2000)
-  content!: string;
+  @IsNotEmpty()
+  content?: string;
 }

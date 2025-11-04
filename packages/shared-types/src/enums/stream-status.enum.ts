@@ -1,1 +1,6 @@
-export enum StreamStatus { LIVE = "LIVE", OFFLINE = "OFFLINE" }
+export enum StreamStatus {
+  SCHEDULED = 'SCHEDULED',
+  LIVE = 'LIVE',
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED',
+}

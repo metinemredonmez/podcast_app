@@ -1,12 +1,17 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "declaration": true,
-    "outDir": "dist",
     "rootDir": "src",
-    "composite": true,
-    "strict": true
+    "outDir": "dist",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "strict": true,
+    "baseUrl": "."
   },
-  "include": ["src"],
-  "exclude": ["dist", "node_modules"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

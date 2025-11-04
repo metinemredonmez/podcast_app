@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { EpisodesService } from './episodes.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -6,9 +6,14 @@ import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginate
 import { CreateEpisodeDto } from './dto/create-episode.dto';
 import { EpisodeResponseDto } from './dto/episode-response.dto';
 import { UpdateEpisodeDto } from './dto/update-episode.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @ApiTags('Episodes')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('episodes')
 export class EpisodesController {
   constructor(private readonly service: EpisodesService) {}
@@ -48,11 +53,13 @@ export class EpisodesController {
   }
 
   @Post()
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
   create(@Body() payload: CreateEpisodeDto): Promise<EpisodeResponseDto> {
     return this.service.create(payload);
   }
 
   @Patch(':id')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
   update(@Param('id') id: string, @Body() payload: UpdateEpisodeDto): Promise<EpisodeResponseDto> {
     return this.service.update(id, payload);
   }

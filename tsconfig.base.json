@@ -8,11 +8,6 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": ".",
-    "paths": {
-      "@podcast-app/shared-types": ["packages/shared-types/src"],
-      "@podcast-app/shared-utils": ["packages/shared-utils/src"],
-      "@podcast-app/api-client": ["packages/api-client/src"]
-    }
+    "baseUrl": "."
   }
 }

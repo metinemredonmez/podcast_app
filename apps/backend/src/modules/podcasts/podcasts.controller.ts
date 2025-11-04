@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { PodcastsService } from './podcasts.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -6,9 +6,14 @@ import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginate
 import { CreatePodcastDto } from './dto/create-podcast.dto';
 import { PodcastResponseDto } from './dto/podcast-response.dto';
 import { PodcastDetailDto } from './dto/podcast-detail.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../../common/enums/prisma.enums';
 
 @ApiTags('Podcasts')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('podcasts')
 export class PodcastsController {
   constructor(private readonly service: PodcastsService) {}
@@ -48,6 +53,7 @@ export class PodcastsController {
   }
 
   @Post()
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
   create(@Body() payload: CreatePodcastDto): Promise<PodcastResponseDto> {
     return this.service.create(payload);
   }

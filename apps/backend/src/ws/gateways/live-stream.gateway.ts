@@ -8,12 +8,20 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { WsAuthGuard } from '../guards/ws-auth.guard';
+import { StreamingSession } from '@prisma/client';
 
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5175', 'http://localhost:19005'],
     credentials: true,
   },
   namespace: '/live',
@@ -38,6 +46,37 @@ export class LiveStreamGateway
     this.logger.log(`Live client disconnected: ${client.id}`);
   }
 
+  emitSessionStarted(session: StreamingSession) {
+    this.server
+      .to(`tenant:${session.tenantId}`)
+      .emit('live-session-started', session);
+    this.server.to(`live:${session.id}`).emit('live-session-started', session);
+  }
+
+  emitSessionEnded(session: StreamingSession) {
+    this.server
+      .to(`tenant:${session.tenantId}`)
+      .emit('live-session-ended', session);
+    this.server.to(`live:${session.id}`).emit('live-session-ended', session);
+  }
+
+  emitSessionStatusChanged(session: StreamingSession) {
+    const payload = {
+      id: session.id,
+      tenantId: session.tenantId,
+      status: session.status,
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+    };
+
+    this.server.to(`tenant:${session.tenantId}`).emit('live-session-status', payload);
+    this.server.to(`live:${session.id}`).emit('live-session-status', payload);
+  }
+
+  emitViewerCount(sessionId: string, viewerCount: number) {
+    this.server.to(`live:${sessionId}`).emit('viewer-count', viewerCount);
+  }
+
   @SubscribeMessage('join-live-session')
   handleJoinLiveSession(
     @MessageBody() data: { sessionId: string; userId: string },
@@ -48,8 +87,7 @@ export class LiveStreamGateway
 
     const room = this.server.sockets.adapter.rooms.get(`live:${data.sessionId}`);
     const viewerCount = room ? room.size : 0;
-
-    this.server.to(`live:${data.sessionId}`).emit('viewer-count', viewerCount);
+    this.emitViewerCount(data.sessionId, viewerCount);
   }
 
   @SubscribeMessage('leave-live-session')
@@ -61,8 +99,7 @@ export class LiveStreamGateway
 
     const room = this.server.sockets.adapter.rooms.get(`live:${data.sessionId}`);
     const viewerCount = room ? room.size : 0;
-
-    this.server.to(`live:${data.sessionId}`).emit('viewer-count', viewerCount);
+    this.emitViewerCount(data.sessionId, viewerCount);
   }
 
   @SubscribeMessage('start-broadcast')

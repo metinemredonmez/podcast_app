@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { JobsModule } from '../../jobs/jobs.module';
+import { WsModule } from '../../ws/ws.module';
 
 @Module({
-  imports: [],
+  imports: [JobsModule, WsModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
   exports: [NotificationsService],

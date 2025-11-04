@@ -1,6 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { NotificationType } from '../../../common/enums/prisma.enums';
-import { IsEnum, IsJSON, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsObject, IsUUID } from 'class-validator';
 
 export class SendNotificationDto {
   @ApiProperty({ format: 'uuid' })
@@ -15,12 +15,7 @@ export class SendNotificationDto {
   @IsEnum(NotificationType)
   type!: NotificationType;
 
-  @ApiProperty({ description: 'JSON payload describing the notification body' })
-  @IsString()
-  payload!: string;
-
-  @ApiPropertyOptional({ description: 'Optional topic for grouping notifications' })
-  @IsOptional()
-  @IsString()
-  topic?: string;
+  @ApiProperty({ description: 'Notification payload body', type: () => Object })
+  @IsObject()
+  payload!: Record<string, unknown>;
 }

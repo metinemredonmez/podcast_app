@@ -1,22 +1,62 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 
-export enum SearchDomain {
+export enum SearchEntityType {
   PODCAST = 'podcast',
   EPISODE = 'episode',
-  USER = 'user',
+  ALL = 'all',
 }
 
 export class SearchQueryDto {
-  @ApiPropertyOptional({ minLength: 1, maxLength: 120 })
-  @IsOptional()
+  @ApiProperty({ description: 'Search text query', maxLength: 200 })
   @IsString()
   @MinLength(1)
-  @MaxLength(120)
-  query?: string;
+  @MaxLength(200)
+  query!: string;
 
-  @ApiPropertyOptional({ enum: SearchDomain, default: SearchDomain.PODCAST })
+  @ApiPropertyOptional({ enum: SearchEntityType, default: SearchEntityType.ALL })
   @IsOptional()
-  @IsEnum(SearchDomain)
-  domain?: SearchDomain = SearchDomain.PODCAST;
+  @IsEnum(SearchEntityType)
+  type?: SearchEntityType = SearchEntityType.ALL;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Restrict results to a tenant' })
+  @IsOptional()
+  @IsUUID()
+  tenantId?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Restrict podcasts to a category' })
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({ description: 'Filter podcasts and episodes by published status' })
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  isPublished?: boolean;
+
+  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ description: 'Results per page', default: 20 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  size?: number = 20;
 }

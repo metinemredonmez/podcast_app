@@ -10,6 +10,8 @@ Podcast App is a full-stack platform for creating, managing, and streaming podca
 
 Shared TypeScript packages deliver consistent types, utilities, and API clients across all apps.
 
+> ℹ️ **Tenant management**: Dedicated tenant CRUD and administration endpoints live under the backend `AdminModule`. The legacy `TenantsModule` has been removed; all tenant-facing routes are grouped with other admin APIs.
+
 ## 2. Project Structure
 
 ```
@@ -42,41 +44,40 @@ yarn workspace @podcast-app/backend prisma:generate
 The stack uses a layered configuration model:
 
 - `.env.shared` – global infrastructure defaults (Postgres, Redis, JWT, S3, analytics).
-- `apps/backend/.env.dev` / `.env.prod` – API-specific overrides (ports, logging, CORS).
+- `apps/backend/.env.dev` / `.env.prod` – API-specific overrides (port, logging, Swagger toggle).
 - `apps/admin/.env.dev` / `.env.prod` – Vite client configuration (API endpoint, mode).
 - `apps/mobile/.env.dev` / `.env.prod` – Expo client configuration (API endpoint, mode).
-- `infra/docker/.env` – Docker Compose project metadata (project name, timezone).
+- `infra/docker/.env` – Docker Compose metadata (project name, timezone).
 
 Docker Compose loads `.env.shared` plus the matching `apps/*/.env.<env>` file for each service. Copy the `.env.example` files and adjust secrets before running locally or deploying.
 
 For a deeper dive into inheritance rules and CI/CD expectations, see `docs/guides/environment-hierarchy.md`.
 
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PORT` | HTTP port the backend listens on | `3300` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://postgres:postgres@localhost:5435/postgres` |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6390` |
+| `KAFKA_BROKER` | Kafka broker address (optional) | `localhost:9092` |
+| `S3_ENDPOINT` | MinIO/S3 endpoint (optional) | `http://localhost:9000` |
+| `JWT_ACCESS_SECRET` | Secret for access tokens | `supersecretaccesskey` |
+| `JWT_REFRESH_SECRET` | Secret for refresh tokens | `supersecretrefreshkey` |
+| `SWAGGER_ENABLED` | Toggle API docs | `true` |
+
 ## 4. Running Locally
 
-1. Boot the infrastructure services (Postgres, Redis, Kafka, MinIO):
-   ```bash
-   cd infra/docker
-   docker-compose -f docker-compose.dev.yml up --build -d
-   ```
-2. From the repo root, start the applications locally:
-   ```bash
-   yarn dev
-   ```
+Run Docker only for **infrastructure services**. All applications (`backend`, `admin`, `mobile`) run locally via Yarn:
 
-Service port map:
+- Infrastructure services (Docker): Postgres `5435`, Redis `6390`, Kafka `9092`.
+- Applications: `yarn dev` orchestrates backend (3300), admin (5175), mobile (19005).
 
-| Service  | Port |
-|----------|------|
-| Backend  | 3300 |
-| Admin    | 5175 |
-| Mobile   | 19005 |
-| Postgres | 5435 |
-| Redis    | 6390 |
-| Kafka    | 9092 |
+Quick start:
 
-Stop the infra stack when you are done:
 ```bash
-docker-compose -f infra/docker/docker-compose.dev.yml down
+cd infra/docker && docker-compose -f docker-compose.dev.yml up -d
+yarn dev
 ```
 ## 5. Testing & Linting
 

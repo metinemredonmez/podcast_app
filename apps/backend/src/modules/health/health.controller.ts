@@ -5,7 +5,7 @@ import { RedisHealthIndicator } from './indicators/redis.health';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 
-@ApiTags('Health')
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   constructor(

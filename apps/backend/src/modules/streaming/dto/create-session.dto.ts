@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { StreamStatus } from '@podcast-app/shared-types';
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { StreamStatus } from '../../../common/enums/prisma.enums';
 
-export class StartStreamDto {
-  @ApiProperty({ format: 'uuid' })
+export class CreateSessionDto {
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
   @IsUUID()
-  tenantId!: string;
+  tenantId?: string;
 
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
@@ -21,7 +22,7 @@ export class StartStreamDto {
   @IsUUID()
   episodeId?: string;
 
-  @ApiPropertyOptional({ enum: StreamStatus })
+  @ApiPropertyOptional({ enum: StreamStatus, default: StreamStatus.SCHEDULED })
   @IsOptional()
   @IsEnum(StreamStatus)
   status?: StreamStatus;

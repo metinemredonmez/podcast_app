@@ -3,12 +3,10 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { WsModule } from './ws/ws.module';
-import { PrismaModule } from './infra/prisma/prisma.module';
 import { InfraModule } from './infra/infra.module';
 import { JobsModule } from './jobs/jobs.module';
 import { AuthModule } from './modules/auth';
 import { UsersModule } from './modules/users';
-import { TenantsModule } from './modules/tenants/tenants.module';
 import { HocasModule } from './modules/hocas';
 import { PodcastsModule } from './modules/podcasts';
 import { EpisodesModule } from './modules/episodes';
@@ -33,6 +31,7 @@ import metricsConfig from './config/metrics.config';
 import storageConfig from './config/storage.config';
 import jwtConfig from './config/jwt.config';
 import mailConfig from './config/mail.config';
+import { validateEnv } from './config/env.validation';
 
 @Module({
   imports: [
@@ -50,15 +49,14 @@ import mailConfig from './config/mail.config';
         jwtConfig,
         mailConfig,
       ],
+      validate: validateEnv,
     }),
     ThrottlerModule.forRoot([{ ttl: 60, limit: 100 }]),
-    PrismaModule,
     InfraModule,
     JobsModule,
     WsModule,
     AuthModule,
     UsersModule,
-    TenantsModule,
     HocasModule,
     PodcastsModule,
     EpisodesModule,

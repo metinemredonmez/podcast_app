@@ -8,12 +8,20 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { WsAuthGuard } from '../guards/ws-auth.guard';
+import { Notification } from '@prisma/client';
 
+const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGINS?.split(',') || '*',
+    origin: allowedOrigins.length ? allowedOrigins : ['http://localhost:5175', 'http://localhost:19005'],
     credentials: true,
   },
   namespace: '/notifications',
@@ -48,6 +56,15 @@ export class NotificationsGateway
 
   notifyLiveSession(tenantId: string, session: any) {
     this.server.to(`tenant:${tenantId}`).emit('live-session-starting', session);
+  }
+
+  emitNotification(notification: Notification) {
+    this.server
+      .to(`user:${notification.userId}`)
+      .emit('notification', notification);
+    this.server
+      .to(`tenant:${notification.tenantId}`)
+      .emit('notification', notification);
   }
 
   @SubscribeMessage('subscribe-tenant')

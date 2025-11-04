@@ -7,6 +7,7 @@ import { AnalyticsQueueService } from './queues/analytics.queue';
 import { EmailProcessor } from './processors/email.processor';
 import { NotificationProcessor } from './processors/notification.processor';
 import { AnalyticsProcessor } from './processors/analytics.processor';
+import { WsModule } from '../ws/ws.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { AnalyticsProcessor } from './processors/analytics.processor';
       { name: 'notification' },
       { name: 'analytics' },
     ),
+    WsModule,
   ],
   providers: [
     EmailQueueService,
