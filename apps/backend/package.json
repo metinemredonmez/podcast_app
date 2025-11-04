@@ -13,7 +13,11 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:db:seed": "ts-node prisma/seed.ts"
+    "prisma:db:seed": "ts-node prisma/seed.ts",
+    "db:reset": "cd apps/backend && npx prisma migrate reset --force && npx prisma db seed && npx prisma studio"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
@@ -47,10 +51,11 @@
     "@nestjs/cli": "^10.0.0",
     "@swc/cli": "^0.7.8",
     "@swc/core": "^1.14.0",
+    "@types/node": "^24.10.0",
     "@types/passport-jwt": "^4.0.1",
     "prisma": "^6.18.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.2.0"
+    "typescript": "^5.9.3"
   },
   "main": "dist/main.js",
   "types": "dist/main.d.ts"
