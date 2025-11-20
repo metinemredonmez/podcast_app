@@ -25,6 +25,12 @@ export interface PaginationOptions {
   orderDirection?: 'asc' | 'desc';
 }
 
+export interface SearchEpisodesOptions extends PaginationOptions {
+  search?: string;
+  podcastId?: string;
+  isPublished?: boolean;
+}
+
 export interface CreateEpisodeInput {
   tenantId: string;
   podcastId: string;
@@ -50,6 +56,7 @@ export interface UpdateEpisodeInput {
 
 export interface EpisodesRepository {
   findMany(options: PaginationOptions): Promise<EpisodeModel[]>;
+  searchEpisodes(options: SearchEpisodesOptions): Promise<EpisodeModel[]>;
   findById(id: string, tenantId: string): Promise<EpisodeModel | null>;
   findBySlug(tenantId: string, podcastId: string, slug: string): Promise<EpisodeModel | null>;
   create(payload: CreateEpisodeInput): Promise<EpisodeModel>;

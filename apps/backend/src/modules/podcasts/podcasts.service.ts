@@ -38,6 +38,38 @@ export class PodcastsService {
     };
   }
 
+  async search(
+    query: CursorPaginationDto & { tenantId?: string; search?: string; categoryId?: string; ownerId?: string; isPublished?: boolean },
+    actor: JwtPayload,
+  ): Promise<PaginatedResponseDto<PodcastResponseDto>> {
+    const tenantId = this.resolveTenant(query.tenantId, actor, { allowCrossTenantForAdmin: false });
+    const limit = query.limit ?? 20;
+    const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
+    const decoded = decodedRaw || undefined;
+    const sortableFields: (keyof PodcastModel)[] = ['createdAt', 'updatedAt', 'title', 'publishedAt'];
+    const orderBy = sortableFields.includes(query.orderBy as keyof PodcastModel)
+      ? (query.orderBy as keyof PodcastModel)
+      : 'createdAt';
+
+    const rows = await this.podcastsRepository.searchPodcasts({
+      tenantId,
+      cursor: decoded,
+      limit,
+      orderBy,
+      orderDirection: query.orderDirection ?? 'desc',
+      search: query.search,
+      categoryId: query.categoryId,
+      ownerId: query.ownerId,
+      isPublished: query.isPublished,
+    });
+
+    const paginated = buildPaginatedResponse(rows, limit, (podcast) => podcast.id);
+    return {
+      ...paginated,
+      data: paginated.data.map((podcast) => this.toResponseDto(podcast)),
+    };
+  }
+
   async findOne(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastDetailDto> {
     const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
     const podcast = await this.podcastsRepository.findDetailedById(id, resolvedTenantId);

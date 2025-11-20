@@ -4,6 +4,7 @@ import {
   CreateUserInput,
   PaginationOptions,
   UpdateUserInput,
+  UpdateProfileInput,
   UsersRepository,
   UserModel,
 } from './users.repository';
@@ -60,6 +61,14 @@ export class UsersPrismaRepository implements UsersRepository {
       data: payload,
     });
     return updated as unknown as UserModel;
+  }
+
+  async updateProfile(id: string, tenantId: string, payload: UpdateProfileInput): Promise<UserModel | null> {
+    const user = await this.prisma.user.update({
+      where: { id, tenantId },
+      data: payload,
+    });
+    return user as unknown as UserModel;
   }
 
   async updatePassword(id: string, tenantId: string, passwordHash: string): Promise<void> {

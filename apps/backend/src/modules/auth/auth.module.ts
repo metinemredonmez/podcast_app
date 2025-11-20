@@ -8,11 +8,13 @@ import { UsersModule } from '../users/users.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
+import { JobsModule } from '../../jobs/jobs.module';
 
 @Module({
   imports: [
     ConfigModule,
     UsersModule,
+    JobsModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

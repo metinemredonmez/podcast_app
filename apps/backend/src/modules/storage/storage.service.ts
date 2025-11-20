@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import { S3Service } from '../../infra/s3/s3.service';
@@ -6,6 +6,8 @@ import { UploadResponseDto } from './dto/upload-response.dto';
 import { SignedUrlResponseDto } from './dto/signed-url-response.dto';
 import { DeleteObjectResponseDto } from './dto/delete-object-response.dto';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { FileValidator } from './validators/file.validator';
+import { FileCategory } from './constants/file-types';
 
 interface StorageActorContext {
   tenantId: string;
@@ -16,10 +18,14 @@ interface StorageActorContext {
 interface UploadOptions {
   prefix?: string;
   expiresIn?: number;
+  expectedFileType?: FileCategory; // Optional: validate against specific file type
+  skipValidation?: boolean; // For legacy/special cases
 }
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
+
   constructor(private readonly s3: S3Service) {}
 
   async uploadFile(
@@ -33,6 +39,15 @@ export class StorageService {
 
     if (!file.buffer || file.buffer.length === 0) {
       throw new BadRequestException('Uploaded file is empty.');
+    }
+
+    // Validate file unless explicitly skipped
+    if (!options.skipValidation) {
+      this.logger.log(`Validating file: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
+
+      const fileCategory = FileValidator.validateOrThrow(file, options.expectedFileType);
+
+      this.logger.log(`File validation passed: ${file.originalname} is a valid ${fileCategory} file`);
     }
 
     const expiresIn = this.resolveExpiry(options.expiresIn);

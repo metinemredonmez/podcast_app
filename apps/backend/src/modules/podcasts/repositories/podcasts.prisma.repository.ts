@@ -4,6 +4,7 @@ import {
   CreatePodcastInput,
   UpdatePodcastInput,
   PaginationOptions,
+  SearchPodcastsOptions,
   PodcastDetail,
   PodcastsRepository,
   PodcastModel,
@@ -22,6 +23,50 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
       where: { tenantId },
       orderBy: { [orderBy]: orderDirection } as any,
     });
+    return rows as unknown as PodcastModel[];
+  }
+
+  async searchPodcasts(options: SearchPodcastsOptions): Promise<PodcastModel[]> {
+    const { tenantId, cursor, limit, orderBy = 'createdAt', orderDirection = 'desc', search, categoryId, ownerId, isPublished } = options;
+
+    // Build where clause
+    const where: any = { tenantId };
+
+    // Search filter (title OR description contains search term)
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Category filter
+    if (categoryId) {
+      where.categories = {
+        some: {
+          categoryId,
+        },
+      };
+    }
+
+    // Owner filter
+    if (ownerId) {
+      where.ownerId = ownerId;
+    }
+
+    // Published status filter
+    if (isPublished !== undefined) {
+      where.isPublished = isPublished;
+    }
+
+    const rows = await this.prisma.podcast.findMany({
+      take: limit + 1,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      where,
+      orderBy: { [orderBy]: orderDirection } as any,
+    });
+
     return rows as unknown as PodcastModel[];
   }
 

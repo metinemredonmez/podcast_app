@@ -8,6 +8,7 @@ import { EmailProcessor } from './processors/email.processor';
 import { NotificationProcessor } from './processors/notification.processor';
 import { AnalyticsProcessor } from './processors/analytics.processor';
 import { WsModule } from '../ws/ws.module';
+import { EmailModule } from '../infra/email';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { WsModule } from '../ws/ws.module';
       { name: 'analytics' },
     ),
     WsModule,
+    EmailModule,
   ],
   providers: [
     EmailQueueService,

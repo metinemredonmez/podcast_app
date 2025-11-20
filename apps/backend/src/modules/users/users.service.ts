@@ -1,4 +1,4 @@
-import { Inject, Injectable, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Inject, Injectable, ConflictException, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
@@ -12,12 +12,17 @@ import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UnauthorizedException } from '@nestjs/common';
+import { StorageService } from '../storage/storage.service';
+import { FileCategory } from '../storage/constants/file-types';
 
 @Injectable()
 export class UsersService {
   private readonly passwordSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
 
-  constructor(@Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository) {}
+  constructor(
+    @Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository,
+    private readonly storageService: StorageService,
+  ) {}
 
   async findAll(query: CursorPaginationDto, actor: JwtPayload): Promise<PaginatedResponseDto<UserResponseDto>> {
     this.ensureAdmin(actor);
@@ -112,6 +117,34 @@ export class UsersService {
     // Hash new password and update
     const newPasswordHash = await bcrypt.hash(payload.newPassword, this.passwordSaltRounds);
     await this.usersRepository.updatePassword(actor.userId, actor.tenantId, newPasswordHash);
+  }
+
+  async uploadAvatar(file: Express.Multer.File, actor: JwtPayload): Promise<UserResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Upload to storage with image validation
+    const uploadResult = await this.storageService.uploadFile(
+      file,
+      { userId: actor.userId, tenantId: actor.tenantId, role: actor.role },
+      {
+        prefix: 'avatars',
+        expectedFileType: FileCategory.IMAGE,
+        expiresIn: 31536000, // 1 year
+      },
+    );
+
+    // Update user avatar URL
+    const user = await this.usersRepository.updateProfile(actor.userId, actor.tenantId, {
+      avatarUrl: uploadResult.url,
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    return this.toResponseDto(user);
   }
 
   private ensureAdmin(actor: JwtPayload) {

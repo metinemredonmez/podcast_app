@@ -22,6 +22,13 @@ export interface PaginationOptions {
   orderDirection?: 'asc' | 'desc';
 }
 
+export interface SearchPodcastsOptions extends PaginationOptions {
+  search?: string;
+  categoryId?: string;
+  ownerId?: string;
+  isPublished?: boolean;
+}
+
 export interface CreatePodcastInput {
   tenantId: string;
   ownerId: string;
@@ -45,6 +52,7 @@ export interface UpdatePodcastInput {
 
 export interface PodcastsRepository {
   findMany(options: PaginationOptions): Promise<PodcastModel[]>;
+  searchPodcasts(options: SearchPodcastsOptions): Promise<PodcastModel[]>;
   findDetailedById(id: string, tenantId: string): Promise<PodcastDetail | null>;
   findById(id: string, tenantId: string): Promise<PodcastModel | null>;
   findBySlug(tenantId: string, slug: string): Promise<PodcastModel | null>;

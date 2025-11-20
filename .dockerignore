@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+build
+.next
+.turbo
+
+# Tests
+coverage
+.nyc_output
+*.spec.ts
+*.test.ts
+test
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs
+
+# Logs
+logs
+*.log
+
+# Misc
+.cache
+.temp
+tmp

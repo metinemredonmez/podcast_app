@@ -2,11 +2,25 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module';
 import { GatewayAdapter } from './ws/gateway.adapter';
+import { initSentry } from './common/sentry/sentry.config';
+import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
+import { AppLoggerService } from './common/logger/logger.service';
+
+// Initialize Sentry before NestJS app
+initSentry();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ✅ Use Winston logger
+  const logger = app.get(AppLoggerService);
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
+
+  // ✅ Global exception filter (Sentry + logging)
+  app.useGlobalFilters(new SentryExceptionFilter(logger));
 
   // ✅ Global prefix
   app.setGlobalPrefix('api');
@@ -27,9 +41,32 @@ async function bootstrap() {
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+
+  const allowedOrigins = corsOrigins.length > 0
+    ? corsOrigins
+    : [
+        'http://localhost:5175',  // Admin panel (dev)
+        'http://localhost:19005', // Mobile app (dev)
+        'http://localhost:3000',  // Frontend (dev)
+      ];
+
   app.enableCors({
-    origin: corsOrigins.length > 0 ? corsOrigins : ['http://localhost:5175', 'http://localhost:19005'],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      // Check if origin is allowed
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+    maxAge: 3600, // Cache preflight response for 1 hour
   });
 
   // ✅ Security headers

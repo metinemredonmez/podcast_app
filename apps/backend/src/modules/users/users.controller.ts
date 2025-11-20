@@ -1,7 +1,8 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginated-response.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -51,6 +52,14 @@ export class UsersController {
     return this.service.findAll(query, user);
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({ status: 200, description: 'Current user profile', type: UserResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getMe(@CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.findOne(user.userId, user);
+  }
+
   @Get(':id')
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -94,5 +103,16 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found' })
   changePassword(@Body() payload: ChangePasswordDto, @CurrentUser() user: JwtPayload): Promise<void> {
     return this.service.changePassword(payload, user);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload profile avatar/photo' })
+  @ApiConsumes('multipart/form-data')
+  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully', type: UserResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid file' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async uploadAvatar(@UploadedFile() file: Express.Multer.File, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.uploadAvatar(file, user);
   }
 }

@@ -11,6 +11,10 @@ export interface UserModel {
   name: string | null;
   role: UserRole;
   isActive: boolean;
+  emailVerified: boolean;
+  avatarUrl: string | null;
+  bio: string | null;
+  preferences: Record<string, any> | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +34,13 @@ export interface UpdateUserInput {
   refreshTokenHash?: string | null;
 }
 
+export interface UpdateProfileInput {
+  name?: string | null;
+  avatarUrl?: string | null;
+  bio?: string | null;
+  preferences?: Record<string, any> | null;
+}
+
 export interface PaginationOptions {
   tenantId: string;
   cursor?: string;
@@ -44,5 +55,6 @@ export interface UsersRepository {
   findByEmail(email: string): Promise<UserModel | null>;
   create(payload: CreateUserInput): Promise<UserModel>;
   update(id: string, tenantId: string, payload: UpdateUserInput): Promise<UserModel>;
+  updateProfile(id: string, tenantId: string, payload: UpdateProfileInput): Promise<UserModel | null>;
   updatePassword(id: string, tenantId: string, passwordHash: string): Promise<void>;
 }

@@ -37,6 +37,37 @@ export class EpisodesService {
     };
   }
 
+  async search(
+    query: CursorPaginationDto & { tenantId?: string; search?: string; podcastId?: string; isPublished?: boolean },
+    actor: JwtPayload,
+  ): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
+    const tenantId = this.resolveTenant(query.tenantId, actor);
+    const limit = query.limit ?? 20;
+    const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
+    const decoded = decodedRaw || undefined;
+    const sortableFields: (keyof EpisodeModel)[] = ['publishedAt', 'createdAt', 'duration', 'title'];
+    const orderBy = sortableFields.includes(query.orderBy as keyof EpisodeModel)
+      ? (query.orderBy as keyof EpisodeModel)
+      : 'publishedAt';
+
+    const rows = await this.episodesRepository.searchEpisodes({
+      tenantId,
+      cursor: decoded,
+      limit,
+      orderBy,
+      orderDirection: query.orderDirection ?? 'desc',
+      search: query.search,
+      podcastId: query.podcastId,
+      isPublished: query.isPublished,
+    });
+
+    const paginated = buildPaginatedResponse(rows, limit, (episode) => episode.id);
+    return {
+      ...paginated,
+      data: paginated.data.map((episode) => this.toResponseDto(episode)),
+    };
+  }
+
   async findOne(id: string, actor: JwtPayload, tenantId?: string): Promise<EpisodeResponseDto> {
     const resolvedTenant = this.resolveTenant(tenantId, actor);
     const episode = await this.episodesRepository.findById(id, resolvedTenant);

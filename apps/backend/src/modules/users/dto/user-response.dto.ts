@@ -30,6 +30,24 @@ export class UserResponseDto {
   isActive!: boolean;
 
   @ApiProperty()
+  @IsBoolean()
+  emailVerified!: boolean;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  avatarUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  bio!: string | null;
+
+  @ApiProperty({ nullable: true, type: 'object' })
+  @IsOptional()
+  preferences!: Record<string, any> | null;
+
+  @ApiProperty()
   @Type(() => Date)
   @IsDate()
   createdAt!: Date;
