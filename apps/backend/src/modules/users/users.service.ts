@@ -6,9 +6,12 @@ import { USERS_REPOSITORY, UsersRepository, UserModel } from './repositories/use
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UnauthorizedException } from '@nestjs/common';
 
 @Injectable()
 export class UsersService {
@@ -81,6 +84,34 @@ export class UsersService {
       isActive: payload.isActive ?? undefined,
     });
     return this.toResponseDto(updated);
+  }
+
+  async updateOwnProfile(payload: UpdateProfileDto, actor: JwtPayload): Promise<UserResponseDto> {
+    const user = await this.usersRepository.findById(actor.userId, actor.tenantId);
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    const updated = await this.usersRepository.update(actor.userId, actor.tenantId, {
+      name: payload.name ?? undefined,
+    });
+    return this.toResponseDto(updated);
+  }
+
+  async changePassword(payload: ChangePasswordDto, actor: JwtPayload): Promise<void> {
+    const user = await this.usersRepository.findById(actor.userId, actor.tenantId);
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(payload.currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    // Hash new password and update
+    const newPasswordHash = await bcrypt.hash(payload.newPassword, this.passwordSaltRounds);
+    await this.usersRepository.updatePassword(actor.userId, actor.tenantId, newPasswordHash);
   }
 
   private ensureAdmin(actor: JwtPayload) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -6,6 +6,8 @@ import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginate
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -66,9 +68,31 @@ export class UsersController {
 
   @Patch(':id')
   @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update user (admin only)' })
+  @ApiResponse({ status: 200, description: 'User updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   update(@Param('id') id: string, @Body() payload: UpdateUserDto, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
     return this.service.update(id, payload, user);
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({ summary: 'Update own profile' })
+  @ApiResponse({ status: 200, description: 'Profile updated', type: UserResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  updateProfile(@Body() payload: UpdateProfileDto, @CurrentUser() user: JwtPayload): Promise<UserResponseDto> {
+    return this.service.updateOwnProfile(payload, user);
+  }
+
+  @Post('me/change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Change own password' })
+  @ApiResponse({ status: 204, description: 'Password changed successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized or current password incorrect' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  changePassword(@Body() payload: ChangePasswordDto, @CurrentUser() user: JwtPayload): Promise<void> {
+    return this.service.changePassword(payload, user);
   }
 }

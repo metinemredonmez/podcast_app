@@ -49,4 +49,10 @@ export class EpisodesPrismaRepository implements EpisodesRepository {
     const updated = await this.prisma.episode.update({ where: { id }, data: payload });
     return updated as unknown as EpisodeModel;
   }
+
+  async delete(id: string, tenantId: string): Promise<void> {
+    await this.prisma.episode.delete({
+      where: { id, tenantId },
+    });
+  }
 }

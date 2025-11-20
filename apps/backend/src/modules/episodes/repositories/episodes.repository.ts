@@ -54,4 +54,5 @@ export interface EpisodesRepository {
   findBySlug(tenantId: string, podcastId: string, slug: string): Promise<EpisodeModel | null>;
   create(payload: CreateEpisodeInput): Promise<EpisodeModel>;
   update(id: string, tenantId: string, payload: UpdateEpisodeInput): Promise<EpisodeModel>;
+  delete(id: string, tenantId: string): Promise<void>;
 }

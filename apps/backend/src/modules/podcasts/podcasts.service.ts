@@ -3,6 +3,7 @@ import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/curs
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
 import { PODCASTS_REPOSITORY, PodcastDetail, PodcastsRepository, PodcastModel } from './repositories/podcasts.repository';
 import { CreatePodcastDto } from './dto/create-podcast.dto';
+import { UpdatePodcastDto } from './dto/update-podcast.dto';
 import { PodcastResponseDto } from './dto/podcast-response.dto';
 import { slugify } from '../../common/utils/slug.util';
 import { PodcastDetailDto } from './dto/podcast-detail.dto';
@@ -74,6 +75,86 @@ export class PodcastsService {
     });
 
     return this.toResponseDto(podcast);
+  }
+
+  async update(id: string, payload: UpdatePodcastDto, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
+    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
+
+    // Check if podcast exists
+    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    if (!podcast) {
+      throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Only owner or admin can update
+    if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You are not authorized to update this podcast.');
+    }
+
+    const publishedAt = payload.publishedAt ? new Date(payload.publishedAt) : undefined;
+
+    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+      ...payload,
+      publishedAt,
+    });
+
+    return this.toResponseDto(updated);
+  }
+
+  async delete(id: string, actor: JwtPayload, tenantId?: string): Promise<void> {
+    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
+
+    // Check if podcast exists
+    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    if (!podcast) {
+      throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Only owner or admin can delete
+    if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You are not authorized to delete this podcast.');
+    }
+
+    await this.podcastsRepository.delete(id, resolvedTenantId);
+  }
+
+  async publish(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
+    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
+
+    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    if (!podcast) {
+      throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You are not authorized to publish this podcast.');
+    }
+
+    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+      isPublished: true,
+      publishedAt: podcast.publishedAt || new Date(),
+    });
+
+    return this.toResponseDto(updated);
+  }
+
+  async unpublish(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
+    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
+
+    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    if (!podcast) {
+      throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('You are not authorized to unpublish this podcast.');
+    }
+
+    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+      isPublished: false,
+    });
+
+    return this.toResponseDto(updated);
   }
 
   private toResponseDto(podcast: PodcastDetail | PodcastModel): PodcastResponseDto {

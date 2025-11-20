@@ -1,0 +1,145 @@
+2025-11-20T08:30:34.778933Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/.turbo-cookie"), AnchoredSystemPathBuf(".turbo/cookies/1.cookie")}
+2025-11-20T08:30:34.778947Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-11-20T08:34:00.880796Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/analytics/dto/filter-analytics.dto.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/analytics/dto/filter-analytics.dto.ts~")}
+2025-11-20T08:34:00.880856Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:34:04.380493Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:04.380502Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:07.479702Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/analytics/dto/filter-analytics.dto.ts~"), AnchoredSystemPathBuf("apps/backend/src/modules/analytics/dto/filter-analytics.dto.ts")}
+2025-11-20T08:34:07.479726Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:34:23.880333Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/node_modules")}
+2025-11-20T08:34:23.880352Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:34:42.578044Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:42.580673Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 145
+2025-11-20T08:34:42.588653Z  WARN turborepo_filewatch::package_watcher: lagged behind 260 processing file watching events
+2025-11-20T08:34:42.980988Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:42.981001Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.183220Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:43.183229Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.483295Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:43.483304Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.581128Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:43.581137Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.680826Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:43.680839Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.837556Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 66
+2025-11-20T08:34:43.879554Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:43.879563Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:43.983686Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 137
+2025-11-20T08:34:43.984347Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:43.984572Z  WARN turborepo_filewatch::package_watcher: lagged behind 9 processing file watching events
+2025-11-20T08:34:43.999309Z  WARN turborepo_filewatch::package_watcher: lagged behind 252 processing file watching events
+2025-11-20T08:34:43.999328Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:44.013056Z  WARN turborepo_filewatch::package_watcher: lagged behind 288 processing file watching events
+2025-11-20T08:34:44.105881Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:44.380839Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:44.571236Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:44.785042Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:48.813905Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:48.813917Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:49.871877Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 213
+2025-11-20T08:34:50.548263Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:50.548400Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 267
+2025-11-20T08:34:50.808434Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:50.931785Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 1782
+2025-11-20T08:34:51.112249Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:52.698793Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:52.698803Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:52.781515Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:52.781525Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:53.381258Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:53.381268Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:54.580357Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:54.580367Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:54.882188Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:54.882197Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:54.988609Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:34:55.876111Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:55.876122Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:57.182540Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:57.182552Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:34:57.921866Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T08:34:57.921875Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T08:35:06.473933Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:35:06.473996Z  WARN turborepo_filewatch::package_watcher: lagged behind 51 processing file watching events
+2025-11-20T08:35:24.549527Z  WARN turborepo_filewatch::globwatcher: encountered filewatching error, flushing all globs: channel lagged by 654
+2025-11-20T08:35:24.550053Z  WARN turborepo_filewatch::package_watcher: lagged behind 654 processing file watching events
+2025-11-20T08:35:26.703824Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:35:26.882377Z  WARN turborepo_lib::package_changes_watcher: file event lagged
+2025-11-20T08:35:41.579723Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/node_modules")}
+2025-11-20T08:35:41.579741Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:35:47.754770Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("yarn.lock")}
+2025-11-20T08:35:47.754785Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-11-20T08:36:12.182708Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.repository.ts.tmp.52709.1763627772105"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.repository.ts")}
+2025-11-20T08:36:12.182737Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:36:24.887195Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.prisma.repository.ts.tmp.52709.1763627784828"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.prisma.repository.ts")}
+2025-11-20T08:36:24.887220Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:36:40.688889Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.prisma.repository.ts.tmp.52709.1763627800627"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/repositories/podcasts.prisma.repository.ts")}
+2025-11-20T08:36:40.688920Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:36:59.389190Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts.tmp.52709.1763627819371")}
+2025-11-20T08:36:59.389247Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:37:15.791775Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts.tmp.52709.1763627835734"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts")}
+2025-11-20T08:37:15.791839Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:37:28.891377Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts.tmp.52709.1763627848797")}
+2025-11-20T08:37:28.891400Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:37:51.090760Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts.tmp.52709.1763627871011"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts")}
+2025-11-20T08:37:51.090796Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:40:02.791840Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/episodes/repositories/episodes.repository.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/episodes/repositories/episodes.repository.ts.tmp.52709.1763628002741")}
+2025-11-20T08:40:02.791892Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:40:28.591640Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/episodes/repositories/episodes.prisma.repository.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/episodes/repositories/episodes.prisma.repository.ts.tmp.52709.1763628028523")}
+2025-11-20T08:40:28.591656Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:40:49.790658Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.service.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.service.ts.tmp.52709.1763628049692")}
+2025-11-20T08:40:49.790669Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:41:54.191737Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.controller.ts.tmp.52709.1763628114132"), AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.controller.ts")}
+2025-11-20T08:41:54.191768Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:42:04.990970Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.controller.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/episodes/episodes.controller.ts.tmp.52709.1763628124980")}
+2025-11-20T08:42:04.990989Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:42:35.691610Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/repositories"), AnchoredSystemPathBuf("apps/backend/src/modules/progress"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/dto")}
+2025-11-20T08:42:35.691630Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:42:51.691642Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/dto/progress-response.dto.ts.tmp.52709.1763628171581"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/dto/progress-response.dto.ts")}
+2025-11-20T08:42:51.691667Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:42:52.492134Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/dto/update-progress.dto.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/dto/update-progress.dto.ts.tmp.52709.1763628172468")}
+2025-11-20T08:42:52.492143Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:01.991142Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/repositories/progress.repository.ts.tmp.52709.1763628181902"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/repositories/progress.repository.ts")}
+2025-11-20T08:43:01.991161Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:22.490780Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/repositories/progress.prisma.repository.ts.tmp.52709.1763628202478"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/repositories/progress.prisma.repository.ts")}
+2025-11-20T08:43:22.490800Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:23.892582Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.service.ts.tmp.52709.1763628203848"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.service.ts")}
+2025-11-20T08:43:23.892601Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:42.091745Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.controller.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.controller.ts.tmp.52709.1763628222024")}
+2025-11-20T08:43:42.091760Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:42.692641Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.module.ts.tmp.52709.1763628222664"), AnchoredSystemPathBuf("apps/backend/src/modules/progress/progress.module.ts")}
+2025-11-20T08:43:42.692652Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:43:54.592551Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/app.module.ts"), AnchoredSystemPathBuf("apps/backend/src/app.module.ts.tmp.52709.1763628234497")}
+2025-11-20T08:43:54.592561Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:44:01.192675Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/app.module.ts"), AnchoredSystemPathBuf("apps/backend/src/app.module.ts.tmp.52709.1763628241102")}
+2025-11-20T08:44:01.192689Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:44:48.191721Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/dto/update-profile.dto.ts.tmp.52709.1763628288097"), AnchoredSystemPathBuf("apps/backend/src/modules/users/dto/update-profile.dto.ts")}
+2025-11-20T08:44:48.191740Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:44:49.792347Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/dto/change-password.dto.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/users/dto/change-password.dto.ts.tmp.52709.1763628289720")}
+2025-11-20T08:44:49.792367Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:44:59.892243Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/users.service.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/users/users.service.ts.tmp.52709.1763628299803")}
+2025-11-20T08:44:59.892254Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:45:11.392766Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/users.service.ts.tmp.52709.1763628311347"), AnchoredSystemPathBuf("apps/backend/src/modules/users/users.service.ts")}
+2025-11-20T08:45:11.392779Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:45:23.492817Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/repositories/users.repository.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/users/repositories/users.repository.ts.tmp.52709.1763628323414")}
+2025-11-20T08:45:23.492934Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:45:40.791904Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/repositories/users.prisma.repository.ts.tmp.52709.1763628340766"), AnchoredSystemPathBuf("apps/backend/src/modules/users/repositories/users.prisma.repository.ts")}
+2025-11-20T08:45:40.791919Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:45:53.493193Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/users.controller.ts.tmp.52709.1763628353387"), AnchoredSystemPathBuf("apps/backend/src/modules/users/users.controller.ts")}
+2025-11-20T08:45:53.493204Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:46:03.792976Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/users/users.controller.ts.tmp.52709.1763628363766"), AnchoredSystemPathBuf("apps/backend/src/modules/users/users.controller.ts")}
+2025-11-20T08:46:03.792994Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:46:28.793831Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts.tmp.52709.1763628388746"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.service.ts")}
+2025-11-20T08:46:28.793864Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T08:46:44.693958Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/podcasts/podcasts.controller.ts.tmp.52709.1763628404607")}
+2025-11-20T08:46:44.693977Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T09:00:51.650584Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/package.json")}
+2025-11-20T09:00:51.650621Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-11-20T09:01:22.350597Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T09:01:22.350624Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T09:19:32.345961Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T09:19:32.345987Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T09:19:32.444826Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("")}
+2025-11-20T09:19:32.444849Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({}))
+2025-11-20T09:21:41.546330Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/2.cookie")}
+2025-11-20T09:21:41.546365Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))

@@ -101,6 +101,16 @@ export class EpisodesService {
     return this.toResponseDto(updated);
   }
 
+  async delete(id: string, actor: JwtPayload, tenantId?: string): Promise<void> {
+    this.ensureCreator(actor);
+    const resolvedTenant = this.resolveTenant(tenantId, actor);
+    const episode = await this.episodesRepository.findById(id, resolvedTenant);
+    if (!episode) {
+      throw new NotFoundException(`Episode ${id} not found.`);
+    }
+    await this.episodesRepository.delete(id, resolvedTenant);
+  }
+
   private toResponseDto(episode: EpisodeModel): EpisodeResponseDto {
     return plainToInstance(EpisodeResponseDto, {
       id: episode.id,

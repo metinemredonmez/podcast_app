@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { EpisodesService } from './episodes.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -75,13 +75,32 @@ export class EpisodesController {
   @Patch(':id')
   @Roles(UserRole.CREATOR, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update an episode' })
+  @ApiResponse({ status: 200, description: 'Episode updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Episode not found' })
   update(
     @Param('id') id: string,
     @Body() payload: UpdateEpisodeDto,
     @CurrentUser() user: JwtPayload,
   ): Promise<EpisodeResponseDto> {
     return this.service.update(id, payload, user);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete an episode' })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  @ApiResponse({ status: 204, description: 'Episode deleted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 404, description: 'Episode not found' })
+  delete(
+    @Param('id') id: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    return this.service.delete(id, user, tenantId);
   }
 }

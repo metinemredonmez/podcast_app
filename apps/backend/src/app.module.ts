@@ -20,6 +20,7 @@ import { StorageModule } from './modules/storage';
 import { StreamingModule } from './modules/streaming';
 import { AdminModule } from './modules/admin';
 import { HealthModule } from './modules/health/health.module';
+import { ProgressModule } from './modules/progress/progress.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import appConfig from './config/app.config';
@@ -70,6 +71,7 @@ import { validateEnv } from './config/env.validation';
     StreamingModule,
     AdminModule,
     HealthModule,
+    ProgressModule,
   ],
   providers: [
     {

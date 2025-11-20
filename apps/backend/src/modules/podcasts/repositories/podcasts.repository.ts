@@ -34,12 +34,23 @@ export interface CreatePodcastInput {
   categoryIds?: string[];
 }
 
+export interface UpdatePodcastInput {
+  title?: string;
+  description?: string | null;
+  coverImageUrl?: string | null;
+  isPublished?: boolean;
+  publishedAt?: Date | null;
+  categoryIds?: string[];
+}
+
 export interface PodcastsRepository {
   findMany(options: PaginationOptions): Promise<PodcastModel[]>;
   findDetailedById(id: string, tenantId: string): Promise<PodcastDetail | null>;
   findById(id: string, tenantId: string): Promise<PodcastModel | null>;
   findBySlug(tenantId: string, slug: string): Promise<PodcastModel | null>;
   create(payload: CreatePodcastInput): Promise<PodcastModel>;
+  update(id: string, tenantId: string, payload: UpdatePodcastInput): Promise<PodcastModel>;
+  delete(id: string, tenantId: string): Promise<void>;
 }
 
 export interface PodcastDetail {

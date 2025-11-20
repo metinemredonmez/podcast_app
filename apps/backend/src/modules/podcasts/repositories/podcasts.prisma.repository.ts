@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infra/prisma.service';
 import {
   CreatePodcastInput,
+  UpdatePodcastInput,
   PaginationOptions,
   PodcastDetail,
   PodcastsRepository,
@@ -97,5 +98,58 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
     });
 
     return podcast as unknown as PodcastModel;
+  }
+
+  async update(id: string, tenantId: string, payload: UpdatePodcastInput): Promise<PodcastModel> {
+    const { title, description, coverImageUrl, isPublished, publishedAt, categoryIds } = payload;
+
+    // Update podcast with transaction if categories need to be updated
+    if (categoryIds !== undefined) {
+      const podcast = await this.prisma.$transaction(async (tx) => {
+        // Delete existing category relations
+        await tx.podcastCategory.deleteMany({
+          where: { podcastId: id },
+        });
+
+        // Update podcast and create new category relations
+        return await tx.podcast.update({
+          where: { id, tenantId },
+          data: {
+            ...(title !== undefined && { title }),
+            ...(description !== undefined && { description }),
+            ...(coverImageUrl !== undefined && { coverImageUrl }),
+            ...(isPublished !== undefined && { isPublished }),
+            ...(publishedAt !== undefined && { publishedAt: publishedAt ? new Date(publishedAt) : null }),
+            categories: categoryIds.length
+              ? {
+                  create: categoryIds.map((categoryId) => ({ categoryId })),
+                }
+              : undefined,
+          },
+        });
+      });
+
+      return podcast as unknown as PodcastModel;
+    }
+
+    // Simple update without category changes
+    const podcast = await this.prisma.podcast.update({
+      where: { id, tenantId },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(coverImageUrl !== undefined && { coverImageUrl }),
+        ...(isPublished !== undefined && { isPublished }),
+        ...(publishedAt !== undefined && { publishedAt: publishedAt ? new Date(publishedAt) : null }),
+      },
+    });
+
+    return podcast as unknown as PodcastModel;
+  }
+
+  async delete(id: string, tenantId: string): Promise<void> {
+    await this.prisma.podcast.delete({
+      where: { id, tenantId },
+    });
   }
 }

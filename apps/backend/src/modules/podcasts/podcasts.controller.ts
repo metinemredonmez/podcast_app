@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { PodcastsService } from './podcasts.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginated-response.decorator';
 import { CreatePodcastDto } from './dto/create-podcast.dto';
+import { UpdatePodcastDto } from './dto/update-podcast.dto';
 import { PodcastResponseDto } from './dto/podcast-response.dto';
 import { PodcastDetailDto } from './dto/podcast-detail.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -66,9 +67,77 @@ export class PodcastsController {
   @Post()
   @Roles(UserRole.CREATOR, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a podcast' })
+  @ApiResponse({ status: 201, description: 'Podcast created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiResponse({ status: 409, description: 'Slug already exists' })
   create(@Body() payload: CreatePodcastDto, @CurrentUser() user: JwtPayload): Promise<PodcastResponseDto> {
     return this.service.create(payload, user);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Update a podcast' })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  @ApiResponse({ status: 200, description: 'Podcast updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not owner or admin' })
+  @ApiResponse({ status: 404, description: 'Podcast not found' })
+  update(
+    @Param('id') id: string,
+    @Body() payload: UpdatePodcastDto,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PodcastResponseDto> {
+    return this.service.update(id, payload, user, tenantId);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a podcast' })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  @ApiResponse({ status: 204, description: 'Podcast deleted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not owner or admin' })
+  @ApiResponse({ status: 404, description: 'Podcast not found' })
+  delete(
+    @Param('id') id: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<void> {
+    return this.service.delete(id, user, tenantId);
+  }
+
+  @Post(':id/publish')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Publish a podcast' })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  @ApiResponse({ status: 200, description: 'Podcast published', type: PodcastResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not owner or admin' })
+  @ApiResponse({ status: 404, description: 'Podcast not found' })
+  publish(
+    @Param('id') id: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PodcastResponseDto> {
+    return this.service.publish(id, user, tenantId);
+  }
+
+  @Post(':id/unpublish')
+  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Unpublish a podcast' })
+  @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
+  @ApiResponse({ status: 200, description: 'Podcast unpublished', type: PodcastResponseDto })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - not owner or admin' })
+  @ApiResponse({ status: 404, description: 'Podcast not found' })
+  unpublish(
+    @Param('id') id: string,
+    @Query('tenantId') tenantId: string | undefined,
+    @CurrentUser() user: JwtPayload,
+  ): Promise<PodcastResponseDto> {
+    return this.service.unpublish(id, user, tenantId);
   }
 }

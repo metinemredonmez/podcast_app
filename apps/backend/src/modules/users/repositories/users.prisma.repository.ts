@@ -61,4 +61,15 @@ export class UsersPrismaRepository implements UsersRepository {
     });
     return updated as unknown as UserModel;
   }
+
+  async updatePassword(id: string, tenantId: string, passwordHash: string): Promise<void> {
+    const existing = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!existing) {
+      throw new Error(`User ${id} not found within tenant ${tenantId}`);
+    }
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+  }
 }

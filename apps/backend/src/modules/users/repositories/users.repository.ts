@@ -44,4 +44,5 @@ export interface UsersRepository {
   findByEmail(email: string): Promise<UserModel | null>;
   create(payload: CreateUserInput): Promise<UserModel>;
   update(id: string, tenantId: string, payload: UpdateUserInput): Promise<UserModel>;
+  updatePassword(id: string, tenantId: string, passwordHash: string): Promise<void>;
 }
