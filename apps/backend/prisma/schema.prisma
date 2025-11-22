@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==================== ENUMS ====================
+
 enum UserRole {
   ADMIN
   EDITOR
@@ -19,6 +21,8 @@ enum NotificationType {
   EPISODE_PUBLISHED
   COMMENT_REPLY
   SYSTEM
+  NEW_FOLLOWER
+  MENTION
 }
 
 enum AnalyticsEventType {
@@ -27,6 +31,8 @@ enum AnalyticsEventType {
   PODCAST_FOLLOW
   PODCAST_SHARE
   STREAM_JOIN
+  EPISODE_DOWNLOAD
+  SEARCH_QUERY
 }
 
 enum StreamStatus {
@@ -35,6 +41,42 @@ enum StreamStatus {
   ENDED
   CANCELLED
 }
+
+enum DownloadStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+enum ScheduleStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum CollaboratorRole {
+  CO_HOST
+  EDITOR
+  CONTRIBUTOR
+  GUEST
+}
+
+enum CollaboratorStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  REMOVED
+}
+
+// ==================== MODELS ====================
 
 model User {
   id               String   @id @default(uuid())
@@ -48,7 +90,7 @@ model User {
   isActive         Boolean  @default(true)
   emailVerified    Boolean  @default(false)
   avatarUrl        String?
-  bio              String?
+  bio              String?  @db.VarChar(500)
   preferences      Json?    @default("{}")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -70,19 +112,26 @@ model User {
   auditLogs           AuditLog[]
   reviews             Review[]
   reviewHelpfulVotes  ReviewHelpfulVote[]
-  moderationReports   ModerationQueue[]     @relation("ModeratedBy")
+  moderationReports   ModerationQueue[]     @relation("ReportedBy")
   moderations         ModerationQueue[]     @relation("Moderator")
   podcastCollabs      PodcastCollaborator[]
 
   @@index([tenantId])
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
 }
 
 model Tenant {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  isActive    Boolean  @default(true)
+  settings    Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   users         User[]
   podcasts      Podcast[]
@@ -96,6 +145,9 @@ model Tenant {
   progresses    ListeningProgress[]
   assets        StorageAsset[]
   sessions      StreamingSession[]
+
+  @@index([slug])
+  @@index([isActive])
 }
 
 model Podcast {
@@ -103,12 +155,14 @@ model Podcast {
   tenantId      String
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ownerId       String
-  owner         User      @relation(fields: [ownerId], references: [id])
+  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   title         String
   slug          String
-  description   String?
+  description   String?   @db.Text
   coverImageUrl String?
+  language      String?   @default("tr")
   isPublished   Boolean   @default(false)
+  isExplicit    Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   publishedAt   DateTime?
@@ -116,7 +170,6 @@ model Podcast {
   episodes      Episode[]
   follows       Follow[]
   categories    PodcastCategory[]
-  comments      Comment[]
   events        AnalyticsEvent[]
   sessions      StreamingSession[]
   favorites     Favorite[]
@@ -126,6 +179,8 @@ model Podcast {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@index([ownerId])
+  @@index([isPublished])
+  @@index([publishedAt])
 }
 
 model Episode {
@@ -135,31 +190,34 @@ model Episode {
   podcastId     String
   podcast       Podcast   @relation(fields: [podcastId], references: [id], onDelete: Cascade)
   hostId        String?
-  host          User?     @relation("EpisodeHosts", fields: [hostId], references: [id])
+  host          User?     @relation("EpisodeHosts", fields: [hostId], references: [id], onDelete: SetNull)
   title         String
   slug          String
-  description   String?
+  description   String?   @db.Text
   duration      Int
   audioUrl      String
   publishedAt   DateTime?
   isPublished   Boolean   @default(false)
   episodeNumber Int?
+  seasonNumber  Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  comments        Comment[]
-  progresses      ListeningProgress[]
-  events          AnalyticsEvent[]
-  sessions        StreamingSession[]
-  favorites       Favorite[]
-  playlistItems   PlaylistEpisode[]
-  downloads       Download[]
+  comments         Comment[]
+  progresses       ListeningProgress[]
+  events           AnalyticsEvent[]
+  sessions         StreamingSession[]
+  favorites        Favorite[]
+  playlistItems    PlaylistEpisode[]
+  downloads        Download[]
   scheduledPublish ScheduledEpisode?
 
   @@unique([podcastId, slug])
   @@index([tenantId])
   @@index([podcastId])
+  @@index([hostId])
   @@index([publishedAt])
+  @@index([isPublished])
 }
 
 model Category {
@@ -168,7 +226,9 @@ model Category {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
   slug        String
-  description String?
+  description String?  @db.VarChar(1000)
+  iconUrl     String?
+  sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -176,6 +236,7 @@ model Category {
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([sortOrder])
 }
 
 model PodcastCategory {
@@ -186,6 +247,7 @@ model PodcastCategory {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([podcastId, categoryId])
+  @@index([categoryId])
 }
 
 model Follow {
@@ -201,28 +263,31 @@ model Follow {
 
   @@unique([userId, podcastId])
   @@index([tenantId])
+  @@index([userId])
+  @@index([podcastId])
 }
 
 model Comment {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   tenantId  String
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   episodeId String
-  episode   Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[] @relation("CommentReplies")
-  content   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  Podcast   Podcast?  @relation(fields: [podcastId], references: [id])
-  podcastId String?
+  content   String   @db.VarChar(5000)
+  isEdited  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([episodeId])
   @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
 }
 
 model Notification {
@@ -232,6 +297,7 @@ model Notification {
   userId    String
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      NotificationType
+  title     String?
   payload   Json
   readAt    DateTime?
   createdAt DateTime         @default(now())
@@ -239,6 +305,9 @@ model Notification {
   @@index([tenantId])
   @@index([userId])
   @@index([type])
+  @@index([readAt])
+  @@index([createdAt])
+  @@index([userId, readAt])
 }
 
 model AnalyticsEvent {
@@ -246,18 +315,24 @@ model AnalyticsEvent {
   tenantId   String
   tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId     String?
-  user       User?              @relation(fields: [userId], references: [id])
+  user       User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   podcastId  String?
-  podcast    Podcast?           @relation(fields: [podcastId], references: [id])
+  podcast    Podcast?           @relation(fields: [podcastId], references: [id], onDelete: SetNull)
   episodeId  String?
-  episode    Episode?           @relation(fields: [episodeId], references: [id])
+  episode    Episode?           @relation(fields: [episodeId], references: [id], onDelete: SetNull)
   eventType  AnalyticsEventType
   metadata   Json?
+  ipAddress  String?
+  userAgent  String?
   occurredAt DateTime           @default(now())
 
   @@index([tenantId])
   @@index([eventType])
   @@index([userId])
+  @@index([podcastId])
+  @@index([episodeId])
+  @@index([occurredAt])
+  @@index([tenantId, eventType, occurredAt])
 }
 
 model ListeningProgress {
@@ -270,11 +345,15 @@ model ListeningProgress {
   episode         Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   progressSeconds Int      @default(0)
   completed       Boolean  @default(false)
+  playCount       Int      @default(1)
+  lastPlayedAt    DateTime @default(now())
   updatedAt       DateTime @updatedAt
   createdAt       DateTime @default(now())
 
   @@unique([userId, episodeId])
   @@index([tenantId])
+  @@index([userId])
+  @@index([lastPlayedAt])
 }
 
 model Hoca {
@@ -282,16 +361,19 @@ model Hoca {
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   name      String
-  bio       String?
+  bio       String?  @db.Text
   avatarUrl String?
   expertise String?
+  socialLinks Json?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
   @@index([userId])
+  @@index([isActive])
 }
 
 model StorageAsset {
@@ -304,67 +386,79 @@ model StorageAsset {
   objectKey String
   url       String
   mimeType  String?
-  sizeBytes Int?
+  sizeBytes BigInt?
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@index([tenantId])
   @@index([ownerId])
+  @@index([ownerType])
+  @@index([bucket])
+  @@unique([bucket, objectKey])
 }
 
 model StreamingSession {
-  id        String       @id @default(uuid())
-  tenantId  String
-  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  hostId    String
-  host      User         @relation("SessionHosts", fields: [hostId], references: [id], onDelete: Cascade)
-  podcastId String?
-  podcast   Podcast?     @relation(fields: [podcastId], references: [id])
-  episodeId String?
-  episode   Episode?     @relation(fields: [episodeId], references: [id])
-  status    StreamStatus @default(SCHEDULED)
-  startedAt DateTime?
-  endedAt   DateTime?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id          String       @id @default(uuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  hostId      String
+  host        User         @relation("SessionHosts", fields: [hostId], references: [id], onDelete: Cascade)
+  podcastId   String?
+  podcast     Podcast?     @relation(fields: [podcastId], references: [id], onDelete: SetNull)
+  episodeId   String?
+  episode     Episode?     @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  title       String?
+  description String?
+  status      StreamStatus @default(SCHEDULED)
+  viewerCount Int          @default(0)
+  startedAt   DateTime?
+  endedAt     DateTime?
+  scheduledAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([tenantId])
   @@index([hostId])
+  @@index([status])
+  @@index([scheduledAt])
 }
 
-// Password Reset Tokens
+// ==================== AUTH TOKENS ====================
+
 model PasswordReset {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
   expiresAt DateTime
-  used      Boolean  @default(false)
+  used      Boolean   @default(false)
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  ipAddress String?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
 }
 
-// Email Verification Tokens
 model EmailVerification {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  verified  Boolean  @default(false)
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  email      String?
+  expiresAt  DateTime
+  verified   Boolean   @default(false)
   verifiedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
 }
 
-// User Favorites
+// ==================== USER CONTENT ====================
+
 model Favorite {
   id        String   @id @default(uuid())
   userId    String
@@ -375,19 +469,19 @@ model Favorite {
   episode   Episode? @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@unique([userId, podcastId, episodeId])
+  @@unique([userId, podcastId], map: "Favorite_user_podcast_unique")
+  @@unique([userId, episodeId], map: "Favorite_user_episode_unique")
   @@index([userId])
   @@index([podcastId])
   @@index([episodeId])
 }
 
-// User Playlists
 model Playlist {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
   isPublic    Boolean  @default(false)
   coverUrl    String?
   createdAt   DateTime @default(now())
@@ -414,17 +508,17 @@ model PlaylistEpisode {
   @@index([order])
 }
 
-// User Downloads
 model Download {
-  id          String   @id @default(uuid())
+  id          String         @id @default(uuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   episodeId   String
-  episode     Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  episode     Episode        @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   downloadUrl String?
   fileSize    BigInt?
-  status      String   @default("pending") // pending, completed, failed
-  createdAt   DateTime @default(now())
+  status      DownloadStatus @default(PENDING)
+  errorMessage String?
+  createdAt   DateTime       @default(now())
   completedAt DateTime?
 
   @@unique([userId, episodeId])
@@ -433,15 +527,17 @@ model Download {
   @@index([status])
 }
 
-// Admin Audit Logs
+// ==================== ADMIN & AUDIT ====================
+
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action      String   // CREATE, UPDATE, DELETE, etc.
-  entityType  String   // User, Podcast, Episode, etc.
+  action      String
+  entityType  String
   entityId    String?
-  changes     Json?    // Before/after data
+  oldValues   Json?
+  newValues   Json?
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
@@ -449,19 +545,22 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([entityType])
+  @@index([entityId])
   @@index([createdAt])
+  @@index([entityType, entityId])
 }
 
-// Ratings & Reviews
+// ==================== REVIEWS & RATINGS ====================
+
 model Review {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   podcastId String
   podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  rating    Int      // 1-5 stars
-  title     String?
-  content   String?
+  rating    Int      @db.SmallInt
+  title     String?  @db.VarChar(200)
+  content   String?  @db.VarChar(5000)
   isPublic  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -472,6 +571,8 @@ model Review {
   @@index([podcastId])
   @@index([userId])
   @@index([rating])
+  @@index([isPublic])
+  @@index([createdAt])
 }
 
 model ReviewHelpfulVote {
@@ -480,7 +581,7 @@ model ReviewHelpfulVote {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewId  String
   review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  isHelpful Boolean  // true = helpful, false = not helpful
+  isHelpful Boolean
   createdAt DateTime @default(now())
 
   @@unique([userId, reviewId])
@@ -488,54 +589,67 @@ model ReviewHelpfulVote {
   @@index([userId])
 }
 
-// Episode Scheduling
+// ==================== SCHEDULING ====================
+
 model ScheduledEpisode {
-  id              String    @id @default(uuid())
-  episodeId       String    @unique
-  episode         Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
-  scheduledAt     DateTime
-  publishedAt     DateTime?
-  status          String    @default("pending") // pending, published, failed
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id          String         @id @default(uuid())
+  episodeId   String         @unique
+  episode     Episode        @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime
+  publishedAt DateTime?
+  status      ScheduleStatus @default(PENDING)
+  retryCount  Int            @default(0)
+  lastError   String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
   @@index([scheduledAt])
   @@index([status])
+  @@index([status, scheduledAt])
 }
 
-// Content Moderation
+// ==================== MODERATION ====================
+
 model ModerationQueue {
-  id          String   @id @default(uuid())
-  entityType  String   // Podcast, Episode, Comment, Review
-  entityId    String
-  reportedBy  String?
-  reportedUser User?   @relation("ModeratedBy", fields: [reportedBy], references: [id], onDelete: SetNull)
-  reason      String?
-  status      String   @default("pending") // pending, approved, rejected
-  moderatedBy String?
-  moderator   User?    @relation("Moderator", fields: [moderatedBy], references: [id], onDelete: SetNull)
-  moderatedAt DateTime?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String           @id @default(uuid())
+  tenantId     String?
+  entityType   String
+  entityId     String
+  reportedBy   String?
+  reportedUser User?            @relation("ReportedBy", fields: [reportedBy], references: [id], onDelete: SetNull)
+  reason       String?          @db.VarChar(1000)
+  status       ModerationStatus @default(PENDING)
+  priority     Int              @default(0)
+  moderatedBy  String?
+  moderator    User?            @relation("Moderator", fields: [moderatedBy], references: [id], onDelete: SetNull)
+  moderatedAt  DateTime?
+  notes        String?          @db.Text
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
+  @@index([tenantId])
   @@index([entityType])
+  @@index([entityId])
   @@index([status])
+  @@index([priority])
   @@index([createdAt])
+  @@index([entityType, status])
 }
 
-// Podcast Collaborators
+// ==================== COLLABORATION ====================
+
 model PodcastCollaborator {
-  id        String   @id @default(uuid())
-  podcastId String
-  podcast   Podcast  @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      String   // co-host, editor, contributor
-  permissions Json?  // { canEdit: true, canPublish: false, ... }
-  invitedAt DateTime @default(now())
-  acceptedAt DateTime?
-  status    String   @default("pending") // pending, accepted, rejected
+  id          String             @id @default(uuid())
+  podcastId   String
+  podcast     Podcast            @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        CollaboratorRole   @default(CONTRIBUTOR)
+  permissions Json?
+  status      CollaboratorStatus @default(PENDING)
+  invitedAt   DateTime           @default(now())
+  acceptedAt  DateTime?
+  invitedBy   String?
 
   @@unique([podcastId, userId])
   @@index([podcastId])

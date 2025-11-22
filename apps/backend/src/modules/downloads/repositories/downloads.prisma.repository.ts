@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Download } from '@prisma/client';
+import { Download, DownloadStatus } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma.service';
 import { IDownloadsRepository } from './downloads.repository';
 import { CreateDownloadDto } from '../dto/create-download.dto';
@@ -66,7 +66,7 @@ export class DownloadsPrismaRepository implements IDownloadsRepository {
       data: {
         userId,
         episodeId: dto.episodeId,
-        status: 'pending',
+        status: DownloadStatus.PENDING,
       },
       include: {
         episode: {
@@ -87,7 +87,7 @@ export class DownloadsPrismaRepository implements IDownloadsRepository {
 
   async updateStatus(
     id: string,
-    status: string,
+    status: DownloadStatus,
     downloadUrl?: string,
     fileSize?: bigint,
   ): Promise<Download> {
@@ -97,7 +97,7 @@ export class DownloadsPrismaRepository implements IDownloadsRepository {
         status,
         downloadUrl,
         fileSize,
-        completedAt: status === 'completed' ? new Date() : undefined,
+        completedAt: status === DownloadStatus.COMPLETED ? new Date() : undefined,
       },
     });
   }

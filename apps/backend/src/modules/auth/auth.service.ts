@@ -1,4 +1,11 @@
-import { ConflictException, Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  Logger,
+  Inject,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -13,7 +20,6 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { AuthResponseDto, AuthTokensDto, AuthUserDto } from './dto/auth-response.dto';
 import { USERS_REPOSITORY, UsersRepository, UserModel } from '../users/repositories/users.repository';
-import { Inject } from '@nestjs/common';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { EmailQueueService } from '../../jobs/queues/email.queue';
@@ -22,6 +28,7 @@ import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly passwordSaltRounds = Number(process.env.BCRYPT_SALT_ROUNDS ?? 12);
 
   constructor(
@@ -49,12 +56,12 @@ export class AuthService {
 
     // Send welcome email (fire and forget - don't block registration)
     this.emailQueue.sendWelcomeEmail(user.email, user.name ?? 'there').catch((error) => {
-      console.error('Failed to queue welcome email:', error);
+      this.logger.error('Failed to queue welcome email', error);
     });
 
     // Send email verification (fire and forget)
     this.createEmailVerificationToken(user.id, user.email, user.name ?? undefined).catch((error) => {
-      console.error('Failed to create verification token:', error);
+      this.logger.error('Failed to create verification token', error);
     });
 
     const tokens = await this.issueTokens(user);
@@ -200,7 +207,7 @@ export class AuthService {
 
     // Send password reset email (fire and forget)
     this.emailQueue.sendPasswordResetEmail(user.email, token, user.name ?? undefined).catch((error) => {
-      console.error('Failed to queue password reset email:', error);
+      this.logger.error('Failed to queue password reset email', error);
     });
 
     return {
@@ -372,7 +379,7 @@ export class AuthService {
 
     // Send verification email (fire and forget)
     this.emailQueue.sendEmailVerificationEmail(user.email, token, user.name ?? undefined).catch((error) => {
-      console.error('Failed to queue verification email:', error);
+      this.logger.error('Failed to queue verification email', error);
     });
 
     return {
@@ -400,7 +407,45 @@ export class AuthService {
 
     // Send email (fire and forget)
     this.emailQueue.sendEmailVerificationEmail(userEmail, token, userName).catch((error) => {
-      console.error('Failed to queue verification email:', error);
+      this.logger.error('Failed to queue verification email', error);
     });
+  }
+
+  /**
+   * Change password for authenticated user
+   * Invalidates all existing sessions by clearing refresh token
+   */
+  async changePassword(
+    userId: string,
+    tenantId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const user = await this.usersRepository.findById(userId, tenantId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify current password
+    const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, this.passwordSaltRounds);
+
+    // Update password and invalidate all sessions
+    await this.usersRepository.update(userId, tenantId, {
+      passwordHash,
+      refreshTokenHash: null, // Force re-login on all devices
+    });
+
+    this.logger.log(`Password changed for user ${userId}`);
+
+    return {
+      success: true,
+      message: 'Password changed successfully. Please login again.',
+    };
   }
 }

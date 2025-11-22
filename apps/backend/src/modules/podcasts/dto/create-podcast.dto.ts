@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsDateString, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreatePodcastDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Defaults to current tenant when omitted' })
@@ -17,10 +27,15 @@ export class CreatePodcastDto {
   @MaxLength(120)
   title!: string;
 
-  @ApiPropertyOptional({ description: 'Custom slug, auto-generated if omitted' })
+  @ApiPropertyOptional({
+    description: 'Custom slug, auto-generated if omitted. Only lowercase letters, numbers, and hyphens.',
+    pattern: '^[a-z0-9-]+$',
+  })
   @IsOptional()
   @IsString()
+  @MinLength(3)
   @MaxLength(160)
+  @Matches(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens' })
   slug?: string;
 
   @ApiPropertyOptional({ maxLength: 500 })

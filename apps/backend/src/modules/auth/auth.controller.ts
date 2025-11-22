@@ -10,6 +10,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyResetTokenDto } from './dto/verify-reset-token.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { ThrottleAuth } from '../../common/decorators/throttle.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -118,5 +119,20 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Bad request' })
   resendVerification(@Body() dto: ResendVerificationDto): Promise<{ success: boolean; message: string }> {
     return this.service.resendVerification(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ThrottleAuth()
+  @Post('change-password')
+  @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Password changed successfully' })
+  @ApiResponse({ status: 400, description: 'Current password is incorrect' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.service.changePassword(user.sub, user.tenantId, dto.currentPassword, dto.newPassword);
   }
 }

@@ -36,6 +36,7 @@ import { SchedulingModule } from './modules/scheduling/scheduling.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
+import { RssModule } from './modules/rss';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -110,6 +111,7 @@ import { validateEnv } from './config/env.validation';
     ModerationModule,
     CollaborationModule,
     RecommendationsModule,
+    RssModule,
   ],
   providers: [
     {

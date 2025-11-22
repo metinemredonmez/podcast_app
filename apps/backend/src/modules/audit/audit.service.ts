@@ -1,4 +1,4 @@
-import { Injectable, ForbiddenException } from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLog, Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma.service';
 import { FilterAuditDto } from './dto/filter-audit.dto';
@@ -18,6 +18,8 @@ export interface CreateAuditLogData {
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private buildWhere(filter: FilterAuditDto): Prisma.AuditLogWhereInput {
@@ -82,7 +84,7 @@ export class AuditService {
     });
 
     if (!log) {
-      throw new Error('Audit log not found');
+      throw new NotFoundException('Audit log not found');
     }
 
     return log as any;
@@ -121,7 +123,7 @@ export class AuditService {
       userAgent,
     }).catch((error) => {
       // Log error but don't fail the request
-      console.error('Failed to create audit log:', error);
+      this.logger.error('Failed to create audit log', error);
     });
   }
 }
