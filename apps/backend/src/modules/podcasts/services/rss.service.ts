@@ -57,7 +57,7 @@ export class RssService {
           title: podcast.title,
           link: `${process.env.FRONTEND_URL || 'https://podcast.app'}/podcasts/${podcast.slug}`,
           description: podcast.description || '',
-          language: 'en', // TODO: Make this dynamic based on podcast settings
+          language: podcast.language || 'en',
 
           // iTunes specific tags
           'itunes:author': podcast.ownerName || 'Podcast App',
@@ -73,7 +73,7 @@ export class RssService {
           'itunes:category': {
             '@_text': podcast.categoryName || 'General',
           },
-          'itunes:explicit': 'no', // TODO: Add explicit flag to podcast model
+          'itunes:explicit': podcast.isExplicit ? 'yes' : 'no',
 
           // Atom self-reference
           'atom:link': {
@@ -102,11 +102,11 @@ export class RssService {
             pubDate: episode.publishedAt ? new Date(episode.publishedAt).toUTCString() : new Date().toUTCString(),
             enclosure: {
               '@_url': episode.audioUrl,
-              '@_type': 'audio/mpeg', // TODO: Detect actual audio type
+              '@_type': episode.audioMimeType || 'audio/mpeg',
               '@_length': episode.fileSize || 0,
             },
             'itunes:duration': this.formatDuration(episode.duration),
-            'itunes:explicit': 'no', // TODO: Add explicit flag to episode model
+            'itunes:explicit': episode.isExplicit ? 'yes' : 'no',
             'itunes:episodeType': 'full', // or 'trailer', 'bonus'
             'itunes:image': {
               '@_href': episode.coverImageUrl || podcast.coverImageUrl || '',

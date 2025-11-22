@@ -196,8 +196,10 @@ model Episode {
   description   String?   @db.Text
   duration      Int
   audioUrl      String
+  audioMimeType String?   @default("audio/mpeg")
   publishedAt   DateTime?
   isPublished   Boolean   @default(false)
+  isExplicit    Boolean   @default(false)
   episodeNumber Int?
   seasonNumber  Int?
   createdAt     DateTime  @default(now())

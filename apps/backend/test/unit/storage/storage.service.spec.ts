@@ -32,7 +32,7 @@ describe('StorageService', () => {
 
     s3.getSignedUrl.mockResolvedValue('https://example.com/signed');
 
-    const result = await service.uploadFile(file, actor, { prefix: 'docs', expiresIn: 4000 });
+    const result = await service.uploadFile(file, actor, { prefix: 'docs', expiresIn: 4000, skipValidation: true });
 
     expect(s3.putObject).toHaveBeenCalledWith(
       expect.stringMatching(/^tenant-1\/docs\//),

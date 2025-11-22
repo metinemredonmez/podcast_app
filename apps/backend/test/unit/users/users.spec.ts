@@ -3,6 +3,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { UsersService } from '../../../src/modules/users/users.service';
 import { USERS_REPOSITORY, UsersRepository } from '../../../src/modules/users/repositories/users.repository';
+import { StorageService } from '../../../src/modules/storage/storage.service';
 import { CursorPaginationDto } from '../../../src/common/dto/cursor-pagination.dto';
 import { UserRole } from '../../../src/common/enums/prisma.enums';
 import { JwtPayload } from '../../../src/modules/auth/interfaces/jwt-payload.interface';
@@ -22,6 +23,10 @@ describe('UsersService', () => {
     findById: jest.fn(),
     update: jest.fn(),
   }) as unknown as jest.Mocked<UsersRepository>;
+
+  const mockStorageService = (): Partial<StorageService> => ({
+    deleteFile: jest.fn(),
+  });
 
   const adminActor: JwtPayload = {
     sub: 'admin-user',
@@ -44,7 +49,11 @@ describe('UsersService', () => {
     ] as any);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [UsersService, { provide: USERS_REPOSITORY, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: USERS_REPOSITORY, useValue: repo },
+        { provide: StorageService, useValue: mockStorageService() },
+      ],
     }).compile();
 
     const service = moduleRef.get(UsersService);
@@ -70,7 +79,11 @@ describe('UsersService', () => {
     } as any);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [UsersService, { provide: USERS_REPOSITORY, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: USERS_REPOSITORY, useValue: repo },
+        { provide: StorageService, useValue: mockStorageService() },
+      ],
     }).compile();
 
     const service = moduleRef.get(UsersService);
@@ -87,7 +100,11 @@ describe('UsersService', () => {
     repo.findByEmail.mockResolvedValue({ id: 'existing' } as any);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [UsersService, { provide: USERS_REPOSITORY, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: USERS_REPOSITORY, useValue: repo },
+        { provide: StorageService, useValue: mockStorageService() },
+      ],
     }).compile();
 
     const service = moduleRef.get(UsersService);
@@ -103,7 +120,11 @@ describe('UsersService', () => {
     repo.update.mockResolvedValue({ id: 'u1', tenantId: 't1', role: UserRole.ADMIN } as any);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [UsersService, { provide: USERS_REPOSITORY, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: USERS_REPOSITORY, useValue: repo },
+        { provide: StorageService, useValue: mockStorageService() },
+      ],
     }).compile();
 
     const service = moduleRef.get(UsersService);
@@ -118,7 +139,11 @@ describe('UsersService', () => {
     repo.findById.mockResolvedValue(null);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [UsersService, { provide: USERS_REPOSITORY, useValue: repo }],
+      providers: [
+        UsersService,
+        { provide: USERS_REPOSITORY, useValue: repo },
+        { provide: StorageService, useValue: mockStorageService() },
+      ],
     }).compile();
 
     const service = moduleRef.get(UsersService);

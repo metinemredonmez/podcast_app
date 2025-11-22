@@ -4,6 +4,8 @@ import { AuthService } from '../../../src/modules/auth/auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { USERS_REPOSITORY, UsersRepository } from '../../../src/modules/users/repositories/users.repository';
+import { EmailQueueService } from '../../../src/jobs/queues/email.queue';
+import { PrismaService } from '../../../src/infra/prisma.service';
 import { Test } from '@nestjs/testing';
 import { UserRole } from '../../../src/common/enums/prisma.enums';
 import * as bcrypt from 'bcrypt';
@@ -42,6 +44,17 @@ describe('AuthService', () => {
     }),
   });
 
+  const mockEmailQueueService = (): Partial<EmailQueueService> => ({
+    sendWelcomeEmail: jest.fn().mockResolvedValue(undefined),
+    sendPasswordResetEmail: jest.fn().mockResolvedValue(undefined),
+    sendVerificationEmail: jest.fn().mockResolvedValue(undefined),
+  });
+
+  const mockPrismaService = (): Partial<PrismaService> => ({
+    passwordReset: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() } as any,
+    emailVerification: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() } as any,
+  });
+
   beforeEach(() => {
     jest.resetModules();
     jest.resetAllMocks();
@@ -68,6 +81,8 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService() },
         { provide: ConfigService, useValue: mockConfigService() },
         { provide: USERS_REPOSITORY, useValue: usersRepo },
+        { provide: EmailQueueService, useValue: mockEmailQueueService() },
+        { provide: PrismaService, useValue: mockPrismaService() },
       ],
     }).compile();
 
@@ -96,6 +111,8 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService() },
         { provide: ConfigService, useValue: mockConfigService() },
         { provide: USERS_REPOSITORY, useValue: usersRepo },
+        { provide: EmailQueueService, useValue: mockEmailQueueService() },
+        { provide: PrismaService, useValue: mockPrismaService() },
       ],
     }).compile();
 
@@ -123,6 +140,8 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService() },
         { provide: ConfigService, useValue: mockConfigService() },
         { provide: USERS_REPOSITORY, useValue: usersRepo },
+        { provide: EmailQueueService, useValue: mockEmailQueueService() },
+        { provide: PrismaService, useValue: mockPrismaService() },
       ],
     }).compile();
 

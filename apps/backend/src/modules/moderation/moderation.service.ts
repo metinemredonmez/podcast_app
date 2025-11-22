@@ -139,4 +139,12 @@ export class ModerationService {
       total: pending + approved + rejected + escalated,
     };
   }
+
+  async delete(id: string): Promise<void> {
+    const item = await this.prisma.moderationQueue.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException('Moderation item not found');
+    }
+    await this.prisma.moderationQueue.delete({ where: { id } });
+  }
 }

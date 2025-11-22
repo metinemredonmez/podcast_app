@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MetricsService } from '../../../src/common/metrics/metrics.service';
+import { getToken } from '@willsoto/nestjs-prometheus';
 
 describe('MetricsService', () => {
   let service: MetricsService;
@@ -24,31 +25,31 @@ describe('MetricsService', () => {
       providers: [
         MetricsService,
         {
-          provide: 'http_requests_total',
+          provide: getToken('http_requests_total'),
           useValue: mockCounter,
         },
         {
-          provide: 'http_request_duration_seconds',
+          provide: getToken('http_request_duration_seconds'),
           useValue: mockHistogram,
         },
         {
-          provide: 'active_users_total',
+          provide: getToken('active_users_total'),
           useValue: mockGauge,
         },
         {
-          provide: 'podcast_plays_total',
+          provide: getToken('podcast_plays_total'),
           useValue: mockCounter,
         },
         {
-          provide: 'episode_plays_total',
+          provide: getToken('episode_plays_total'),
           useValue: mockCounter,
         },
         {
-          provide: 'user_registrations_total',
+          provide: getToken('user_registrations_total'),
           useValue: mockCounter,
         },
         {
-          provide: 'auth_attempts_total',
+          provide: getToken('auth_attempts_total'),
           useValue: mockCounter,
         },
       ],
