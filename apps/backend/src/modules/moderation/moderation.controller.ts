@@ -21,7 +21,7 @@ export class ModerationController {
   @Get('queue')
   @Roles(UserRole.ADMIN, UserRole.EDITOR)
   @ApiOperation({ summary: 'Get moderation queue' })
-  @ApiQuery({ name: 'status', required: false, enum: ModerationStatus })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'] })
   @ApiResponse({ status: 200, description: 'Moderation queue items' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Editor only' })

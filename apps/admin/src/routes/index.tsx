@@ -9,6 +9,7 @@ import EpisodesPage from '../pages/episodes/EpisodesPage';
 import UsersPage from '../pages/users/UsersPage';
 import HocasPage from '../pages/hocas/HocasPage';
 import AnalyticsPage from '../pages/analytics/AnalyticsPage';
+import CategoriesPage from '../pages/categories/CategoriesPage';
 import { ProtectedRoute } from './ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: '/podcasts/new', element: <CreatePodcastPage /> },
           { path: '/podcasts/:id', element: <EditPodcastPage /> },
           { path: '/episodes', element: <EpisodesPage /> },
+          { path: '/categories', element: <CategoriesPage /> },
           { path: '/users', element: <UsersPage /> },
           { path: '/hocas', element: <HocasPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },

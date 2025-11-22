@@ -7,7 +7,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangePasswordDto } from '../auth/dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';

@@ -65,13 +65,14 @@ export class StorageController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: JwtPayload,
     @Query('prefix') prefix?: string,
-    @Query('fileType') fileType?: FileCategory,
+    @Query('fileType') fileType?: string,
     @Query('expiresIn', new DefaultValuePipe(3600), ParseIntPipe) expiresIn?: number,
   ): Promise<UploadResponseDto> {
+    const expectedFileType = fileType ? (fileType as FileCategory) : undefined;
     return this.service.uploadFile(file, { userId: user.sub, tenantId: user.tenantId, role: user.role }, {
       prefix,
       expiresIn,
-      expectedFileType: fileType,
+      expectedFileType,
     });
   }
 

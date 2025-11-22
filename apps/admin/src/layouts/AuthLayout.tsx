@@ -1,9 +1,27 @@
-import { Outlet } from 'react-router-dom';
+import React from 'react';
+import { Outlet, Navigate } from 'react-router-dom';
+import { Box } from '@mui/material';
+import { useAuth } from '../hooks/useAuth';
 
-export const AuthLayout = () => {
+export const AuthLayout: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+
+  // If already authenticated, redirect to dashboard
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
-    <div className="auth-layout">
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Outlet />
-    </div>
+    </Box>
   );
 };
+
+export default AuthLayout;

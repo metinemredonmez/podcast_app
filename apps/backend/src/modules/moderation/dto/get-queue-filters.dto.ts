@@ -1,13 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
-import { ModerationStatus } from '@prisma/client';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+import { ModerationStatus } from '../../../common/enums/prisma.enums';
 
 export class GetQueueFiltersDto {
   @ApiPropertyOptional({
-    enum: ModerationStatus,
+    enum: ['PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'],
     description: 'Filter by status',
   })
   @IsOptional()
-  @IsEnum(ModerationStatus)
+  @IsString()
+  @IsIn(['PENDING', 'APPROVED', 'REJECTED', 'ESCALATED'])
   status?: ModerationStatus;
 }

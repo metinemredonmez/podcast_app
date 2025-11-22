@@ -20,10 +20,10 @@ export class SchedulingController {
 
   @Get()
   @ApiOperation({ summary: 'Get all scheduled episodes' })
-  @ApiQuery({ name: 'status', required: false, enum: ScheduleStatus })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING', 'PUBLISHED', 'FAILED', 'CANCELLED'] })
   @ApiResponse({ status: 200, description: 'List of scheduled episodes' })
-  getScheduled(@Query('status') status?: ScheduleStatus) {
-    return this.service.getScheduled(status);
+  getScheduled(@Query('status') status?: string) {
+    return this.service.getScheduled(status as ScheduleStatus | undefined);
   }
 
   @Get(':id')
