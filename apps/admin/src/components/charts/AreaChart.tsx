@@ -4,14 +4,14 @@ import { ApexOptions } from 'apexcharts';
 import { useTheme } from '@mui/material/styles';
 import { Box, Card, CardContent, Typography } from '@mui/material';
 
-interface LineChartProps {
+interface AreaChartProps {
   title?: string;
   data: { timestamp: string; value: number }[];
   height?: number;
   color?: string;
 }
 
-export const LineChart: React.FC<LineChartProps> = ({ title, data, height = 300, color }) => {
+export const AreaChart: React.FC<AreaChartProps> = ({ title, data, height = 300, color }) => {
   const theme = useTheme();
 
   const series = [
@@ -23,7 +23,7 @@ export const LineChart: React.FC<LineChartProps> = ({ title, data, height = 300,
 
   const options: ApexOptions = {
     chart: {
-      type: 'line',
+      type: 'area',
       fontFamily: theme.typography.fontFamily,
       toolbar: {
         show: false,
@@ -34,7 +34,16 @@ export const LineChart: React.FC<LineChartProps> = ({ title, data, height = 300,
     },
     stroke: {
       curve: 'smooth',
-      width: 3,
+      width: 2,
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.45,
+        opacityTo: 0.05,
+        stops: [0, 100],
+      },
     },
     colors: [color || theme.palette.primary.main],
     xaxis: {
@@ -80,7 +89,7 @@ export const LineChart: React.FC<LineChartProps> = ({ title, data, height = 300,
           </Typography>
         )}
         <Box>
-          <Chart options={options} series={series} type="line" height={height} />
+          <Chart options={options} series={series} type="area" height={height} />
         </Box>
       </CardContent>
     </Card>

@@ -34,6 +34,9 @@ import {
   IconUserShield,
 } from '@tabler/icons-react';
 import { userService, User } from '../../api/services/user.service';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
+import { BulkActions, commonBulkActions } from '../../components/table';
+import { Checkbox } from '@mui/material';
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -46,6 +49,12 @@ const UsersPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Bulk selection
+  const bulkSelection = useBulkSelection({
+    currentPageIds: users.map((u) => u.id),
+    totalCount: total,
+  });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -107,6 +116,26 @@ const UsersPage: React.FC = () => {
       }
     }
     handleMenuClose();
+  };
+
+  const handleBulkAction = async (actionId: string) => {
+    const ids = Array.from(bulkSelection.selectedIds);
+
+    if (actionId === 'ban') {
+      await Promise.all(ids.map((id) => userService.ban(id)));
+      fetchUsers();
+    } else if (actionId === 'unban') {
+      await Promise.all(ids.map((id) => userService.unban(id)));
+      fetchUsers();
+    } else if (actionId === 'export') {
+      console.log('Exporting users:', ids);
+    } else if (actionId.startsWith('role-')) {
+      const role = actionId.replace('role-', '');
+      await Promise.all(ids.map((id) => userService.changeRole(id, role)));
+      fetchUsers();
+    } else if (actionId === 'notification') {
+      console.log('Sending notification to users:', ids);
+    }
   };
 
   const getRoleColor = (role: string) => {
@@ -188,6 +217,24 @@ const UsersPage: React.FC = () => {
             </FormControl>
           </Stack>
 
+          {/* Bulk Actions */}
+          <BulkActions
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={total}
+            isAllPagesSelected={bulkSelection.isAllPagesSelected}
+            onClearSelection={bulkSelection.clearSelection}
+            onSelectAllPages={bulkSelection.toggleSelectAllPages}
+            actions={[
+              { id: 'ban', label: 'Ban Users', icon: <IconBan size={18} />, color: 'error', requiresConfirmation: true, confirmationMessage: 'Are you sure you want to ban the selected users?' },
+              { id: 'unban', label: 'Unban Users', icon: <IconCheck size={18} />, color: 'success' },
+              { id: 'role-admin', label: 'Make Admin', icon: <IconUserShield size={18} />, color: 'error', requiresConfirmation: true },
+              { id: 'role-creator', label: 'Make Creator', icon: <IconUserShield size={18} />, color: 'warning' },
+              commonBulkActions.export(),
+              commonBulkActions.sendNotification(),
+            ]}
+            onAction={handleBulkAction}
+          />
+
           {/* Table */}
           {loading ? (
             <Box display="flex" justifyContent="center" py={4}>
@@ -199,6 +246,13 @@ const UsersPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={bulkSelection.isAllSelected}
+                          indeterminate={bulkSelection.selectedCount > 0 && !bulkSelection.isAllSelected}
+                          onChange={bulkSelection.toggleSelectAll}
+                        />
+                      </TableCell>
                       <TableCell>User</TableCell>
                       <TableCell>Role</TableCell>
                       <TableCell>Podcasts</TableCell>
@@ -210,7 +264,7 @@ const UsersPage: React.FC = () => {
                   <TableBody>
                     {users.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">
+                        <TableCell colSpan={7} align="center">
                           <Typography color="text.secondary" py={4}>
                             No users found
                           </Typography>
@@ -218,7 +272,13 @@ const UsersPage: React.FC = () => {
                       </TableRow>
                     ) : (
                       users.map((user) => (
-                        <TableRow key={user.id} hover>
+                        <TableRow key={user.id} hover selected={bulkSelection.isSelected(user.id)}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={bulkSelection.isSelected(user.id)}
+                              onChange={() => bulkSelection.toggleSelectItem(user.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={2} alignItems="center">
                               <Avatar src={user.avatar} sx={{ width: 40, height: 40 }}>

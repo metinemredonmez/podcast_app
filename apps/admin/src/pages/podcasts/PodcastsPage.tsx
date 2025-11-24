@@ -23,6 +23,7 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  Checkbox,
 } from '@mui/material';
 import {
   IconSearch,
@@ -31,8 +32,15 @@ import {
   IconEdit,
   IconTrash,
   IconEye,
+  IconFilter,
 } from '@tabler/icons-react';
 import { podcastService, Podcast } from '../../api/services/podcast.service';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
+import { BulkActions, commonBulkActions } from '../../components/table';
+import { ExportDialog, ExportColumn } from '../../components/export';
+import { IconDownload } from '@tabler/icons-react';
+import { useFilters, FilterDefinition } from '../../hooks/useFilters';
+import { FilterSidebar, FilterChips } from '../../components/filters';
 
 const PodcastsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +53,81 @@ const PodcastsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
+
+  // Bulk selection
+  const bulkSelection = useBulkSelection({
+    currentPageIds: podcasts.map((p) => p.id),
+    totalCount: total,
+  });
+
+  // Export
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportData, setExportData] = useState<Podcast[]>([]);
+
+  const exportColumns: ExportColumn<Podcast>[] = [
+    { key: 'title', label: 'Title' },
+    { key: 'author', label: 'Author' },
+    { key: 'category', label: 'Category' },
+    { key: 'episodeCount', label: 'Episodes' },
+    { key: 'totalPlays', label: 'Total Plays' },
+    { key: 'status', label: 'Status' },
+    { key: 'createdAt', label: 'Created At' },
+  ];
+
+  // Filters
+  const [filterSidebarOpen, setFilterSidebarOpen] = useState(false);
+
+  const filterDefinitions: FilterDefinition[] = [
+    {
+      key: 'category',
+      label: 'Category',
+      type: 'multiselect',
+      options: [
+        { value: 'technology', label: 'Technology' },
+        { value: 'business', label: 'Business' },
+        { value: 'education', label: 'Education' },
+        { value: 'health', label: 'Health & Fitness' },
+        { value: 'entertainment', label: 'Entertainment' },
+        { value: 'news', label: 'News & Politics' },
+      ],
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      options: [
+        { value: 'published', label: 'Published' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'archived', label: 'Archived' },
+      ],
+    },
+    {
+      key: 'createdAt',
+      label: 'Created Date',
+      type: 'daterange',
+    },
+    {
+      key: 'minEpisodes',
+      label: 'Minimum Episodes',
+      type: 'number',
+      placeholder: 'e.g. 10',
+    },
+  ];
+
+  const {
+    filters,
+    setFilter,
+    removeFilter,
+    resetFilters,
+    activeFilterCount,
+    savedFilters,
+    saveCurrentFilters,
+    loadSavedFilter,
+    deleteSavedFilter,
+  } = useFilters({
+    definitions: filterDefinitions,
+    storageKey: 'podcasts-filters',
+  });
 
   const fetchPodcasts = async () => {
     setLoading(true);
@@ -98,6 +181,30 @@ const PodcastsPage: React.FC = () => {
     handleMenuClose();
   };
 
+  const handleBulkAction = async (actionId: string) => {
+    const ids = Array.from(bulkSelection.selectedIds);
+
+    if (actionId === 'delete') {
+      // Delete selected podcasts
+      await Promise.all(ids.map((id) => podcastService.delete(id)));
+      fetchPodcasts();
+    } else if (actionId === 'export') {
+      // Export selected podcasts
+      const selectedPodcasts = podcasts.filter((p) => ids.includes(p.id));
+      setExportData(selectedPodcasts);
+      setExportDialogOpen(true);
+    } else if (actionId.startsWith('status-')) {
+      const status = actionId.replace('status-', '');
+      // Update status for selected podcasts (implement status update)
+      console.log('Updating status to:', status, 'for:', ids);
+    }
+  };
+
+  const handleExportAll = () => {
+    setExportData(podcasts);
+    setExportDialogOpen(true);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'published':
@@ -123,13 +230,17 @@ const PodcastsPage: React.FC = () => {
             Manage all podcasts in the platform
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<IconPlus size={20} />}
-          onClick={() => navigate('/podcasts/new')}
-        >
-          Add Podcast
-        </Button>
+        <Stack direction="row" spacing={2}>
+          <Button variant="outlined" startIcon={<IconFilter size={20} />} onClick={() => setFilterSidebarOpen(true)}>
+            Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+          </Button>
+          <Button variant="outlined" startIcon={<IconDownload size={20} />} onClick={handleExportAll}>
+            Export
+          </Button>
+          <Button variant="contained" startIcon={<IconPlus size={20} />} onClick={() => navigate('/podcasts/new')}>
+            Add Podcast
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Error Alert */}
@@ -160,6 +271,31 @@ const PodcastsPage: React.FC = () => {
             />
           </Stack>
 
+          {/* Filter Chips */}
+          <FilterChips
+            filters={filters}
+            definitions={filterDefinitions}
+            onRemoveFilter={removeFilter}
+            onClearAll={resetFilters}
+          />
+
+          {/* Bulk Actions */}
+          <BulkActions
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={total}
+            isAllPagesSelected={bulkSelection.isAllPagesSelected}
+            onClearSelection={bulkSelection.clearSelection}
+            onSelectAllPages={bulkSelection.toggleSelectAllPages}
+            actions={[
+              commonBulkActions.delete('Are you sure you want to delete the selected podcasts?'),
+              commonBulkActions.export(),
+              commonBulkActions.changeStatus('published'),
+              commonBulkActions.changeStatus('draft'),
+              commonBulkActions.changeStatus('archived'),
+            ]}
+            onAction={handleBulkAction}
+          />
+
           {/* Table */}
           {loading ? (
             <Box display="flex" justifyContent="center" py={4}>
@@ -171,6 +307,13 @@ const PodcastsPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={bulkSelection.isAllSelected}
+                          indeterminate={bulkSelection.selectedCount > 0 && !bulkSelection.isAllSelected}
+                          onChange={bulkSelection.toggleSelectAll}
+                        />
+                      </TableCell>
                       <TableCell>Podcast</TableCell>
                       <TableCell>Category</TableCell>
                       <TableCell>Episodes</TableCell>
@@ -182,7 +325,7 @@ const PodcastsPage: React.FC = () => {
                   <TableBody>
                     {podcasts.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">
+                        <TableCell colSpan={7} align="center">
                           <Typography color="text.secondary" py={4}>
                             No podcasts found
                           </Typography>
@@ -190,7 +333,13 @@ const PodcastsPage: React.FC = () => {
                       </TableRow>
                     ) : (
                       podcasts.map((podcast) => (
-                        <TableRow key={podcast.id} hover>
+                        <TableRow key={podcast.id} hover selected={bulkSelection.isSelected(podcast.id)}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={bulkSelection.isSelected(podcast.id)}
+                              onChange={() => bulkSelection.toggleSelectItem(podcast.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={2} alignItems="center">
                               <Avatar
@@ -273,6 +422,30 @@ const PodcastsPage: React.FC = () => {
           Delete
         </MenuItem>
       </Menu>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        data={exportData}
+        filename="podcasts"
+        title="Podcasts Export"
+        columns={exportColumns}
+      />
+
+      {/* Filter Sidebar */}
+      <FilterSidebar
+        open={filterSidebarOpen}
+        onClose={() => setFilterSidebarOpen(false)}
+        filters={filters}
+        definitions={filterDefinitions}
+        onFilterChange={setFilter}
+        onReset={resetFilters}
+        savedFilters={savedFilters}
+        onSaveFilter={saveCurrentFilters}
+        onLoadFilter={loadSavedFilter}
+        onDeleteFilter={deleteSavedFilter}
+      />
     </Box>
   );
 };

@@ -20,7 +20,7 @@ enum UserRole {
 enum NotificationType {
   EPISODE_PUBLISHED
   COMMENT_REPLY
-  SYSTEMa
+  SYSTEM
   NEW_FOLLOWER
   MENTION
 }
@@ -82,7 +82,7 @@ model User {
   id               String   @id @default(uuid())
   tenantId         String
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email            String   @unique
+  email            String
   passwordHash     String
   refreshTokenHash String?
   name             String?
@@ -95,27 +95,30 @@ model User {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  podcasts           Podcast[]
-  episodes           Episode[]             @relation("EpisodeHosts")
-  follows            Follow[]
-  comments           Comment[]
-  notifications      Notification[]
-  events             AnalyticsEvent[]
-  progresses         ListeningProgress[]
-  streamingSessions  StreamingSession[]    @relation("SessionHosts")
-  hocas              Hoca[]
-  passwordResets     PasswordReset[]
-  emailVerifications EmailVerification[]
-  favorites          Favorite[]
-  playlists          Playlist[]
-  downloads          Download[]
-  auditLogs          AuditLog[]
-  reviews            Review[]
-  reviewHelpfulVotes ReviewHelpfulVote[]
-  moderationReports  ModerationQueue[]     @relation("ReportedBy")
-  moderations        ModerationQueue[]     @relation("Moderator")
-  podcastCollabs     PodcastCollaborator[]
+  ownedPodcasts         Podcast[]             @relation("PodcastOwner")
+  episodes              Episode[]             @relation("EpisodeHosts")
+  follows               Follow[]
+  comments              Comment[]
+  notifications         Notification[]
+  events                AnalyticsEvent[]
+  progresses            ListeningProgress[]
+  streamingSessions     StreamingSession[]    @relation("SessionHosts")
+  hocas                 Hoca[]
+  passwordResets        PasswordReset[]
+  emailVerifications    EmailVerification[]
+  favorites             Favorite[]
+  playlists             Playlist[]
+  downloads             Download[]
+  auditLogs             AuditLog[]
+  reviews               Review[]
+  reviewHelpfulVotes    ReviewHelpfulVote[]
+  moderationReports     ModerationQueue[]     @relation("ReportedBy")
+  moderations           ModerationQueue[]     @relation("Moderator")
+  podcastCollabs        PodcastCollaborator[] @relation("CollaboratorUser")
+  invitedCollaborations PodcastCollaborator[] @relation("CollaboratorInviter")
+  storageAssets         StorageAsset[]
 
+  @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
   @@index([role])
@@ -133,18 +136,27 @@ model Tenant {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users         User[]
-  podcasts      Podcast[]
-  categories    Category[]
-  hocas         Hoca[]
-  notifications Notification[]
-  events        AnalyticsEvent[]
-  episodes      Episode[]
-  follows       Follow[]
-  comments      Comment[]
-  progresses    ListeningProgress[]
-  assets        StorageAsset[]
-  sessions      StreamingSession[]
+  users              User[]
+  podcasts           Podcast[]
+  categories         Category[]
+  hocas              Hoca[]
+  notifications      Notification[]
+  events             AnalyticsEvent[]
+  episodes           Episode[]
+  follows            Follow[]
+  comments           Comment[]
+  progresses         ListeningProgress[]
+  assets             StorageAsset[]
+  sessions           StreamingSession[]
+  favorites          Favorite[]
+  playlists          Playlist[]
+  playlistEpisodes   PlaylistEpisode[]
+  downloads          Download[]
+  reviews            Review[]
+  reviewHelpfulVotes ReviewHelpfulVote[]
+  auditLogs          AuditLog[]
+  scheduledEpisodes  ScheduledEpisode[]
+  moderations        ModerationQueue[]
 
   @@index([slug])
   @@index([isActive])
@@ -155,7 +167,9 @@ model Podcast {
   tenantId      String
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ownerId       String
-  owner         User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner         User      @relation("PodcastOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  hocaId        String?
+  hoca          Hoca?     @relation(fields: [hocaId], references: [id], onDelete: SetNull)
   title         String
   slug          String
   description   String?   @db.Text
@@ -167,20 +181,25 @@ model Podcast {
   updatedAt     DateTime  @updatedAt
   publishedAt   DateTime?
 
-  episodes      Episode[]
-  follows       Follow[]
-  categories    PodcastCategory[]
-  events        AnalyticsEvent[]
-  sessions      StreamingSession[]
-  favorites     Favorite[]
-  reviews       Review[]
-  collaborators PodcastCollaborator[]
+  episodes         Episode[]
+  follows          Follow[]
+  categories       PodcastCategory[]
+  events           AnalyticsEvent[]
+  sessions         StreamingSession[]
+  favorites        Favorite[]
+  reviews          Review[]
+  collaborators    PodcastCollaborator[]
+  storageAssets    StorageAsset[]
+  moderationQueues ModerationQueue[]
+  notifications    Notification[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@index([ownerId])
+  @@index([hocaId])
   @@index([isPublished])
   @@index([publishedAt])
+  @@index([tenantId, isPublished])
 }
 
 model Episode {
@@ -213,6 +232,9 @@ model Episode {
   playlistItems    PlaylistEpisode[]
   downloads        Download[]
   scheduledPublish ScheduledEpisode?
+  storageAssets    StorageAsset[]
+  moderationQueues ModerationQueue[]
+  notifications    Notification[]
 
   @@unique([podcastId, slug])
   @@index([tenantId])
@@ -220,6 +242,8 @@ model Episode {
   @@index([hostId])
   @@index([publishedAt])
   @@index([isPublished])
+  @@index([tenantId, isPublished])
+  @@index([podcastId, isPublished])
 }
 
 model Category {
@@ -250,6 +274,7 @@ model PodcastCategory {
 
   @@id([podcastId, categoryId])
   @@index([categoryId])
+  @@index([podcastId])
 }
 
 model Follow {
@@ -267,6 +292,8 @@ model Follow {
   @@index([tenantId])
   @@index([userId])
   @@index([podcastId])
+  @@index([tenantId, userId])
+  @@index([tenantId, podcastId])
 }
 
 model Comment {
@@ -278,18 +305,21 @@ model Comment {
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
   replies   Comment[] @relation("CommentReplies")
   content   String    @db.VarChar(5000)
   isEdited  Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  moderationQueues ModerationQueue[]
+
   @@index([tenantId])
   @@index([episodeId])
   @@index([userId])
   @@index([parentId])
   @@index([createdAt])
+  @@index([tenantId, episodeId, createdAt])
 }
 
 model Notification {
@@ -303,6 +333,10 @@ model Notification {
   payload   Json
   readAt    DateTime?
   createdAt DateTime         @default(now())
+  podcastId String?
+  podcast   Podcast?         @relation(fields: [podcastId], references: [id], onDelete: SetNull)
+  episodeId String?
+  episode   Episode?         @relation(fields: [episodeId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([userId])
@@ -310,6 +344,8 @@ model Notification {
   @@index([readAt])
   @@index([createdAt])
   @@index([userId, readAt])
+  @@index([podcastId])
+  @@index([episodeId])
 }
 
 model AnalyticsEvent {
@@ -356,13 +392,15 @@ model ListeningProgress {
   @@index([tenantId])
   @@index([userId])
   @@index([lastPlayedAt])
+  @@index([tenantId, userId, lastPlayedAt])
+  @@index([tenantId, episodeId])
 }
 
 model Hoca {
   id          String   @id @default(uuid())
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId      String?
+  userId      String?  @unique
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   name        String
   bio         String?  @db.Text
@@ -373,6 +411,9 @@ model Hoca {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  podcasts      Podcast[]
+  storageAssets StorageAsset[]
+
   @@index([tenantId])
   @@index([userId])
   @@index([isActive])
@@ -382,8 +423,14 @@ model StorageAsset {
   id        String   @id @default(uuid())
   tenantId  String
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ownerId   String?
-  ownerType String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  podcastId String?
+  podcast   Podcast? @relation(fields: [podcastId], references: [id], onDelete: SetNull)
+  episodeId String?
+  episode   Episode? @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  hocaId    String?
+  hoca      Hoca?    @relation(fields: [hocaId], references: [id], onDelete: SetNull)
   bucket    String
   objectKey String
   url       String
@@ -394,8 +441,10 @@ model StorageAsset {
 
   @@unique([bucket, objectKey])
   @@index([tenantId])
-  @@index([ownerId])
-  @@index([ownerType])
+  @@index([userId])
+  @@index([podcastId])
+  @@index([episodeId])
+  @@index([hocaId])
   @@index([bucket])
 }
 
@@ -463,6 +512,8 @@ model EmailVerification {
 
 model Favorite {
   id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   podcastId String?
@@ -473,13 +524,17 @@ model Favorite {
 
   @@unique([userId, podcastId], map: "Favorite_user_podcast_unique")
   @@unique([userId, episodeId], map: "Favorite_user_episode_unique")
+  @@index([tenantId])
   @@index([userId])
   @@index([podcastId])
   @@index([episodeId])
+  @@index([tenantId, userId, createdAt])
 }
 
 model Playlist {
   id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String   @db.VarChar(100)
@@ -491,12 +546,15 @@ model Playlist {
 
   episodes PlaylistEpisode[]
 
+  @@index([tenantId])
   @@index([userId])
   @@index([isPublic])
 }
 
 model PlaylistEpisode {
   id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   playlistId String
   playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   episodeId  String
@@ -505,6 +563,7 @@ model PlaylistEpisode {
   addedAt    DateTime @default(now())
 
   @@unique([playlistId, episodeId])
+  @@index([tenantId])
   @@index([playlistId])
   @@index([episodeId])
   @@index([order])
@@ -512,6 +571,8 @@ model PlaylistEpisode {
 
 model Download {
   id           String         @id @default(uuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId       String
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   episodeId    String
@@ -524,15 +585,19 @@ model Download {
   completedAt  DateTime?
 
   @@unique([userId, episodeId])
+  @@index([tenantId])
   @@index([userId])
   @@index([episodeId])
   @@index([status])
+  @@index([tenantId, userId, status])
 }
 
 // ==================== ADMIN & AUDIT ====================
 
 model AuditLog {
   id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action     String
@@ -544,6 +609,7 @@ model AuditLog {
   userAgent  String?
   createdAt  DateTime @default(now())
 
+  @@index([tenantId])
   @@index([userId])
   @@index([action])
   @@index([entityType])
@@ -553,9 +619,12 @@ model AuditLog {
 }
 
 // ==================== REVIEWS & RATINGS ====================
+// NOTE: Review.rating must be between 1-5 (validate in application layer)
 
 model Review {
   id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   podcastId String
@@ -570,15 +639,19 @@ model Review {
   helpfulVotes ReviewHelpfulVote[]
 
   @@unique([userId, podcastId])
+  @@index([tenantId])
   @@index([podcastId])
   @@index([userId])
   @@index([rating])
   @@index([isPublic])
   @@index([createdAt])
+  @@index([tenantId, podcastId, rating])
 }
 
 model ReviewHelpfulVote {
   id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewId  String
@@ -587,14 +660,18 @@ model ReviewHelpfulVote {
   createdAt DateTime @default(now())
 
   @@unique([userId, reviewId])
+  @@index([tenantId])
   @@index([reviewId])
   @@index([userId])
 }
 
 // ==================== SCHEDULING ====================
+// NOTE: ScheduledEpisode.retryCount should not exceed 5 (validate in application layer)
 
 model ScheduledEpisode {
   id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   episodeId   String         @unique
   episode     Episode        @relation(fields: [episodeId], references: [id], onDelete: Cascade)
   scheduledAt DateTime
@@ -605,6 +682,7 @@ model ScheduledEpisode {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
+  @@index([tenantId])
   @@index([scheduledAt])
   @@index([status])
   @@index([status, scheduledAt])
@@ -614,7 +692,8 @@ model ScheduledEpisode {
 
 model ModerationQueue {
   id           String           @id @default(uuid())
-  tenantId     String?
+  tenantId     String
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   entityType   String
   entityId     String
   reportedBy   String?
@@ -628,6 +707,12 @@ model ModerationQueue {
   notes        String?          @db.Text
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+  podcastId    String?
+  podcast      Podcast?         @relation(fields: [podcastId], references: [id], onDelete: SetNull)
+  episodeId    String?
+  episode      Episode?         @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  commentId    String?
+  comment      Comment?         @relation(fields: [commentId], references: [id], onDelete: SetNull)
 
   @@index([tenantId])
   @@index([entityType])
@@ -636,25 +721,30 @@ model ModerationQueue {
   @@index([priority])
   @@index([createdAt])
   @@index([entityType, status])
+  @@index([podcastId])
+  @@index([episodeId])
+  @@index([commentId])
 }
 
 // ==================== COLLABORATION ====================
 
 model PodcastCollaborator {
-  id          String             @id @default(uuid())
-  podcastId   String
-  podcast     Podcast            @relation(fields: [podcastId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role        CollaboratorRole   @default(CONTRIBUTOR)
-  permissions Json?
-  status      CollaboratorStatus @default(PENDING)
-  invitedAt   DateTime           @default(now())
-  acceptedAt  DateTime?
-  invitedBy   String?
+  id            String             @id @default(uuid())
+  podcastId     String
+  podcast       Podcast            @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User               @relation("CollaboratorUser", fields: [userId], references: [id], onDelete: Cascade)
+  role          CollaboratorRole   @default(CONTRIBUTOR)
+  permissions   Json?
+  status        CollaboratorStatus @default(PENDING)
+  invitedAt     DateTime           @default(now())
+  acceptedAt    DateTime?
+  invitedBy     String?
+  invitedByUser User?              @relation("CollaboratorInviter", fields: [invitedBy], references: [id], onDelete: SetNull)
 
   @@unique([podcastId, userId])
   @@index([podcastId])
   @@index([userId])
   @@index([status])
+  @@index([invitedBy])
 }

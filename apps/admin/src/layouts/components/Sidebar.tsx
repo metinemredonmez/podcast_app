@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   useMediaQuery,
   useTheme,
   Divider,
+  Badge,
 } from '@mui/material';
 import {
   IconLayoutDashboard,
@@ -23,10 +24,14 @@ import {
   IconStar,
   IconChartBar,
   IconUser,
+  IconShieldCheck,
+  IconBuilding,
+  IconBell,
 } from '@tabler/icons-react';
 import { CustomizerContext } from '../../context/customizerContext';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
+import { moderationService } from '../../api/services/moderation.service';
 
 interface MenuItem {
   id: string;
@@ -35,12 +40,14 @@ interface MenuItem {
   href: string;
   navlabel?: boolean;
   subheader?: string;
+  badge?: number;
 }
 
 const menuItems: MenuItem[] = [
   { id: 'nav-dashboard', title: 'Dashboard', subheader: 'Dashboard', navlabel: true, icon: IconLayoutDashboard, href: '' },
   { id: 'dashboard', title: 'Dashboard', icon: IconLayoutDashboard, href: '/dashboard' },
   { id: 'analytics', title: 'Analytics', icon: IconChartBar, href: '/analytics' },
+  { id: 'analytics-advanced', title: 'Advanced Analytics', icon: IconChartBar, href: '/analytics/advanced' },
 
   { id: 'nav-content', title: 'Content', subheader: 'Content Management', navlabel: true, icon: IconMicrophone, href: '' },
   { id: 'podcasts', title: 'Podcasts', icon: IconMicrophone, href: '/podcasts' },
@@ -50,8 +57,15 @@ const menuItems: MenuItem[] = [
   { id: 'nav-users', title: 'Users', subheader: 'User Management', navlabel: true, icon: IconUsers, href: '' },
   { id: 'users', title: 'Users', icon: IconUsers, href: '/users' },
   { id: 'hocas', title: 'Hocas', icon: IconUser, href: '/hocas' },
+
+  { id: 'nav-moderation', title: 'Moderation', subheader: 'Moderation', navlabel: true, icon: IconShieldCheck, href: '' },
+  { id: 'moderation', title: 'Moderation Queue', icon: IconShieldCheck, href: '/moderation' },
   { id: 'comments', title: 'Comments', icon: IconMessage, href: '/comments' },
   { id: 'reviews', title: 'Reviews', icon: IconStar, href: '/reviews' },
+
+  { id: 'nav-admin', title: 'Admin', subheader: 'Administration', navlabel: true, icon: IconBuilding, href: '' },
+  { id: 'tenants', title: 'Tenants', icon: IconBuilding, href: '/tenants' },
+  { id: 'notifications', title: 'Notifications', icon: IconBell, href: '/notifications' },
 ];
 
 const Sidebar: React.FC = () => {
@@ -60,6 +74,26 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const lgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const { isCollapse, isMobileSidebar, setIsMobileSidebar } = useContext(CustomizerContext);
+
+  // Pending moderation count
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const stats = await moderationService.getStats();
+        setPendingCount(stats.pending || 0);
+      } catch {
+        // Demo count on error
+        setPendingCount(5);
+      }
+    };
+
+    fetchPendingCount();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchPendingCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const sidebarWidth = 270;
   const miniSidebarWidth = 87;
@@ -71,6 +105,15 @@ const Sidebar: React.FC = () => {
     if (!lgUp) {
       setIsMobileSidebar(false);
     }
+  };
+
+  // Check if menu item is active (including nested routes)
+  const isMenuActive = (href: string): boolean => {
+    if (href === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard')) {
+      return true;
+    }
+    if (href === '/') return location.pathname === '/';
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
   };
 
   const sidebarContent = (
@@ -109,8 +152,9 @@ const Sidebar: React.FC = () => {
               );
             }
 
-            const isSelected = location.pathname === item.href;
+            const isSelected = isMenuActive(item.href);
             const Icon = item.icon;
+            const showBadge = item.id === 'moderation' && pendingCount > 0;
 
             return (
               <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
@@ -126,6 +170,11 @@ const Sidebar: React.FC = () => {
                         ? theme.palette.primary.light
                         : theme.palette.action.hover,
                     },
+                    // Active indicator
+                    ...(isSelected && {
+                      borderLeft: `3px solid ${theme.palette.primary.main}`,
+                      pl: 1.5,
+                    }),
                   }}
                 >
                   <ListItemIcon
@@ -134,9 +183,33 @@ const Sidebar: React.FC = () => {
                       color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary,
                     }}
                   >
-                    <Icon size={20} />
+                    {showBadge ? (
+                      <Badge
+                        badgeContent={pendingCount}
+                        color="error"
+                        max={99}
+                        sx={{
+                          '& .MuiBadge-badge': {
+                            fontSize: '0.65rem',
+                            height: 16,
+                            minWidth: 16,
+                          },
+                        }}
+                      >
+                        <Icon size={20} />
+                      </Badge>
+                    ) : (
+                      <Icon size={20} />
+                    )}
                   </ListItemIcon>
-                  {isSidebarOpen && <ListItemText primary={item.title} />}
+                  {isSidebarOpen && (
+                    <ListItemText
+                      primary={item.title}
+                      primaryTypographyProps={{
+                        fontWeight: isSelected ? 600 : 400,
+                      }}
+                    />
+                  )}
                 </ListItemButton>
               </ListItem>
             );

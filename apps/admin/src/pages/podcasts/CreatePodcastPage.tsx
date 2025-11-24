@@ -16,10 +16,11 @@ import {
   MenuItem,
   CircularProgress,
 } from '@mui/material';
-import { IconArrowLeft, IconUpload } from '@tabler/icons-react';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { podcastService } from '../../api/services/podcast.service';
+import { ImageUpload } from '../../components/upload';
 
 const validationSchema = yup.object({
   title: yup.string().required('Title is required').min(3, 'Title must be at least 3 characters'),
@@ -156,31 +157,20 @@ const CreatePodcastPage: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <Box
-                  sx={{
-                    border: '2px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    p: 3,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      bgcolor: 'primary.light',
-                    },
+                <ImageUpload
+                  label="Cover Image"
+                  prefix="podcast-covers"
+                  aspectRatio="1:1"
+                  previewWidth={200}
+                  currentImageUrl={formik.values.coverImage || undefined}
+                  onUploadComplete={(response) => {
+                    formik.setFieldValue('coverImage', response.url);
                   }}
-                >
-                  <IconUpload size={48} color="#5D87FF" />
-                  <Typography variant="subtitle2" mt={2}>
-                    Upload Cover Image
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Drag & drop or click to upload
-                  </Typography>
-                  <Typography variant="caption" display="block" color="text.secondary" mt={1}>
-                    Recommended: 1400x1400px, JPG or PNG
-                  </Typography>
-                </Box>
+                  onRemove={() => {
+                    formik.setFieldValue('coverImage', '');
+                  }}
+                  disabled={loading}
+                />
               </Grid>
 
               <Grid item xs={12}>

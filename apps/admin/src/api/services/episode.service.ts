@@ -2,18 +2,28 @@ import { apiClient } from '../client';
 
 export interface Episode {
   id: string;
-  title: string;
-  description: string;
-  audioUrl: string;
-  duration: number;
+  tenantId: string;
   podcastId: string;
-  podcastTitle: string;
-  episodeNumber: number;
-  status: 'draft' | 'published' | 'scheduled';
-  publishDate?: string;
-  plays: number;
+  hostId?: string;
+  title: string;
+  slug: string;
+  description?: string;
+  duration: number;
+  audioUrl: string;
+  audioMimeType?: string;
+  publishedAt?: string;
+  isPublished: boolean;
+  isExplicit: boolean;
+  episodeNumber?: number;
+  seasonNumber?: number;
   createdAt: string;
   updatedAt: string;
+  // Joined data
+  podcast?: {
+    id: string;
+    title: string;
+    coverImageUrl?: string;
+  };
 }
 
 export interface EpisodeListResponse {
@@ -36,8 +46,11 @@ export interface UpdateEpisodeDto {
   title?: string;
   description?: string;
   audioUrl?: string;
-  status?: 'draft' | 'published' | 'scheduled';
-  publishDate?: string;
+  duration?: number;
+  isPublished?: boolean;
+  publishedAt?: string;
+  episodeNumber?: number;
+  seasonNumber?: number;
 }
 
 export const episodeService = {

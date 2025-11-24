@@ -22,6 +22,7 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
+  Checkbox,
 } from '@mui/material';
 import {
   IconSearch,
@@ -33,6 +34,8 @@ import {
   IconClock,
 } from '@tabler/icons-react';
 import { episodeService, Episode } from '../../api/services/episode.service';
+import { useBulkSelection } from '../../hooks/useBulkSelection';
+import { BulkActions, commonBulkActions } from '../../components/table';
 
 const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -51,6 +54,12 @@ const EpisodesPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
+
+  // Bulk selection
+  const bulkSelection = useBulkSelection({
+    currentPageIds: episodes.map((e) => e.id),
+    totalCount: total,
+  });
 
   const fetchEpisodes = async () => {
     setLoading(true);
@@ -95,6 +104,20 @@ const EpisodesPage: React.FC = () => {
       }
     }
     handleMenuClose();
+  };
+
+  const handleBulkAction = async (actionId: string) => {
+    const ids = Array.from(bulkSelection.selectedIds);
+
+    if (actionId === 'delete') {
+      await Promise.all(ids.map((id) => episodeService.delete(id)));
+      fetchEpisodes();
+    } else if (actionId === 'export') {
+      console.log('Exporting episodes:', ids);
+    } else if (actionId.startsWith('status-')) {
+      const status = actionId.replace('status-', '');
+      console.log('Updating status to:', status, 'for:', ids);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -159,6 +182,22 @@ const EpisodesPage: React.FC = () => {
             />
           </Stack>
 
+          {/* Bulk Actions */}
+          <BulkActions
+            selectedCount={bulkSelection.selectedCount}
+            totalCount={total}
+            isAllPagesSelected={bulkSelection.isAllPagesSelected}
+            onClearSelection={bulkSelection.clearSelection}
+            onSelectAllPages={bulkSelection.toggleSelectAllPages}
+            actions={[
+              commonBulkActions.delete('Are you sure you want to delete the selected episodes?'),
+              commonBulkActions.export(),
+              commonBulkActions.changeStatus('published'),
+              commonBulkActions.changeStatus('draft'),
+            ]}
+            onAction={handleBulkAction}
+          />
+
           {/* Table */}
           {loading ? (
             <Box display="flex" justifyContent="center" py={4}>
@@ -170,6 +209,13 @@ const EpisodesPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={bulkSelection.isAllSelected}
+                          indeterminate={bulkSelection.selectedCount > 0 && !bulkSelection.isAllSelected}
+                          onChange={bulkSelection.toggleSelectAll}
+                        />
+                      </TableCell>
                       <TableCell>Episode</TableCell>
                       <TableCell>Podcast</TableCell>
                       <TableCell>Duration</TableCell>
@@ -181,7 +227,7 @@ const EpisodesPage: React.FC = () => {
                   <TableBody>
                     {episodes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center">
+                        <TableCell colSpan={7} align="center">
                           <Typography color="text.secondary" py={4}>
                             No episodes found
                           </Typography>
@@ -189,7 +235,13 @@ const EpisodesPage: React.FC = () => {
                       </TableRow>
                     ) : (
                       episodes.map((episode) => (
-                        <TableRow key={episode.id} hover>
+                        <TableRow key={episode.id} hover selected={bulkSelection.isSelected(episode.id)}>
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={bulkSelection.isSelected(episode.id)}
+                              onChange={() => bulkSelection.toggleSelectItem(episode.id)}
+                            />
+                          </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={2} alignItems="center">
                               <Box
@@ -217,7 +269,7 @@ const EpisodesPage: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2">
-                              {episode.podcastTitle}
+                              {episode.podcast?.title || '-'}
                             </Typography>
                           </TableCell>
                           <TableCell>
@@ -228,12 +280,12 @@ const EpisodesPage: React.FC = () => {
                               </Typography>
                             </Stack>
                           </TableCell>
-                          <TableCell>{episode.plays?.toLocaleString() || 0}</TableCell>
+                          <TableCell>-</TableCell>
                           <TableCell>
                             <Chip
-                              label={episode.status}
+                              label={episode.isPublished ? 'Published' : 'Draft'}
                               size="small"
-                              color={getStatusColor(episode.status) as any}
+                              color={episode.isPublished ? 'success' : 'warning'}
                             />
                           </TableCell>
                           <TableCell align="right">
