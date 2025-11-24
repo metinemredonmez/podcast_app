@@ -17,13 +17,71 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 export class AnalyticsController {
   constructor(private readonly service: AnalyticsService) {}
 
-  @Get()
-  @Roles(UserRole.ADMIN, UserRole.EDITOR)
-  @ApiOperation({ summary: 'List analytics events for a tenant' })
+  @Get('dashboard')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get dashboard statistics (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Dashboard stats' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'Forbidden' })
-  findAll(@Query() filter: FilterAnalyticsDto, @CurrentUser() user: JwtPayload) {
-    return this.service.findAll(filter, user);
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  getDashboardStats(@CurrentUser() user: JwtPayload) {
+    return this.service.getDashboardStats(user);
+  }
+
+  @Get('top-podcasts')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get top performing podcasts (Admin only)' })
+  @ApiResponse({ status: 200, description: 'Top podcasts' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Admin access required' })
+  getTopPodcasts(@Query('limit') limit: string = '10', @CurrentUser() user: JwtPayload) {
+    return this.service.getTopPodcasts(parseInt(limit, 10), user);
+  }
+
+  @Get('kpis')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get key performance indicators' })
+  getKPIs(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: JwtPayload) {
+    return this.service.getKPIs(from, to, user);
+  }
+
+  @Get('plays')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get plays over time' })
+  getPlaysOverTime(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('groupBy') groupBy: 'hour' | 'day' | 'week' | 'month' = 'day',
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.getPlaysOverTime(from, to, groupBy, user);
+  }
+
+  @Get('users')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get user growth over time' })
+  getUserGrowth(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: JwtPayload) {
+    return this.service.getUserGrowth(from, to, user);
+  }
+
+  @Get('devices')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get device breakdown' })
+  getDeviceBreakdown(@CurrentUser() user: JwtPayload) {
+    return this.service.getDeviceBreakdown(user);
+  }
+
+  @Get('geography')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get geography distribution' })
+  getGeography(@CurrentUser() user: JwtPayload) {
+    return this.service.getGeography(user);
+  }
+
+  @Get('peak-hours')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get peak listening hours' })
+  getPeakHours(@CurrentUser() user: JwtPayload) {
+    return this.service.getPeakListeningHours(user);
   }
 
   @Get('stats')
@@ -33,6 +91,15 @@ export class AnalyticsController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   getStats(@Query() filter: FilterAnalyticsDto, @CurrentUser() user: JwtPayload) {
     return this.service.getStats(filter, user);
+  }
+
+  @Get()
+  @Roles(UserRole.ADMIN, UserRole.EDITOR)
+  @ApiOperation({ summary: 'List analytics events for a tenant' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  findAll(@Query() filter: FilterAnalyticsDto, @CurrentUser() user: JwtPayload) {
+    return this.service.findAll(filter, user);
   }
 
   @Get(':id')

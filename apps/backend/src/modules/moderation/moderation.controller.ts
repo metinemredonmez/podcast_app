@@ -26,7 +26,7 @@ export class ModerationController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Admin/Editor only' })
   getQueue(@Query() filters: GetQueueFiltersDto, @CurrentUser() user: JwtPayload) {
-    return this.service.getQueue(filters.status, user.tenantId);
+    return this.service.getQueue(filters, user.tenantId);
   }
 
   @Get('queue/:id')

@@ -17,6 +17,8 @@ import TenantsPage from '../pages/tenants/TenantsPage';
 import TenantDetailPage from '../pages/tenants/TenantDetailPage';
 import NotificationsPage from '../pages/notifications/NotificationsPage';
 import SendNotificationPage from '../pages/notifications/SendNotificationPage';
+import CommentsPage from '../pages/comments/CommentsPage';
+import ReviewsPage from '../pages/reviews/ReviewsPage';
 import { ProtectedRoute } from './ProtectedRoute';
 
 export const router = createBrowserRouter([
@@ -41,6 +43,8 @@ export const router = createBrowserRouter([
           { path: '/users', element: <UsersPage /> },
           { path: '/hocas', element: <HocasPage /> },
           { path: '/moderation', element: <ModerationPage /> },
+          { path: '/comments', element: <CommentsPage /> },
+          { path: '/reviews', element: <ReviewsPage /> },
           { path: '/analytics', element: <AnalyticsPage /> },
           { path: '/analytics/advanced', element: <AdvancedAnalyticsPage /> },
           { path: '/tenants', element: <TenantsPage /> },

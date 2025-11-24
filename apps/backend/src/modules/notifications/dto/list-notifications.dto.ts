@@ -1,14 +1,15 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
+import { OffsetPaginationDto } from '../../../common/dto/offset-pagination.dto';
 
-export class ListNotificationsDto {
-  @ApiPropertyOptional({ format: 'uuid' })
+export class ListNotificationsDto extends OffsetPaginationDto {
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filter by tenant ID' })
   @IsOptional()
   @IsUUID()
   tenantId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filter by user ID' })
   @IsOptional()
   @IsUUID()
   userId?: string;

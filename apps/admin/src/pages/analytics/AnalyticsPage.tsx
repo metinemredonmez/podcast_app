@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Typography,
@@ -93,25 +94,8 @@ const AnalyticsPage: React.FC = () => {
       setStats(statsData);
       setTopPodcasts(podcastsData);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load analytics');
-      // Set mock data for demo
-      setStats({
-        totalPodcasts: 1234,
-        totalEpisodes: 5678,
-        totalUsers: 12450,
-        totalPlays: 89500,
-        podcastsGrowth: 12.5,
-        episodesGrowth: 8.2,
-        usersGrowth: -2.4,
-        playsGrowth: 15.8,
-      });
-      setTopPodcasts([
-        { id: '1', title: 'Tech Talk Daily', plays: 45230, episodes: 120 },
-        { id: '2', title: 'True Crime Files', plays: 38920, episodes: 85 },
-        { id: '3', title: 'History Uncovered', plays: 32100, episodes: 92 },
-        { id: '4', title: 'Mindful Mornings', plays: 28500, episodes: 156 },
-        { id: '5', title: 'Sports Roundup', plays: 21800, episodes: 204 },
-      ]);
+      setError(err.response?.data?.message || 'Failed to load analytics data. Please try again.');
+      console.error('Analytics fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -157,8 +141,12 @@ const AnalyticsPage: React.FC = () => {
 
       {/* Error Alert */}
       {error && (
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          Using demo data: {error}
+        <Alert severity="error" sx={{ mb: 3 }} action={
+          <Button color="inherit" size="small" onClick={fetchData}>
+            Retry
+          </Button>
+        }>
+          {error}
         </Alert>
       )}
 

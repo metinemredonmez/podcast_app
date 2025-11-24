@@ -1,38 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
+import { OffsetPaginationDto } from '../../../common/dto/offset-pagination.dto';
 
-export class ListCommentsDto {
-  @ApiProperty({ format: 'uuid' })
+export class ListCommentsDto extends OffsetPaginationDto {
+  @ApiProperty({ format: 'uuid', description: 'Tenant ID (required)' })
   @IsUUID()
   tenantId!: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filter by episode ID' })
   @IsOptional()
   @IsUUID()
   episodeId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filter by podcast ID' })
   @IsOptional()
   @IsUUID()
   podcastId?: string;
 
-  @ApiPropertyOptional({ format: 'uuid' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Filter by user ID' })
   @IsOptional()
   @IsUUID()
   userId?: string;
-
-  @ApiPropertyOptional({ description: 'Page number starting from 1', default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ description: 'Page size', default: 20 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number = 20;
 }

@@ -32,8 +32,13 @@ export class UsersPrismaRepository implements UsersRepository {
     return user as UserModel | null;
   }
 
-  async findByEmail(email: string): Promise<UserModel | null> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async findByEmail(email: string, tenantId?: string): Promise<UserModel | null> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email,
+        ...(tenantId ? { tenantId } : {})
+      }
+    });
     return user as UserModel | null;
   }
 
@@ -64,8 +69,12 @@ export class UsersPrismaRepository implements UsersRepository {
   }
 
   async updateProfile(id: string, tenantId: string, payload: UpdateProfileInput): Promise<UserModel | null> {
+    const existing = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!existing) {
+      return null;
+    }
     const user = await this.prisma.user.update({
-      where: { id, tenantId },
+      where: { id },
       data: payload,
     });
     return user as unknown as UserModel;

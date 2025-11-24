@@ -115,8 +115,8 @@ const NotificationsPage: React.FC = () => {
         type: typeFilter === 'all' ? undefined : typeFilter,
         status: statusFilter === 'all' ? undefined : statusFilter,
       });
-      setNotifications(response.data);
-      setTotal(response.total);
+      setNotifications(response.data || []);
+      setTotal(response.total || 0);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load notifications');
     } finally {
@@ -272,7 +272,7 @@ const NotificationsPage: React.FC = () => {
                       <CircularProgress />
                     </TableCell>
                   </TableRow>
-                ) : notifications.length === 0 ? (
+                ) : !notifications || notifications.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                       <Typography variant="body2" color="text.secondary">
@@ -424,19 +424,19 @@ const NotificationsPage: React.FC = () => {
                     <Stack direction="row" justifyContent="space-between">
                       <Typography variant="body2">Sent:</Typography>
                       <Typography variant="body2" fontWeight={500}>
-                        {notificationStats.sentCount.toLocaleString()}
+                        {(notificationStats.sentCount || 0).toLocaleString()}
                       </Typography>
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">
                       <Typography variant="body2">Delivered:</Typography>
                       <Typography variant="body2" fontWeight={500}>
-                        {notificationStats.deliveredCount.toLocaleString()} ({notificationStats.deliveryRate.toFixed(1)}%)
+                        {(notificationStats.deliveredCount || 0).toLocaleString()} ({(notificationStats.deliveryRate || 0).toFixed(1)}%)
                       </Typography>
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">
                       <Typography variant="body2">Opened:</Typography>
                       <Typography variant="body2" fontWeight={500}>
-                        {notificationStats.openedCount.toLocaleString()} ({notificationStats.openRate.toFixed(1)}%)
+                        {(notificationStats.openedCount || 0).toLocaleString()} ({(notificationStats.openRate || 0).toFixed(1)}%)
                       </Typography>
                     </Stack>
                     <Stack direction="row" justifyContent="space-between">

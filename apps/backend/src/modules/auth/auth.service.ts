@@ -40,9 +40,9 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
-    const existing = await this.usersRepository.findByEmail(dto.email);
+    const existing = await this.usersRepository.findByEmail(dto.email, dto.tenantId);
     if (existing) {
-      throw new ConflictException('Email already registered.');
+      throw new ConflictException('Email already registered in this tenant.');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, this.passwordSaltRounds);
@@ -70,6 +70,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponseDto> {
+    // Find user by email (without tenantId - will return first match)
     const user = await this.usersRepository.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials.');

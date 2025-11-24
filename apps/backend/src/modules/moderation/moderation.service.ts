@@ -46,18 +46,36 @@ export class ModerationService {
     });
   }
 
-  async getQueue(status?: ModerationStatus, tenantId?: string) {
-    return this.prisma.moderationQueue.findMany({
-      where: {
-        ...(status && { status }),
-        ...(tenantId && { tenantId }),
-      },
-      include: {
-        reportedUser: { select: { id: true, name: true, email: true } },
-        moderator: { select: { id: true, name: true, email: true } },
-      },
-      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
-    });
+  async getQueue(filters: { status?: ModerationStatus; page?: number; limit?: number; sortBy?: string; sortOrder?: string }, tenantId?: string) {
+    const page = Number(filters.page ?? 1);
+    const limit = Number(filters.limit ?? 10);
+    const skip = (page - 1) * limit;
+
+    const where = {
+      ...(filters.status && { status: filters.status }),
+      ...(tenantId && { tenantId }),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.moderationQueue.findMany({
+        where,
+        include: {
+          reportedUser: { select: { id: true, name: true, email: true } },
+          moderator: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.moderationQueue.count({ where }),
+    ]);
+
+    return {
+      data: items,
+      total,
+      page,
+      limit,
+    };
   }
 
   async getById(id: string) {

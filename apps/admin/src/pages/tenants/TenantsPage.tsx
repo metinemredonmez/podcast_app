@@ -483,21 +483,21 @@ const TenantsPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                        {tenant.domain}
+                        {tenant.domain || tenant.slug || 'N/A'}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        icon={planConfig[tenant.plan].icon as React.ReactElement}
-                        label={planConfig[tenant.plan].label}
-                        color={planConfig[tenant.plan].color}
+                        icon={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].icon as React.ReactElement : null}
+                        label={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].label : 'N/A'}
+                        color={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].color : 'default'}
                         size="small"
                       />
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={statusConfig[tenant.status].label}
-                        color={statusConfig[tenant.status].color}
+                        label={tenant.status && statusConfig[tenant.status] ? statusConfig[tenant.status].label : 'Active'}
+                        color={tenant.status && statusConfig[tenant.status] ? statusConfig[tenant.status].color : 'success'}
                         size="small"
                         variant="outlined"
                       />
@@ -508,20 +508,24 @@ const TenantsPage: React.FC = () => {
                       )}
                     </TableCell>
                     <TableCell align="center">
-                      <Typography variant="body2">{tenant.userCount}</Typography>
+                      <Typography variant="body2">{tenant.userCount || 0}</Typography>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ width: 100 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatStorage(tenant.storageUsed)} / {formatStorage(tenant.storageLimit)}
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={(tenant.storageUsed / tenant.storageLimit) * 100}
-                          sx={{ height: 4, borderRadius: 2, mt: 0.5 }}
-                          color={tenant.storageUsed / tenant.storageLimit > 0.9 ? 'error' : 'primary'}
-                        />
-                      </Box>
+                      {tenant.storageUsed !== undefined && tenant.storageLimit !== undefined ? (
+                        <Box sx={{ width: 100 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {formatStorage(tenant.storageUsed)} / {formatStorage(tenant.storageLimit)}
+                          </Typography>
+                          <LinearProgress
+                            variant="determinate"
+                            value={(tenant.storageUsed / tenant.storageLimit) * 100}
+                            sx={{ height: 4, borderRadius: 2, mt: 0.5 }}
+                            color={tenant.storageUsed / tenant.storageLimit > 0.9 ? 'error' : 'primary'}
+                          />
+                        </Box>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">N/A</Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">

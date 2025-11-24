@@ -14,6 +14,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UnauthorizedException } from '@nestjs/common';
 import { StorageService } from '../storage/storage.service';
 import { FileCategory } from '../storage/constants/file-types';
+import { PrismaService } from '../../infra/prisma.service';
 
 @Injectable()
 export class UsersService {
@@ -22,11 +23,61 @@ export class UsersService {
   constructor(
     @Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository,
     private readonly storageService: StorageService,
+    private readonly prisma: PrismaService,
   ) {}
 
-  async findAll(query: CursorPaginationDto, actor: JwtPayload): Promise<PaginatedResponseDto<UserResponseDto>> {
+  async findAll(
+    query: CursorPaginationDto & { page?: number; search?: string; role?: string },
+    actor: JwtPayload,
+  ): Promise<PaginatedResponseDto<UserResponseDto> | { data: UserResponseDto[]; total: number; page: number; limit: number }> {
     this.ensureAdmin(actor);
-    const limit = query.limit ?? 20;
+
+    // If page is provided, use offset pagination
+    if (query.page !== undefined) {
+      const page = Number(query.page ?? 1);
+      const limit = Number(query.limit ?? 20);
+      const skip = (page - 1) * limit;
+
+      // Get users with offset pagination
+      const users = await this.prisma.user.findMany({
+        where: {
+          tenantId: actor.tenantId,
+          ...(query.search ? {
+            OR: [
+              { email: { contains: query.search, mode: 'insensitive' } },
+              { name: { contains: query.search, mode: 'insensitive' } },
+            ],
+          } : {}),
+          ...(query.role ? { role: query.role as any } : {}),
+        },
+        skip,
+        take: limit,
+        orderBy: { [query.orderBy ?? 'createdAt']: query.orderDirection ?? 'desc' },
+      });
+
+      const total = await this.prisma.user.count({
+        where: {
+          tenantId: actor.tenantId,
+          ...(query.search ? {
+            OR: [
+              { email: { contains: query.search, mode: 'insensitive' } },
+              { name: { contains: query.search, mode: 'insensitive' } },
+            ],
+          } : {}),
+          ...(query.role ? { role: query.role as any } : {}),
+        },
+      });
+
+      return {
+        data: users.map((user) => this.toResponseDto(user as any)),
+        total,
+        page,
+        limit,
+      };
+    }
+
+    // Otherwise use cursor pagination
+    const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
     const sortableFields: (keyof UserModel)[] = ['createdAt', 'email', 'name'];
@@ -61,9 +112,9 @@ export class UsersService {
       throw new ForbiddenException('Cannot create users in a different tenant.');
     }
 
-    const existing = await this.usersRepository.findByEmail(payload.email);
+    const existing = await this.usersRepository.findByEmail(payload.email, actor.tenantId);
     if (existing) {
-      throw new ConflictException('Email is already registered.');
+      throw new ConflictException('Email is already registered in this tenant.');
     }
 
     const passwordHash = await bcrypt.hash(payload.password, this.passwordSaltRounds);

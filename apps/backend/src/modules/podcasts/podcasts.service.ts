@@ -17,7 +17,7 @@ export class PodcastsService {
 
   async findAll(query: CursorPaginationDto & { tenantId?: string }, actor: JwtPayload): Promise<PaginatedResponseDto<PodcastResponseDto>> {
     const tenantId = this.resolveTenant(query.tenantId, actor, { allowCrossTenantForAdmin: false });
-    const limit = query.limit ?? 20;
+    const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
     const sortableFields: (keyof PodcastModel)[] = ['createdAt', 'updatedAt', 'title', 'publishedAt'];
@@ -43,7 +43,7 @@ export class PodcastsService {
     actor: JwtPayload,
   ): Promise<PaginatedResponseDto<PodcastResponseDto>> {
     const tenantId = this.resolveTenant(query.tenantId, actor, { allowCrossTenantForAdmin: false });
-    const limit = query.limit ?? 20;
+    const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
     const sortableFields: (keyof PodcastModel)[] = ['createdAt', 'updatedAt', 'title', 'publishedAt'];

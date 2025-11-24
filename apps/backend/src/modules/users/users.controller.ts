@@ -25,11 +25,14 @@ export class UsersController {
 
   @Get()
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'List users with cursor-based pagination' })
-  @ApiQuery({ name: 'cursor', required: false, description: 'Base64-encoded id cursor' })
+  @ApiOperation({ summary: 'List users with cursor or offset pagination' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Base64-encoded id cursor (for cursor pagination)' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (for offset pagination, starts at 1)' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max items to return (1-100)', schema: { default: 20 } })
   @ApiQuery({ name: 'orderBy', required: false, schema: { default: 'createdAt' } })
   @ApiQuery({ name: 'orderDirection', required: false, schema: { default: 'desc', enum: ['asc', 'desc'] } })
+  @ApiQuery({ name: 'search', required: false, description: 'Search users by email or name' })
+  @ApiQuery({ name: 'role', required: false, description: 'Filter by role' })
   @ApiCursorPaginatedResponse({
     type: 'object',
     properties: {

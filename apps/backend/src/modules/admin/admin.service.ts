@@ -21,7 +21,11 @@ export class AdminService {
     this.saltRounds = Number(this.config.get<number>('BCRYPT_SALT_ROUNDS', 12));
   }
 
-  async listTenants(filter: ListTenantsDto): Promise<Tenant[]> {
+  async listTenants(filter: ListTenantsDto): Promise<{ data: Tenant[]; total: number; page: number; limit: number }> {
+    const page = Number(filter.page ?? 1);
+    const limit = Number(filter.limit ?? 10);
+    const skip = (page - 1) * limit;
+
     const where = filter.search
       ? {
           OR: [
@@ -31,10 +35,36 @@ export class AdminService {
         }
       : undefined;
 
-    return this.prisma.tenant.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const [data, total] = await Promise.all([
+      this.prisma.tenant.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.tenant.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
+  async getTenantStats(): Promise<{
+    totalTenants: number;
+    activeTenants: number;
+    trialEndingSoon: number;
+    monthlyRevenue: number;
+  }> {
+    const [totalTenants, activeTenants] = await Promise.all([
+      this.prisma.tenant.count(),
+      this.prisma.tenant.count({ where: { isActive: true } }),
+    ]);
+
+    return {
+      totalTenants,
+      activeTenants,
+      trialEndingSoon: 0, // Would need trial end date tracking
+      monthlyRevenue: 0, // Would need subscription/payment tracking
+    };
   }
 
   async getTenant(id: string): Promise<Tenant> {

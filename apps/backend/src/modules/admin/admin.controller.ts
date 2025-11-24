@@ -38,6 +38,13 @@ export class AdminController {
     return this.service.listTenants(query);
   }
 
+  @Get('tenants/stats')
+  @Roles(UserRole.ADMIN, UserRole.EDITOR)
+  @ApiOperation({ summary: 'Get tenant statistics' })
+  getTenantStats() {
+    return this.service.getTenantStats();
+  }
+
   @Get('tenants/export')
   @Roles(UserRole.ADMIN, UserRole.EDITOR)
   @ApiOperation({ summary: 'Export all tenants' })

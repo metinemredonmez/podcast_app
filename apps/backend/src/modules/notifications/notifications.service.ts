@@ -20,7 +20,7 @@ export class NotificationsService {
     private readonly gateway: NotificationsGateway,
   ) {}
 
-  async findAll(query: ListNotificationsDto, actor: JwtPayload): Promise<Notification[]> {
+  async findAll(query: ListNotificationsDto, actor: JwtPayload): Promise<{ data: Notification[]; total: number; page: number; limit: number }> {
     const tenantId = this.resolveTenant(query.tenantId, actor, true);
     const userFilter = query.userId
       ? this.resolveUser(query.userId, actor)
@@ -34,10 +34,21 @@ export class NotificationsService {
       ...(query.unreadOnly ? { readAt: null } : {}),
     };
 
-    return this.prisma.notification.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    const page = Number(query.page ?? 1);
+    const limit = Number(query.limit ?? 10);
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.notification.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   async findOne(tenantId: string, id: string, actor: JwtPayload): Promise<Notification> {

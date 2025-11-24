@@ -10,6 +10,12 @@ export class CursorPaginationDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  page?: number; // for offset pagination
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   @Max(100)
   limit?: number = 20;
 
@@ -20,6 +26,14 @@ export class CursorPaginationDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   orderDirection?: 'asc' | 'desc' = 'desc';
+
+  @IsOptional()
+  @IsString()
+  search?: string; // for filtering/searching
+
+  @IsOptional()
+  @IsString()
+  role?: string; // for role filtering
 }
 
 export interface PaginatedResponseDto<T> {

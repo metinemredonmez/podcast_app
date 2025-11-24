@@ -16,7 +16,7 @@ export class EpisodesService {
 
   async findAll(query: CursorPaginationDto & { tenantId?: string }, actor: JwtPayload): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
     const tenantId = this.resolveTenant(query.tenantId, actor);
-    const limit = query.limit ?? 20;
+    const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
     const sortableFields: (keyof EpisodeModel)[] = ['publishedAt', 'createdAt', 'duration', 'title'];
@@ -42,7 +42,7 @@ export class EpisodesService {
     actor: JwtPayload,
   ): Promise<PaginatedResponseDto<EpisodeResponseDto>> {
     const tenantId = this.resolveTenant(query.tenantId, actor);
-    const limit = query.limit ?? 20;
+    const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
     const sortableFields: (keyof EpisodeModel)[] = ['publishedAt', 'createdAt', 'duration', 'title'];

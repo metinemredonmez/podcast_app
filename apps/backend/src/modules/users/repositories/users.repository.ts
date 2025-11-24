@@ -52,7 +52,7 @@ export interface PaginationOptions {
 export interface UsersRepository {
   findMany(options: PaginationOptions): Promise<UserModel[]>;
   findById(id: string, tenantId: string): Promise<UserModel | null>;
-  findByEmail(email: string): Promise<UserModel | null>;
+  findByEmail(email: string, tenantId?: string): Promise<UserModel | null>;
   create(payload: CreateUserInput): Promise<UserModel>;
   update(id: string, tenantId: string, payload: UpdateUserInput): Promise<UserModel>;
   updateProfile(id: string, tenantId: string, payload: UpdateProfileInput): Promise<UserModel | null>;
