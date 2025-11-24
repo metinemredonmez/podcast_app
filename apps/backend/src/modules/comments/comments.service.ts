@@ -52,13 +52,24 @@ export class CommentsService {
     const limit = filter.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    return this.prisma.comment.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-      include: commentInclude,
-    });
+    const [comments, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: commentInclude,
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+
+    return {
+      data: comments,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(tenantId: string, id: string) {
@@ -175,5 +186,85 @@ export class CommentsService {
     if (actor.role !== UserRole.ADMIN && ownerId !== actor.userId) {
       throw new ForbiddenException('Only the owner or an admin can modify this comment.');
     }
+  }
+
+  // Admin methods
+  async findAllAdmin(tenantId: string, params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    episodeId?: string;
+    podcastId?: string;
+  }) {
+    const { page = 1, limit = 20, search, episodeId, podcastId } = params;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.CommentWhereInput = {
+      tenantId,
+      parentId: null, // Only top-level comments
+      ...(episodeId && { episodeId }),
+      ...(podcastId && { episode: { podcastId } }),
+      ...(search && {
+        OR: [
+          { content: { contains: search, mode: 'insensitive' } },
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+        ],
+      }),
+    };
+
+    const [comments, total] = await Promise.all([
+      this.prisma.comment.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+          episode: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              podcast: {
+                select: {
+                  id: true,
+                  title: true,
+                  slug: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: { replies: true },
+          },
+        },
+      }),
+      this.prisma.comment.count({ where }),
+    ]);
+
+    return {
+      data: comments,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async deleteAdmin(tenantId: string, id: string) {
+    const comment = await this.prisma.comment.findFirst({
+      where: { id, tenantId },
+    });
+    if (!comment) {
+      throw new NotFoundException(`Comment ${id} not found.`);
+    }
+    await this.prisma.comment.delete({ where: { id } });
   }
 }
