@@ -11,6 +11,7 @@ interface AuthUser {
   name: string | null;
   email: string;
   role: string;
+  avatarUrl?: string | null;
 }
 
 interface LoginResponse {

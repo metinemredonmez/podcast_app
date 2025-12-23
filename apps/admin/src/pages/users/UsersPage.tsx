@@ -37,6 +37,7 @@ import { userService, User } from '../../api/services/user.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { BulkActions, commonBulkActions } from '../../components/table';
 import { Checkbox } from '@mui/material';
+import { logger } from '../../utils/logger';
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -68,8 +69,9 @@ const UsersPage: React.FC = () => {
       });
       setUsers(response.data || []);
       setTotal(response.total || 0);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load users');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load users';
+      setError(message);
       setUsers([]);
     } finally {
       setLoading(false);
@@ -99,8 +101,9 @@ const UsersPage: React.FC = () => {
           await userService.ban(selectedUser.id);
         }
         fetchUsers();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to update user status');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to update user status';
+        setError(message);
       }
     }
     handleMenuClose();
@@ -111,8 +114,9 @@ const UsersPage: React.FC = () => {
       try {
         await userService.changeRole(selectedUser.id, role);
         fetchUsers();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to change role');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to change role';
+        setError(message);
       }
     }
     handleMenuClose();
@@ -128,13 +132,15 @@ const UsersPage: React.FC = () => {
       await Promise.all(ids.map((id) => userService.unban(id)));
       fetchUsers();
     } else if (actionId === 'export') {
-      console.log('Exporting users:', ids);
+      // TODO: Implement export functionality
+      logger.info('Exporting users:', ids);
     } else if (actionId.startsWith('role-')) {
       const role = actionId.replace('role-', '');
       await Promise.all(ids.map((id) => userService.changeRole(id, role)));
       fetchUsers();
     } else if (actionId === 'notification') {
-      console.log('Sending notification to users:', ids);
+      // TODO: Implement notification sending
+      logger.info('Sending notification to users:', ids);
     }
   };
 
@@ -187,13 +193,13 @@ const UsersPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search & Filters */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search users..."
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -202,7 +208,7 @@ const UsersPage: React.FC = () => {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 120 } }}>
               <InputLabel>Role</InputLabel>
               <Select
                 value={roleFilter}

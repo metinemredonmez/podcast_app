@@ -102,8 +102,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
 
       setImageUrl(response.url);
       onUploadComplete?.(response);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Upload failed. Please try again.');
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
       setProgress(0);

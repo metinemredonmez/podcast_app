@@ -18,7 +18,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { ListCategoriesDto } from './dto/list-categories.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../../common/enums/prisma.enums';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { Public } from '../../common/decorators/public.decorator';
 

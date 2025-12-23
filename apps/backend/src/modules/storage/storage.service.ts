@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { Readable } from 'stream';
 import { S3Service } from '../../infra/s3/s3.service';
 import { UploadResponseDto } from './dto/upload-response.dto';
 import { SignedUrlResponseDto } from './dto/signed-url-response.dto';
@@ -21,6 +22,9 @@ interface UploadOptions {
   expectedFileType?: FileCategory; // Optional: validate against specific file type
   skipValidation?: boolean; // For legacy/special cases
 }
+
+// Large file threshold: 10MB - use streaming for files larger than this
+const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024;
 
 @Injectable()
 export class StorageService {
@@ -56,10 +60,23 @@ export class StorageService {
     const key = this.buildObjectKey(actor, normalizedPrefix, file.originalname);
     const contentType = file.mimetype || 'application/octet-stream';
 
-    await this.s3.putObject(key, file.buffer, contentType, {
-      'x-amz-meta-original-name': file.originalname ?? 'unknown',
-      'x-amz-meta-uploader-id': actor.userId,
-    });
+    // Use streaming for large files to prevent memory spikes
+    const isLargeFile = file.size > LARGE_FILE_THRESHOLD;
+
+    if (isLargeFile) {
+      this.logger.log(`Using stream upload for large file: ${file.originalname} (${file.size} bytes)`);
+      // Convert buffer to stream for memory efficiency
+      const stream = Readable.from(file.buffer);
+      await this.s3.putObject(key, stream, contentType, {
+        'x-amz-meta-original-name': file.originalname ?? 'unknown',
+        'x-amz-meta-uploader-id': actor.userId,
+      });
+    } else {
+      await this.s3.putObject(key, file.buffer, contentType, {
+        'x-amz-meta-original-name': file.originalname ?? 'unknown',
+        'x-amz-meta-uploader-id': actor.userId,
+      });
+    }
 
     const url = await this.s3.getSignedUrl(key, expiresIn);
     const sizeBytes =
@@ -146,5 +163,67 @@ export class StorageService {
     }
 
     return Math.min(Math.floor(expiresIn), 60 * 60 * 24 * 7); // clamp to 7 days
+  }
+
+  /**
+   * Stream-based upload for large files
+   * Use this for files that come as streams (e.g., from external sources)
+   */
+  async uploadStream(
+    stream: NodeJS.ReadableStream,
+    originalName: string,
+    contentType: string,
+    actor: StorageActorContext,
+    options: UploadOptions = {},
+  ): Promise<UploadResponseDto> {
+    const expiresIn = this.resolveExpiry(options.expiresIn);
+    const normalizedPrefix = this.normalizePrefix(options.prefix);
+    const key = this.buildObjectKey(actor, normalizedPrefix, originalName);
+
+    this.logger.log(`Stream upload started: ${originalName}`);
+
+    await this.s3.putObject(key, stream, contentType, {
+      'x-amz-meta-original-name': originalName,
+      'x-amz-meta-uploader-id': actor.userId,
+    });
+
+    const url = await this.s3.getSignedUrl(key, expiresIn);
+
+    this.logger.log(`Stream upload completed: ${originalName}`);
+
+    return {
+      key,
+      url,
+      bucket: this.s3.getBucket(),
+      expiresIn,
+      mimeType: contentType,
+    };
+  }
+
+  /**
+   * Get a presigned URL for direct client uploads
+   * This allows large files to be uploaded directly to S3 without going through the server
+   */
+  async getPresignedUploadUrl(
+    filename: string,
+    contentType: string,
+    actor: StorageActorContext,
+    options: UploadOptions = {},
+  ): Promise<{ uploadUrl: string; key: string; expiresIn: number }> {
+    const normalizedPrefix = this.normalizePrefix(options.prefix);
+    const key = this.buildObjectKey(actor, normalizedPrefix, filename);
+    const expiresIn = this.resolveExpiry(options.expiresIn);
+
+    // Get presigned PUT URL from MinIO/S3
+    const s3Client = this.s3.getClient();
+    const uploadUrl = await s3Client.presignedPutObject(this.s3.getBucket(), key, expiresIn);
+
+    this.logger.log(`Generated presigned upload URL for: ${filename}`);
+
+    return {
+      uploadUrl,
+      key,
+      expiresIn,
+    };
   }
 }

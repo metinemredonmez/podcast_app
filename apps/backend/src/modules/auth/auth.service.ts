@@ -164,6 +164,7 @@ export class AuthService {
       email: user.email,
       name: user.name ?? null,
       role: user.role,
+      avatarUrl: user.avatarUrl ?? null,
     });
   }
 

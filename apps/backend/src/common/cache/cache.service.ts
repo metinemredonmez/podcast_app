@@ -1,9 +1,14 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 
 @Injectable()
 export class CacheService {
+  private readonly logger = new Logger(CacheService.name);
+
+  // Track keys by prefix for efficient deletion without SCAN
+  private readonly keyRegistry = new Map<string, Set<string>>();
+
   constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
 
   /**
@@ -14,6 +19,19 @@ export class CacheService {
   }
 
   /**
+   * Get or set value in cache (cache-aside pattern)
+   */
+  async getOrSet<T>(key: string, factory: () => Promise<T>, ttl?: number): Promise<T> {
+    const cached = await this.get<T>(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const value = await factory();
+    await this.set(key, value, ttl);
+    return value;
+  }
+
+  /**
    * Set value in cache
    * @param key Cache key
    * @param value Value to cache
@@ -21,6 +39,14 @@ export class CacheService {
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     await this.cacheManager.set(key, value, ttl);
+    // Register key by prefix for efficient deletion
+    const prefix = this.extractPrefix(key);
+    if (prefix) {
+      if (!this.keyRegistry.has(prefix)) {
+        this.keyRegistry.set(prefix, new Set());
+      }
+      this.keyRegistry.get(prefix)!.add(key);
+    }
   }
 
   /**
@@ -28,16 +54,36 @@ export class CacheService {
    */
   async del(key: string): Promise<void> {
     await this.cacheManager.del(key);
+    // Remove from registry
+    const prefix = this.extractPrefix(key);
+    if (prefix) {
+      this.keyRegistry.get(prefix)?.delete(key);
+    }
   }
 
   /**
-   * Delete multiple keys matching pattern
+   * Delete multiple keys by prefix (efficient - no SCAN needed)
+   * This replaces the old pattern-based delete which used expensive SCAN operations
    */
-  async delPattern(pattern: string): Promise<void> {
-    const keys = await this.keys(pattern);
-    if (keys.length > 0) {
-      await Promise.all(keys.map((key) => this.del(key)));
+  async delByPrefix(prefix: string): Promise<number> {
+    const keys = this.keyRegistry.get(prefix);
+    if (!keys || keys.size === 0) {
+      return 0;
     }
+    const keysArray = Array.from(keys);
+    await Promise.all(keysArray.map((key) => this.cacheManager.del(key)));
+    this.keyRegistry.delete(prefix);
+    this.logger.debug(`Deleted ${keysArray.length} keys with prefix: ${prefix}`);
+    return keysArray.length;
+  }
+
+  /**
+   * Delete all keys for a specific entity type and tenant
+   * More efficient than pattern matching
+   */
+  async invalidateEntity(entityType: string, tenantId?: string): Promise<void> {
+    const prefix = tenantId ? `${entityType}:${tenantId}` : entityType;
+    await this.delByPrefix(prefix);
   }
 
   /**
@@ -45,17 +91,18 @@ export class CacheService {
    */
   async reset(): Promise<void> {
     await this.cacheManager.reset();
+    this.keyRegistry.clear();
   }
 
   /**
-   * Get all keys matching pattern
+   * Extract prefix from key (e.g., "podcasts:tenant1:page:1" -> "podcasts:tenant1")
    */
-  private async keys(pattern: string): Promise<string[]> {
-    const store = this.cacheManager.store as any;
-    if (store.keys) {
-      return await store.keys(pattern);
+  private extractPrefix(key: string): string | null {
+    const parts = key.split(':');
+    if (parts.length >= 2) {
+      return `${parts[0]}:${parts[1]}`;
     }
-    return [];
+    return parts[0] || null;
   }
 
   /**
@@ -63,11 +110,14 @@ export class CacheService {
    */
   static keys = {
     podcast: (id: string) => `podcast:${id}`,
-    podcasts: (tenantId: string, page: number) => `podcasts:${tenantId}:page:${page}`,
+    podcasts: (tenantId: string, page?: number) =>
+      page !== undefined ? `podcasts:${tenantId}:page:${page}` : `podcasts:${tenantId}`,
     podcastsByCategory: (categoryId: string, page: number) => `podcasts:category:${categoryId}:page:${page}`,
+    podcastList: (tenantId: string) => `podcast-list:${tenantId}`,
 
     episode: (id: string) => `episode:${id}`,
-    episodes: (podcastId: string, page: number) => `episodes:${podcastId}:page:${page}`,
+    episodes: (podcastId: string, page?: number) =>
+      page !== undefined ? `episodes:${podcastId}:page:${page}` : `episodes:${podcastId}`,
 
     user: (id: string) => `user:${id}`,
     userByEmail: (email: string) => `user:email:${email}`,
@@ -80,15 +130,25 @@ export class CacheService {
     history: (userId: string) => `history:${userId}`,
 
     search: (query: string, type: 'podcast' | 'episode') => `search:${type}:${query}`,
+
+    // New prefixes for invalidation
+    prefixes: {
+      podcasts: (tenantId: string) => `podcasts:${tenantId}`,
+      episodes: (podcastId: string) => `episodes:${podcastId}`,
+      user: (userId: string) => `user:${userId}`,
+    },
   };
 
   /**
-   * Cache TTLs (in milliseconds)
+   * Cache TTLs (in milliseconds) - Optimized for better hit rates
    */
   static ttl = {
-    short: 60 * 1000, // 1 minute
-    medium: 5 * 60 * 1000, // 5 minutes
-    long: 30 * 60 * 1000, // 30 minutes
-    day: 24 * 60 * 60 * 1000, // 1 day
+    short: 2 * 60 * 1000, // 2 minutes (was 1 min - increased for better hit rate)
+    medium: 15 * 60 * 1000, // 15 minutes (was 5 min - increased for list caching)
+    long: 30 * 60 * 1000, // 30 minutes (unchanged - good for static content)
+    day: 24 * 60 * 60 * 1000, // 1 day (unchanged - for rarely changing data)
+    podcastList: 15 * 60 * 1000, // 15 minutes for podcast lists
+    episodeList: 10 * 60 * 1000, // 10 minutes for episode lists
+    userProfile: 5 * 60 * 1000, // 5 minutes for user profiles (more dynamic)
   };
 }

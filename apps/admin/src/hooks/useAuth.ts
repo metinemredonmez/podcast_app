@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { AppDispatch, RootState } from '../store/store';
 import { clearAuth, setCredentials, setUser, User } from '../store/slices/authSlice';
 import { authService } from '../api/services/auth.service';
+import { logger } from '../utils/logger';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -22,6 +23,7 @@ export const useAuth = () => {
             name: response.user.name || '',
             email: response.user.email,
             role: response.user.role,
+            avatar: response.user.avatarUrl || undefined,
           },
         })
       );
@@ -34,7 +36,7 @@ export const useAuth = () => {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     } finally {
       dispatch(clearAuth());
     }
@@ -47,6 +49,19 @@ export const useAuth = () => {
     [dispatch]
   );
 
+  const setTokens = useCallback(
+    (accessToken: string, refreshToken: string) => {
+      dispatch(
+        setCredentials({
+          accessToken,
+          refreshToken,
+          user: null,
+        })
+      );
+    },
+    [dispatch]
+  );
+
   return {
     isAuthenticated,
     user,
@@ -54,5 +69,6 @@ export const useAuth = () => {
     login,
     logout,
     updateUser,
+    setTokens,
   };
 };

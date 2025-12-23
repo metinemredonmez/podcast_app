@@ -30,14 +30,14 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { FilterDefinition, FilterValue, SavedFilter } from '../../hooks/useFilters';
+import { FilterDefinition, FilterValue, FilterValueType, SavedFilter, DateRangeValue } from '../../hooks/useFilters';
 
 export interface FilterSidebarProps {
   open: boolean;
   onClose: () => void;
   filters: FilterValue;
   definitions: FilterDefinition[];
-  onFilterChange: (key: string, value: any) => void;
+  onFilterChange: (key: string, value: FilterValueType) => void;
   onReset: () => void;
   savedFilters?: SavedFilter[];
   onSaveFilter?: (name: string) => void;
@@ -147,23 +147,24 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
               label={definition.placeholder}
-              value={value ? new Date(value) : null}
+              value={value ? new Date(value as string) : null}
               onChange={(date) => onFilterChange(definition.key, date?.toISOString())}
               slotProps={{ textField: { size: 'small', fullWidth: true } }}
             />
           </LocalizationProvider>
         );
 
-      case 'daterange':
+      case 'daterange': {
+        const dateRangeValue = (value || {}) as DateRangeValue;
         return (
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Stack spacing={2}>
               <DatePicker
                 label="From"
-                value={value?.from ? new Date(value.from) : null}
+                value={dateRangeValue.from ? new Date(dateRangeValue.from) : null}
                 onChange={(date) =>
                   onFilterChange(definition.key, {
-                    ...value,
+                    ...dateRangeValue,
                     from: date?.toISOString(),
                   })
                 }
@@ -171,10 +172,10 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
               />
               <DatePicker
                 label="To"
-                value={value?.to ? new Date(value.to) : null}
+                value={dateRangeValue.to ? new Date(dateRangeValue.to) : null}
                 onChange={(date) =>
                   onFilterChange(definition.key, {
-                    ...value,
+                    ...dateRangeValue,
                     to: date?.toISOString(),
                   })
                 }
@@ -183,6 +184,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
             </Stack>
           </LocalizationProvider>
         );
+      }
 
       case 'number':
         return (

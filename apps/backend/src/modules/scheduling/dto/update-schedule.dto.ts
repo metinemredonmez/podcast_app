@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsEnum, IsOptional, IsString, MaxLength, MinDate } from 'class-validator';
-import { ScheduleStatus } from '../../../common/enums/prisma.enums';
+import { IsDate, IsIn, IsOptional, IsString, MaxLength, MinDate } from 'class-validator';
 
 export class UpdateScheduleDto {
   @ApiPropertyOptional({ description: 'New scheduled date/time (ISO 8601)' })
@@ -11,10 +10,10 @@ export class UpdateScheduleDto {
   @MinDate(new Date(), { message: 'Scheduled time must be in the future' })
   scheduledAt?: Date;
 
-  @ApiPropertyOptional({ enum: ScheduleStatus, description: 'Update status' })
+  @ApiPropertyOptional({ type: String, enum: ['PENDING', 'PUBLISHED', 'FAILED', 'CANCELLED'], description: 'Update status' })
   @IsOptional()
-  @IsEnum(ScheduleStatus)
-  status?: ScheduleStatus;
+  @IsIn(['PENDING', 'PUBLISHED', 'FAILED', 'CANCELLED'])
+  status?: 'PENDING' | 'PUBLISHED' | 'FAILED' | 'CANCELLED';
 
   @ApiPropertyOptional({ maxLength: 500, description: 'Updated notes' })
   @IsOptional()

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Chip, Stack, Button } from '@mui/material';
 import { IconX } from '@tabler/icons-react';
-import { FilterValue, FilterDefinition } from '../../hooks/useFilters';
+import { FilterValue, FilterDefinition, FilterValueType } from '../../hooks/useFilters';
 
 export interface FilterChipsProps {
   filters: FilterValue;
@@ -16,7 +16,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
   onRemoveFilter,
   onClearAll,
 }) => {
-  const getFilterLabel = (key: string, value: any): string | null => {
+  const getFilterLabel = (key: string, value: FilterValueType): string | null => {
     const definition = definitions.find((d) => d.key === key);
     if (!definition) return null;
 
@@ -50,12 +50,13 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         break;
 
       case 'date':
-        displayValue = new Date(value).toLocaleDateString();
+        displayValue = new Date(value as string).toLocaleDateString();
         break;
 
       case 'daterange':
-        const from = value.from ? new Date(value.from).toLocaleDateString() : '';
-        const to = value.to ? new Date(value.to).toLocaleDateString() : '';
+        const dateRange = value as { from?: string; to?: string };
+        const from = dateRange.from ? new Date(dateRange.from).toLocaleDateString() : '';
+        const to = dateRange.to ? new Date(dateRange.to).toLocaleDateString() : '';
         if (!from && !to) return null;
         displayValue = from && to ? `${from} - ${to}` : from || to;
         break;

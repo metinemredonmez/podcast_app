@@ -204,7 +204,7 @@ const ReviewsPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search & Filters */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search reviews..."
               size="small"
@@ -213,7 +213,7 @@ const ReviewsPage: React.FC = () => {
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -222,7 +222,7 @@ const ReviewsPage: React.FC = () => {
                 ),
               }}
             />
-            <FormControl size="small" sx={{ minWidth: 120 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 120 } }}>
               <InputLabel>Rating</InputLabel>
               <Select
                 value={ratingFilter}

@@ -20,7 +20,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ThrottleUpload } from '../../common/decorators/throttle.decorator';
 import { UserRole } from '../../common/enums/prisma.enums';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UploadResponseDto } from './dto/upload-response.dto';
 import { SignedUrlResponseDto } from './dto/signed-url-response.dto';

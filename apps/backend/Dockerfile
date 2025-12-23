@@ -35,8 +35,8 @@ COPY --from=builder /app/apps/backend/package.json ./package.json
 
 # Copy Prisma files
 COPY --from=builder /app/apps/backend/prisma ./prisma
-COPY --from=builder /app/apps/backend/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/apps/backend/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY apps/backend/docker-entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod +x ./docker-entrypoint.sh

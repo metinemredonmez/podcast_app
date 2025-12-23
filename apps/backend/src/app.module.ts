@@ -37,6 +37,13 @@ import { ModerationModule } from './modules/moderation/moderation.module';
 import { CollaborationModule } from './modules/collaboration/collaboration.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { RssModule } from './modules/rss';
+import { PushModule } from './modules/push';
+import { SocialAuthModule } from './modules/social-auth';
+import { SmsModule } from './modules/sms';
+import { LiveStreamModule } from './modules/live-stream';
+import { EmailModule } from './modules/email/email.module';
+import { StorageConfigModule } from './modules/storage-config/storage-config.module';
+import { EncryptionModule } from './common/encryption';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -112,6 +119,13 @@ import { validateEnv } from './config/env.validation';
     CollaborationModule,
     RecommendationsModule,
     RssModule,
+    PushModule,
+    SocialAuthModule,
+    SmsModule,
+    LiveStreamModule,
+    EmailModule,
+    StorageConfigModule,
+    EncryptionModule,
   ],
   providers: [
     {

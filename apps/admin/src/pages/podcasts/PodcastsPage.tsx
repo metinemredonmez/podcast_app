@@ -24,6 +24,7 @@ import {
   CircularProgress,
   Alert,
   Checkbox,
+  Tooltip,
 } from '@mui/material';
 import {
   IconSearch,
@@ -33,6 +34,7 @@ import {
   IconTrash,
   IconEye,
   IconFilter,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { podcastService, Podcast } from '../../api/services/podcast.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
@@ -41,6 +43,7 @@ import { ExportDialog, ExportColumn } from '../../components/export';
 import { IconDownload } from '@tabler/icons-react';
 import { useFilters, FilterDefinition } from '../../hooks/useFilters';
 import { FilterSidebar, FilterChips } from '../../components/filters';
+import { logger } from '../../utils/logger';
 
 const PodcastsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -195,8 +198,8 @@ const PodcastsPage: React.FC = () => {
       setExportDialogOpen(true);
     } else if (actionId.startsWith('status-')) {
       const status = actionId.replace('status-', '');
-      // Update status for selected podcasts (implement status update)
-      console.log('Updating status to:', status, 'for:', ids);
+      // TODO: Implement bulk status update
+      logger.info('Updating status to:', status, 'for:', ids);
     }
   };
 
@@ -230,7 +233,12 @@ const PodcastsPage: React.FC = () => {
             Manage all podcasts in the platform
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchPodcasts} disabled={loading}>
+              <IconRefresh size={20} />
+            </IconButton>
+          </Tooltip>
           <Button variant="outlined" startIcon={<IconFilter size={20} />} onClick={() => setFilterSidebarOpen(true)}>
             Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
           </Button>
@@ -254,13 +262,13 @@ const PodcastsPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search & Filters */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search podcasts..."
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">

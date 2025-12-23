@@ -34,6 +34,11 @@ export class AuthUserDto {
   @ApiProperty({ enum: UserRole })
   @IsEnum(UserRole)
   role!: UserRole;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string | null;
 }
 
 export class AuthResponseDto {

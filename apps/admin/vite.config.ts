@@ -43,6 +43,30 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
+      // Enable source maps for production debugging
+      sourcemap: mode === 'development',
+      // Chunk splitting for better caching
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Vendor chunks
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-mui': ['@mui/material', '@mui/icons-material', '@mui/lab', '@mui/system'],
+            'vendor-mui-x': ['@mui/x-charts', '@mui/x-date-pickers'],
+            'vendor-forms': ['formik', 'yup'],
+            'vendor-charts': ['apexcharts', 'react-apexcharts'],
+            'vendor-utils': ['lodash', 'date-fns', 'axios'],
+            // Feature chunks
+            'feature-live': [
+              './src/pages/live-stream/LiveStreamsPage.tsx',
+              './src/pages/live-stream/LiveBroadcastPage.tsx',
+              './src/pages/live-stream/LivePlayerPage.tsx',
+            ],
+          },
+        },
+      },
+      // Reduce chunk size warnings threshold
+      chunkSizeWarningLimit: 500,
     },
   };
 });

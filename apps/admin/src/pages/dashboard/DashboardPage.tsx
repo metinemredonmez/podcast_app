@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Grid,
@@ -9,6 +9,8 @@ import {
   LinearProgress,
   Avatar,
   useTheme,
+  Skeleton,
+  Alert,
 } from '@mui/material';
 import {
   IconMicrophone,
@@ -18,57 +20,65 @@ import {
   IconTrendingUp,
   IconTrendingDown,
 } from '@tabler/icons-react';
+import { dashboardService, DashboardStats, TopPodcast } from '../../api/services/dashboard.service';
 
 interface StatCardProps {
   title: string;
-  value: string;
+  value: string | number;
   change: number;
   icon: React.ReactNode;
   color: string;
+  loading?: boolean;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon, color }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, change, icon, color, loading }) => {
   const theme = useTheme();
   const isPositive = change >= 0;
+
+  if (loading) {
+    return (
+      <Card sx={{ height: '100%' }}>
+        <CardContent>
+          <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+            <Box flex={1}>
+              <Skeleton width="60%" height={20} />
+              <Skeleton width="40%" height={40} sx={{ mt: 1 }} />
+              <Skeleton width="80%" height={16} sx={{ mt: 1 }} />
+            </Box>
+            <Skeleton variant="circular" width={48} height={48} />
+          </Stack>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-          <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" fontWeight={600}>
-              {value}
-            </Typography>
-            <Stack direction="row" alignItems="center" spacing={0.5} mt={1}>
-              {isPositive ? (
-                <IconTrendingUp size={16} color={theme.palette.success.main} />
-              ) : (
-                <IconTrendingDown size={16} color={theme.palette.error.main} />
-              )}
-              <Typography
-                variant="caption"
-                color={isPositive ? 'success.main' : 'error.main'}
-                fontWeight={600}
-              >
-                {isPositive ? '+' : ''}{change}%
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                vs last month
-              </Typography>
-            </Stack>
-          </Box>
-          <Avatar
-            sx={{
-              bgcolor: color,
-              width: 48,
-              height: 48,
-            }}
-          >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+          <Avatar sx={{ bgcolor: color, width: 48, height: 48 }}>
             {icon}
           </Avatar>
+        </Stack>
+        <Typography variant="h4" fontWeight={600}>
+          {typeof value === 'number' ? value.toLocaleString() : value}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.5}>
+          {title}
+        </Typography>
+        <Stack direction="row" alignItems="center" spacing={0.5} mt={1}>
+          {isPositive ? (
+            <IconTrendingUp size={14} color={theme.palette.success.main} />
+          ) : (
+            <IconTrendingDown size={14} color={theme.palette.error.main} />
+          )}
+          <Typography
+            variant="caption"
+            color={isPositive ? 'success.main' : 'error.main'}
+            fontWeight={600}
+          >
+            {isPositive ? '+' : ''}{change}%
+          </Typography>
         </Stack>
       </CardContent>
     </Card>
@@ -103,73 +113,109 @@ const RecentItem: React.FC<RecentItemProps> = ({ title, subtitle, time, avatar }
   );
 };
 
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('tr-TR');
+};
+
 const DashboardPage: React.FC = () => {
   const theme = useTheme();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [topPodcasts, setTopPodcasts] = useState<TopPodcast[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const stats = [
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [statsData, topPodcastsData] = await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getTopPodcasts(5),
+        ]);
+        setStats(statsData);
+        setTopPodcasts(topPodcastsData);
+      } catch (err: any) {
+        console.error('Dashboard fetch error:', err);
+        setError(err?.response?.data?.message || 'Dashboard verileri yüklenirken hata oluştu');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const statCards = [
     {
-      title: 'Total Podcasts',
-      value: '1,234',
-      change: 12.5,
+      title: 'Toplam Podcast',
+      value: stats?.totalPodcasts ?? 0,
+      change: stats?.growthMetrics?.podcastsGrowth ?? 0,
       icon: <IconMicrophone size={24} color="#fff" />,
       color: theme.palette.primary.main,
     },
     {
-      title: 'Total Episodes',
-      value: '5,678',
-      change: 8.2,
+      title: 'Toplam Bölüm',
+      value: stats?.totalEpisodes ?? 0,
+      change: stats?.growthMetrics?.episodesGrowth ?? 0,
       icon: <IconHeadphones size={24} color="#fff" />,
       color: theme.palette.secondary.main,
     },
     {
-      title: 'Active Users',
-      value: '12,450',
-      change: -2.4,
+      title: 'Aktif Kullanıcı',
+      value: stats?.totalUsers ?? 0,
+      change: stats?.growthMetrics?.usersGrowth ?? 0,
       icon: <IconUsers size={24} color="#fff" />,
       color: theme.palette.success.main,
     },
     {
-      title: 'Total Plays',
-      value: '89.5K',
-      change: 15.8,
+      title: 'Toplam Dinlenme',
+      value: stats?.totalPlays ?? 0,
+      change: 0,
       icon: <IconChartBar size={24} color="#fff" />,
       color: theme.palette.warning.main,
     },
   ];
 
-  const recentPodcasts = [
-    { title: 'Tech Talk Daily', subtitle: 'Technology', time: '2 min ago' },
-    { title: 'History Uncovered', subtitle: 'Education', time: '15 min ago' },
-    { title: 'Mindful Mornings', subtitle: 'Health', time: '1 hour ago' },
-    { title: 'Sports Roundup', subtitle: 'Sports', time: '2 hours ago' },
-    { title: 'True Crime Files', subtitle: 'Crime', time: '3 hours ago' },
-  ];
-
-  const topPodcasts = [
-    { name: 'Tech Talk Daily', plays: 45230, progress: 90 },
-    { name: 'True Crime Files', plays: 38920, progress: 78 },
-    { name: 'History Uncovered', plays: 32100, progress: 64 },
-    { name: 'Mindful Mornings', plays: 28500, progress: 57 },
-    { name: 'Sports Roundup', plays: 21800, progress: 44 },
-  ];
+  // Calculate max plays for progress bar
+  const maxPlays = topPodcasts.length > 0
+    ? Math.max(...topPodcasts.map(p => p.playCount))
+    : 1;
 
   return (
     <Box>
       {/* Page Header */}
       <Box mb={4}>
         <Typography variant="h4" fontWeight={600} gutterBottom>
-          Dashboard
+          Kontrol Paneli
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Welcome back! Here's what's happening with your podcasts.
+          Hoş geldiniz! Podcast'lerinizle ilgili güncel bilgiler.
         </Typography>
       </Box>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
       {/* Stats Cards */}
       <Grid container spacing={3} mb={4}>
-        {stats.map((stat, index) => (
+        {statCards.map((stat, index) => (
           <Grid item xs={12} sm={6} lg={3} key={index}>
-            <StatCard {...stat} />
+            <StatCard {...stat} loading={loading} />
           </Grid>
         ))}
       </Grid>
@@ -177,54 +223,92 @@ const DashboardPage: React.FC = () => {
       {/* Main Content */}
       <Grid container spacing={3}>
         {/* Top Podcasts */}
-        <Grid item xs={12} lg={8}>
+        <Grid item xs={12} md={7}>
           <Card>
             <CardContent>
               <Typography variant="h6" fontWeight={600} mb={3}>
-                Top Performing Podcasts
+                En Çok Dinlenen Podcast'ler
               </Typography>
-              <Stack spacing={2}>
-                {topPodcasts.map((podcast, index) => (
-                  <Box key={index}>
-                    <Stack direction="row" justifyContent="space-between" mb={1}>
-                      <Typography variant="body2" fontWeight={500}>
-                        {podcast.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {podcast.plays.toLocaleString()} plays
-                      </Typography>
-                    </Stack>
-                    <LinearProgress
-                      variant="determinate"
-                      value={podcast.progress}
-                      sx={{
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: theme.palette.grey[200],
-                        '& .MuiLinearProgress-bar': {
+              {loading ? (
+                <Stack spacing={2}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Box key={i}>
+                      <Skeleton width="100%" height={20} />
+                      <Skeleton width="100%" height={8} sx={{ mt: 1 }} />
+                    </Box>
+                  ))}
+                </Stack>
+              ) : topPodcasts.length === 0 ? (
+                <Typography color="text.secondary" textAlign="center" py={4}>
+                  Henüz podcast verisi bulunmuyor
+                </Typography>
+              ) : (
+                <Stack spacing={2}>
+                  {topPodcasts.map((podcast) => (
+                    <Box key={podcast.id}>
+                      <Stack direction="row" justifyContent="space-between" mb={1}>
+                        <Typography variant="body2" fontWeight={500}>
+                          {podcast.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {podcast.playCount.toLocaleString()} dinlenme
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(podcast.playCount / maxPlays) * 100}
+                        sx={{
+                          height: 8,
                           borderRadius: 4,
-                        },
-                      }}
-                    />
-                  </Box>
-                ))}
-              </Stack>
+                          backgroundColor: theme.palette.grey[200],
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                          },
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>
 
         {/* Recent Podcasts */}
-        <Grid item xs={12} lg={4}>
+        <Grid item xs={12} md={5}>
           <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" fontWeight={600} mb={2}>
-                Recent Podcasts
+                Son Eklenen Podcast'ler
               </Typography>
-              <Stack divider={<Box sx={{ borderBottom: `1px solid ${theme.palette.divider}` }} />}>
-                {recentPodcasts.map((podcast, index) => (
-                  <RecentItem key={index} {...podcast} />
-                ))}
-              </Stack>
+              {loading ? (
+                <Stack spacing={2}>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Stack key={i} direction="row" spacing={2} alignItems="center">
+                      <Skeleton variant="circular" width={40} height={40} />
+                      <Box flex={1}>
+                        <Skeleton width="80%" height={20} />
+                        <Skeleton width="60%" height={16} />
+                      </Box>
+                    </Stack>
+                  ))}
+                </Stack>
+              ) : !stats?.recentPodcasts?.length ? (
+                <Typography color="text.secondary" textAlign="center" py={4}>
+                  Henüz podcast bulunmuyor
+                </Typography>
+              ) : (
+                <Stack divider={<Box sx={{ borderBottom: `1px solid ${theme.palette.divider}` }} />}>
+                  {stats.recentPodcasts.map((podcast) => (
+                    <RecentItem
+                      key={podcast.id}
+                      title={podcast.title}
+                      subtitle={podcast.owner?.name || podcast.owner?.email || 'Unknown'}
+                      time={formatTimeAgo(podcast.createdAt)}
+                    />
+                  ))}
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>

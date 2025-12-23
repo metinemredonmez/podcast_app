@@ -25,6 +25,7 @@ import {
   IconDownload,
 } from '@tabler/icons-react';
 import { exportWithFormatting } from '../../utils/export';
+import { logger } from '../../utils/logger';
 
 export type ExportFormat = 'csv' | 'excel' | 'json' | 'pdf';
 
@@ -82,7 +83,7 @@ export function ExportDialog<T extends Record<string, any>>({
         setExporting(false);
       }, 500);
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed:', error);
       setExporting(false);
     }
   };

@@ -10,7 +10,12 @@ import { LightThemeColors } from './LightThemeColors';
 import { baseDarkTheme, baselightTheme } from './DefaultColors';
 import * as locales from '@mui/material/locale';
 
-export const BuildTheme = (config: any = {}) => {
+interface ThemeConfig {
+  theme?: string;
+  direction?: 'ltr' | 'rtl';
+}
+
+export const BuildTheme = (config: ThemeConfig = {}) => {
   const themeOptions = LightThemeColors.find((theme) => theme.name === config.theme);
   const darkthemeOptions = DarkThemeColors.find((theme) => theme.name === config.theme);
   const { activeMode, isBorderRadius } = useContext(CustomizerContext);
@@ -30,9 +35,11 @@ export const BuildTheme = (config: any = {}) => {
   const theme = createTheme(
     _.merge({}, baseMode, defaultTheme, locales, themeSelect, {
       direction: config.direction,
+      components: {},
     }),
   );
-  theme.components = components(theme);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (theme as any).components = components(theme);
 
   return theme;
 };

@@ -28,42 +28,39 @@ export const KPICard: React.FC<KPICardProps> = ({
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-          <Box>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              {title}
-            </Typography>
-            <Typography variant="h4" fontWeight={600} mb={1}>
-              {typeof value === 'number' ? value.toLocaleString() : value}
-              {suffix && (
-                <Typography component="span" variant="h6" color="text.secondary" ml={0.5}>
-                  {suffix}
-                </Typography>
-              )}
-            </Typography>
-            {hasChange && (
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                {isPositive ? (
-                  <IconTrendingUp size={16} color={theme.palette.success.main} />
-                ) : (
-                  <IconTrendingDown size={16} color={theme.palette.error.main} />
-                )}
-                <Typography
-                  variant="caption"
-                  color={isPositive ? 'success.main' : 'error.main'}
-                  fontWeight={600}
-                >
-                  {isPositive ? '+' : ''}
-                  {change}%
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  vs previous period
-                </Typography>
-              </Stack>
-            )}
-          </Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Avatar sx={{ bgcolor: color, width: 48, height: 48 }}>{icon}</Avatar>
         </Stack>
+        <Box mt={2}>
+          <Typography variant="h4" fontWeight={600}>
+            {typeof value === 'number' ? value.toLocaleString() : value}
+            {suffix && (
+              <Typography component="span" variant="h6" color="text.secondary" ml={0.5}>
+                {suffix}
+              </Typography>
+            )}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            {title}
+          </Typography>
+          {hasChange && (
+            <Stack direction="row" alignItems="center" spacing={0.5} mt={1}>
+              {isPositive ? (
+                <IconTrendingUp size={14} color={theme.palette.success.main} />
+              ) : (
+                <IconTrendingDown size={14} color={theme.palette.error.main} />
+              )}
+              <Typography
+                variant="caption"
+                color={isPositive ? 'success.main' : 'error.main'}
+                fontWeight={600}
+              >
+                {isPositive ? '+' : ''}
+                {change}%
+              </Typography>
+            </Stack>
+          )}
+        </Box>
       </CardContent>
     </Card>
   );

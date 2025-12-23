@@ -24,23 +24,35 @@ export class HocasService {
     const limit = filter.limit ?? 20;
     const skip = (page - 1) * limit;
 
-    return this.prisma.hoca.findMany({
-      where: {
-        ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
-        ...(filter.search
-          ? {
-              name: {
-                contains: filter.search,
-                mode: 'insensitive',
-              },
-            }
-          : {}),
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-      include: hocasInclude,
-    });
+    const where = {
+      ...(filter.tenantId ? { tenantId: filter.tenantId } : {}),
+      ...(filter.search
+        ? {
+            name: {
+              contains: filter.search,
+              mode: 'insensitive' as const,
+            },
+          }
+        : {}),
+    };
+
+    const [data, total] = await Promise.all([
+      this.prisma.hoca.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: hocasInclude,
+      }),
+      this.prisma.hoca.count({ where }),
+    ]);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(tenantId: string, id: string) {

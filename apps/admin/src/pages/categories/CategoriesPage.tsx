@@ -47,19 +47,10 @@ const CategoriesPage: React.FC = () => {
     try {
       const data = await categoryService.list();
       setCategories(data || []);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load categories');
-      // Demo data
-      setCategories([
-        { id: '1', name: 'Technology', slug: 'technology', podcastCount: 145, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '2', name: 'Education', slug: 'education', podcastCount: 89, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '3', name: 'Health', slug: 'health', podcastCount: 67, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '4', name: 'Sports', slug: 'sports', podcastCount: 112, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '5', name: 'Entertainment', slug: 'entertainment', podcastCount: 203, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '6', name: 'Business', slug: 'business', podcastCount: 78, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '7', name: 'News', slug: 'news', podcastCount: 156, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-        { id: '8', name: 'Crime', slug: 'crime', podcastCount: 92, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-      ]);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : 'Failed to load categories';
+      setError(errMessage);
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -104,8 +95,9 @@ const CategoriesPage: React.FC = () => {
       }
       fetchCategories();
       handleCloseDialog();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save category');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save category';
+      setError(message);
     }
   };
 
@@ -114,8 +106,9 @@ const CategoriesPage: React.FC = () => {
       try {
         await categoryService.delete(selectedCategory.id);
         fetchCategories();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to delete category');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to delete category';
+        setError(message);
       }
     }
     handleMenuClose();

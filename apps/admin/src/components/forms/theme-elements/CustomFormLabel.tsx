@@ -1,19 +1,14 @@
-import React from 'react';
 import { styled } from '@mui/material/styles';
-import { Typography } from '@mui/material';
+import { FormLabel, FormLabelProps } from '@mui/material';
 
-const CustomFormLabel = styled((props: any) => (
-  <Typography
-    variant="subtitle1"
-    fontWeight={600}
-    {...props}
-    component="label"
-    htmlFor={props.htmlFor}
-  />
+const CustomFormLabel = styled((props: FormLabelProps) => (
+  <FormLabel {...props} />
 ))(() => ({
   marginBottom: '5px',
   marginTop: '25px',
   display: 'block',
+  fontWeight: 600,
+  fontSize: '0.875rem',
 }));
 
 export default CustomFormLabel;

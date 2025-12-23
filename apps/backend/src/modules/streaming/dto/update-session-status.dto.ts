@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { StreamStatus } from '@podcast-app/shared-types';
-import { IsEnum } from 'class-validator';
+import { IsIn } from 'class-validator';
 
 export class UpdateSessionStatusDto {
-  @ApiProperty({ enum: StreamStatus })
-  @IsEnum(StreamStatus)
-  status!: StreamStatus;
+  @ApiProperty({ type: String, enum: ['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'] })
+  @IsIn(['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'])
+  status!: 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
 }

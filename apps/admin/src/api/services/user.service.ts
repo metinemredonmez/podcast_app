@@ -67,4 +67,24 @@ export const userService = {
     const response = await apiClient.post(`/users/${id}/unban`);
     return response.data;
   },
+
+  async uploadAvatar(file: File): Promise<User> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/users/me/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async updateProfile(data: { name?: string }): Promise<User> {
+    const response = await apiClient.patch('/users/me/profile', data);
+    return response.data;
+  },
+
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+    await apiClient.post('/users/me/change-password', data);
+  },
 };

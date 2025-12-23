@@ -44,7 +44,7 @@ export const hocaService = {
     page?: number;
     limit?: number;
     search?: string;
-  }): Promise<Hoca[]> {
+  }): Promise<HocaListResponse> {
     const response = await apiClient.get('/hocas', { params });
     return response.data;
   },

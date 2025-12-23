@@ -23,6 +23,7 @@ import {
   CircularProgress,
   Alert,
   Checkbox,
+  Tooltip,
 } from '@mui/material';
 import {
   IconSearch,
@@ -32,10 +33,12 @@ import {
   IconTrash,
   IconPlayerPlay,
   IconClock,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { episodeService, Episode } from '../../api/services/episode.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { BulkActions, commonBulkActions } from '../../components/table';
+import { logger } from '../../utils/logger';
 
 const formatDuration = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -113,10 +116,12 @@ const EpisodesPage: React.FC = () => {
       await Promise.all(ids.map((id) => episodeService.delete(id)));
       fetchEpisodes();
     } else if (actionId === 'export') {
-      console.log('Exporting episodes:', ids);
+      // TODO: Implement export functionality
+      logger.info('Exporting episodes:', ids);
     } else if (actionId.startsWith('status-')) {
       const status = actionId.replace('status-', '');
-      console.log('Updating status to:', status, 'for:', ids);
+      // TODO: Implement bulk status update
+      logger.info('Updating status to:', status, 'for:', ids);
     }
   };
 
@@ -145,13 +150,20 @@ const EpisodesPage: React.FC = () => {
             Manage all podcast episodes
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<IconPlus size={20} />}
-          onClick={() => navigate('/episodes/new')}
-        >
-          Add Episode
-        </Button>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchEpisodes} disabled={loading}>
+              <IconRefresh size={20} />
+            </IconButton>
+          </Tooltip>
+          <Button
+            variant="contained"
+            startIcon={<IconPlus size={20} />}
+            onClick={() => navigate('/episodes/new')}
+          >
+            Add Episode
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Error Alert */}
@@ -165,13 +177,13 @@ const EpisodesPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search & Filters */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search episodes..."
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">

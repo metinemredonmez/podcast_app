@@ -14,6 +14,14 @@ export class HealthController {
     private readonly redisHealth: RedisHealthIndicator,
   ) {}
 
+  @Get()
+  @Public()
+  @ApiOperation({ summary: 'Basic health check' })
+  @ApiResponse({ status: 200, description: 'OK' })
+  health(): { status: string } {
+    return { status: 'ok' };
+  }
+
   @Get('liveness')
   @Public()
   @HealthCheck()

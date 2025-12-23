@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { StreamStatus } from '@podcast-app/shared-types';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class ListStreamingDto {
   @ApiPropertyOptional({ format: 'uuid' })
@@ -9,10 +8,10 @@ export class ListStreamingDto {
   @IsUUID()
   tenantId?: string;
 
-  @ApiPropertyOptional({ enum: StreamStatus })
+  @ApiPropertyOptional({ type: String, enum: ['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'] })
   @IsOptional()
-  @IsEnum(StreamStatus)
-  status?: StreamStatus;
+  @IsIn(['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'])
+  status?: 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma.service';
 import { ChatService } from './chat.service';
 
@@ -18,6 +18,8 @@ export interface StreamRoom {
   participants: Map<string, RoomParticipant>;
   isLive: boolean;
   startedAt?: Date;
+  createdAt: Date;
+  lastActivityAt: Date;
   settings: {
     allowChat: boolean;
     allowReactions: boolean;
@@ -26,25 +28,69 @@ export interface StreamRoom {
 }
 
 @Injectable()
-export class RoomService {
+export class RoomService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RoomService.name);
   private readonly rooms = new Map<string, StreamRoom>();
+  private readonly roomTtlMs = 24 * 60 * 60 * 1000; // 24 hours for inactive rooms
+  private readonly cleanupIntervalMs = 60 * 60 * 1000; // 1 hour
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly chatService: ChatService,
   ) {}
 
-  async createRoom(sessionId: string, hostId: string, settings?: Partial<StreamRoom['settings']>): Promise<StreamRoom> {
-    if (this.rooms.has(sessionId)) {
-      return this.rooms.get(sessionId)!;
+  onModuleInit() {
+    // Start periodic cleanup of stale rooms
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupStaleRooms();
+    }, this.cleanupIntervalMs);
+    this.logger.log('Room service initialized with periodic cleanup');
+  }
+
+  onModuleDestroy() {
+    // Clear interval and all rooms on shutdown
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.rooms.clear();
+    this.logger.log('Room service destroyed, all rooms cleared');
+  }
+
+  private async cleanupStaleRooms(): Promise<void> {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [sessionId, room] of this.rooms) {
+      const inactiveTime = now - room.lastActivityAt.getTime();
+      // Only cleanup non-live rooms that are inactive
+      if (!room.isLive && inactiveTime > this.roomTtlMs) {
+        await this.deleteRoom(sessionId);
+        cleanedCount++;
+      }
     }
 
+    if (cleanedCount > 0) {
+      this.logger.log(`Cleaned up ${cleanedCount} stale stream rooms`);
+    }
+  }
+
+  async createRoom(sessionId: string, hostId: string, settings?: Partial<StreamRoom['settings']>): Promise<StreamRoom> {
+    if (this.rooms.has(sessionId)) {
+      const existingRoom = this.rooms.get(sessionId)!;
+      existingRoom.lastActivityAt = new Date();
+      return existingRoom;
+    }
+
+    const now = new Date();
     const room: StreamRoom = {
       sessionId,
       hostId,
       participants: new Map(),
       isLive: false,
+      createdAt: now,
+      lastActivityAt: now,
       settings: {
         allowChat: settings?.allowChat ?? true,
         allowReactions: settings?.allowReactions ?? true,
@@ -103,6 +149,7 @@ export class RoomService {
     };
 
     room.participants.set(userId, participant);
+    room.lastActivityAt = new Date();
     this.chatService.joinRoom(sessionId, userId);
 
     // Update viewer count in DB

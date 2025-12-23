@@ -27,6 +27,7 @@ import {
   DialogActions,
   CircularProgress,
 } from '@mui/material';
+import { logger } from '../../utils/logger';
 import {
   IconArrowLeft,
   IconSend,
@@ -87,7 +88,7 @@ const SendNotificationPage: React.FC = () => {
       const data = await notificationService.getTemplates();
       setTemplates(data);
     } catch (err) {
-      console.error('Failed to load templates:', err);
+      logger.error('Failed to load templates:', err);
     }
   };
 
@@ -113,7 +114,7 @@ const SendNotificationPage: React.FC = () => {
       });
       setRecipientCount(count);
     } catch (err) {
-      console.error('Failed to get recipient count:', err);
+      logger.error('Failed to get recipient count:', err);
       setRecipientCount(null);
     } finally {
       setRecipientCountLoading(false);
@@ -157,8 +158,9 @@ const SendNotificationPage: React.FC = () => {
       await notificationService.sendNotification(data);
       setSuccess(true);
       setTimeout(() => navigate('/notifications'), 2000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to send notification');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to send notification';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -186,7 +188,7 @@ const SendNotificationPage: React.FC = () => {
           <Button variant="outlined" startIcon={<IconEye size={18} />} onClick={() => setPreviewOpen(true)}>
             Preview
           </Button>
-          <Button variant="contained" startIcon={<IconSend size={18} />} onClick={handleSend} disabled={loading}>
+          <Button variant="contained" startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <IconSend size={18} />} onClick={handleSend} disabled={loading}>
             {loading ? 'Sending...' : scheduleNow ? 'Send Now' : 'Schedule'}
           </Button>
         </Stack>

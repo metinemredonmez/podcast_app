@@ -1,8 +1,8 @@
 // project imports
 import "./DefaultColors";
-import { Theme } from "@mui/material/styles";
+import { Theme, Components } from "@mui/material/styles";
 
-const components: any = (theme: Theme) => {
+const components = (theme: Theme): Components<Omit<Theme, 'components'>> => {
   return {
     MuiCssBaseline: {
       styleOverrides: {
@@ -345,26 +345,11 @@ const components: any = (theme: Theme) => {
         },
       },
     },
-    MuiGridItem: {
-      styleOverrides: {
-        root: {
-          paddingTop: "30px",
-          paddingLeft: "30px !important",
-        },
-      },
-    },
     MuiLinearProgress: {
       styleOverrides: {
         root: {
           backgroundColor: theme.palette.grey[200],
           borderRadius: "6px",
-        },
-      },
-    },
-    MuiTimelineConnector: {
-      styleOverrides: {
-        root: {
-          backgroundColor: theme.palette.divider,
         },
       },
     },
@@ -430,9 +415,6 @@ const components: any = (theme: Theme) => {
           borderColor: theme.palette.info.main,
           color: theme.palette.info.main,
         },
-        successIcon: {
-          color: theme.palette.info.main,
-        },
       },
     },
     MuiOutlinedInput: {
@@ -444,15 +426,78 @@ const components: any = (theme: Theme) => {
                 ? theme.palette.grey[200]
                 : theme.palette.grey[300],
           },
- '&.Mui-focused .MuiOutlinedInput-notchedOutline, &:hover .MuiOutlinedInput-notchedOutline': {
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline, &:hover .MuiOutlinedInput-notchedOutline": {
             borderColor: theme.palette.primary.main,
-          }
+          },
+          "& legend": {
+            fontSize: "0.85em",
+          },
         },
         input: {
           padding: "12px 14px",
         },
         inputSizeSmall: {
           padding: "8px 14px",
+        },
+        notchedOutline: {
+          "& legend": {
+            fontSize: "0.85em",
+          },
+        },
+      },
+    },
+    MuiInputLabel: {
+      defaultProps: {
+        shrink: true,
+      },
+      styleOverrides: {
+        root: {
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          maxWidth: "calc(100% - 24px)",
+          transform: "translate(14px, -9px) scale(0.75)",
+          backgroundColor: theme.palette.background.paper,
+          paddingLeft: 4,
+          paddingRight: 4,
+        },
+        shrink: {
+          maxWidth: "calc(133% - 24px)",
+          transform: "translate(14px, -9px) scale(0.75)",
+          backgroundColor: theme.palette.background.paper,
+        },
+        outlined: {
+          transform: "translate(14px, -9px) scale(0.75)",
+          "&.MuiInputLabel-shrink": {
+            transform: "translate(14px, -9px) scale(0.75)",
+          },
+        },
+      },
+    },
+    MuiFormControl: {
+      defaultProps: {
+        fullWidth: true,
+      },
+    },
+    MuiSelect: {
+      defaultProps: {
+        notched: true,
+      },
+    },
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          marginTop: 4,
+          fontSize: "0.75rem",
+          lineHeight: 1.4,
+        },
+      },
+    },
+    MuiTextField: {
+      defaultProps: {
+        fullWidth: true,
+        InputLabelProps: {
+          shrink: true,
         },
       },
     },
@@ -492,6 +537,39 @@ const components: any = (theme: Theme) => {
         paper: {
           boxShadow:
             "rgb(145 158 171 / 30%) 0px 0px 2px 0px, rgb(145 158 171 / 12%) 0px 12px 24px -4px",
+        },
+      },
+    },
+    MuiTabs: {
+      defaultProps: {
+        variant: "scrollable",
+        scrollButtons: "auto",
+        allowScrollButtonsMobile: true,
+      },
+      styleOverrides: {
+        root: {
+          minHeight: 42,
+        },
+        scrollButtons: {
+          "&.Mui-disabled": {
+            opacity: 0.3,
+          },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          minWidth: "auto",
+          minHeight: 40,
+          padding: "8px 16px",
+          fontSize: "0.875rem",
+          whiteSpace: "nowrap",
+          "@media (max-width: 600px)": {
+            padding: "6px 12px",
+            fontSize: "0.8125rem",
+          },
         },
       },
     },

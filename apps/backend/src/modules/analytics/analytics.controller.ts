@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { FilterAnalyticsDto } from './dto/filter-analytics.dto';
 import { CreateAnalyticsDto } from './dto/create-analytics.dto';
@@ -7,7 +8,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../../common/enums/prisma.enums';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('analytics')
@@ -82,6 +83,45 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Get peak listening hours' })
   getPeakHours(@CurrentUser() user: JwtPayload) {
     return this.service.getPeakListeningHours(user);
+  }
+
+  @Get('export/:format')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Export analytics data as CSV or JSON' })
+  @ApiResponse({ status: 200, description: 'Export file' })
+  async exportData(
+    @Param('format') format: 'csv' | 'json',
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: JwtPayload,
+    @Res() res: Response,
+  ) {
+    const data = await this.service.exportData(from, to, user);
+
+    if (format === 'csv') {
+      const csv = this.convertToCSV(data);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=analytics-${from}-to-${to}.csv`);
+      return res.send(csv);
+    } else {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=analytics-${from}-to-${to}.json`);
+      return res.json(data);
+    }
+  }
+
+  private convertToCSV(data: any): string {
+    const headers = ['Date', 'Plays', 'Unique Listeners', 'New Users', 'Comments', 'Reviews'];
+    const rows = data.dailyStats?.map((d: any) => [
+      d.date,
+      d.plays || 0,
+      d.uniqueListeners || 0,
+      d.newUsers || 0,
+      d.comments || 0,
+      d.reviews || 0,
+    ]) || [];
+
+    return [headers.join(','), ...rows.map((r: any[]) => r.join(','))].join('\n');
   }
 
   @Get('stats')

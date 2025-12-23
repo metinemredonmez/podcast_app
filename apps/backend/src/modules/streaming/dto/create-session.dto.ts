@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { StreamStatus } from '@podcast-app/shared-types';
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateSessionDto {
   @ApiPropertyOptional({ format: 'uuid' })
@@ -22,8 +21,12 @@ export class CreateSessionDto {
   @IsUUID()
   episodeId?: string;
 
-  @ApiPropertyOptional({ enum: StreamStatus, default: StreamStatus.SCHEDULED })
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'],
+    default: 'SCHEDULED'
+  })
   @IsOptional()
-  @IsEnum(StreamStatus)
-  status?: StreamStatus;
+  @IsIn(['SCHEDULED', 'LIVE', 'ENDED', 'CANCELLED'])
+  status?: 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
 }

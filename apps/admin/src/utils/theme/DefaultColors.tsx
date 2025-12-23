@@ -113,8 +113,8 @@ const baseDarkTheme = {
       600: '#F2F6FA'
     },
     text: {
-      primary: '#EAEFF4',
-      secondary: '#7C8FAC',
+      primary: '#FFFFFF',
+      secondary: '#B0BEC5',
     },
     action: {
       disabledBackground: 'rgba(73,82,88,0.12)',

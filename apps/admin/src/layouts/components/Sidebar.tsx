@@ -27,6 +27,11 @@ import {
   IconShieldCheck,
   IconBuilding,
   IconBell,
+  IconDeviceMobile,
+  IconHistory,
+  IconBrandGoogle,
+  IconSettings,
+  IconBroadcast,
 } from '@tabler/icons-react';
 import { CustomizerContext } from '../../context/customizerContext';
 import SimpleBar from 'simplebar-react';
@@ -44,10 +49,13 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { id: 'nav-dashboard', title: 'Dashboard', subheader: 'Dashboard', navlabel: true, icon: IconLayoutDashboard, href: '' },
+  { id: 'nav-dashboard', title: 'Dashboard', subheader: 'Kontrol Paneli', navlabel: true, icon: IconLayoutDashboard, href: '' },
   { id: 'dashboard', title: 'Dashboard', icon: IconLayoutDashboard, href: '/dashboard' },
-  { id: 'analytics', title: 'Analytics', icon: IconChartBar, href: '/analytics' },
-  { id: 'analytics-advanced', title: 'Advanced Analytics', icon: IconChartBar, href: '/analytics/advanced' },
+  { id: 'analytics', title: 'Analitik', icon: IconChartBar, href: '/analytics' },
+
+  { id: 'nav-live', title: 'Live', subheader: 'Canlı Yayın', navlabel: true, icon: IconBroadcast, href: '' },
+  { id: 'live-streams', title: 'Yayınlar', icon: IconBroadcast, href: '/live' },
+  { id: 'live-broadcast', title: 'Yayın Başlat', icon: IconMicrophone, href: '/live/broadcast' },
 
   { id: 'nav-content', title: 'Content', subheader: 'Content Management', navlabel: true, icon: IconMicrophone, href: '' },
   { id: 'podcasts', title: 'Podcasts', icon: IconMicrophone, href: '/podcasts' },
@@ -66,6 +74,13 @@ const menuItems: MenuItem[] = [
   { id: 'nav-admin', title: 'Admin', subheader: 'Administration', navlabel: true, icon: IconBuilding, href: '' },
   { id: 'tenants', title: 'Tenants', icon: IconBuilding, href: '/tenants' },
   { id: 'notifications', title: 'Notifications', icon: IconBell, href: '/notifications' },
+
+  { id: 'nav-settings', title: 'Settings', subheader: 'Ayarlar', navlabel: true, icon: IconSettings, href: '' },
+  { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings' },
+  { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth' },
+  { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms' },
+  { id: 'push-config', title: 'Push Detayları', icon: IconBell, href: '/push' },
+  { id: 'push-logs', title: 'Push Logları', icon: IconHistory, href: '/push/logs' },
 ];
 
 const Sidebar: React.FC = () => {
@@ -84,8 +99,7 @@ const Sidebar: React.FC = () => {
         const stats = await moderationService.getStats();
         setPendingCount(stats.pending || 0);
       } catch {
-        // Demo count on error
-        setPendingCount(5);
+        setPendingCount(0);
       }
     };
 
@@ -121,17 +135,19 @@ const Sidebar: React.FC = () => {
       {/* Logo */}
       <Box sx={{ px: 3, py: 2.5 }}>
         <Typography variant="h5" fontWeight={600} color="primary">
-          Podcast Admin
+          {isSidebarOpen ? 'Podcast Admin' : 'PA'}
         </Typography>
       </Box>
 
       <Divider />
 
       {/* Menu Items */}
-      <SimpleBar style={{ maxHeight: 'calc(100vh - 120px)' }}>
+      <SimpleBar style={{ maxHeight: 'calc(100vh - 100px)', flex: 1 }}>
         <List sx={{ px: 2, pt: 1 }}>
           {menuItems.map((item) => {
             if (item.navlabel) {
+              // Hide section headers in mini-sidebar mode
+              if (!isSidebarOpen) return null;
               return (
                 <Typography
                   key={item.id}
@@ -165,13 +181,15 @@ const Sidebar: React.FC = () => {
                     mb: 0.5,
                     backgroundColor: isSelected ? theme.palette.primary.light : 'transparent',
                     color: isSelected ? theme.palette.primary.main : theme.palette.text.primary,
+                    justifyContent: isSidebarOpen ? 'flex-start' : 'center',
+                    px: isSidebarOpen ? 2 : 1,
                     '&:hover': {
                       backgroundColor: isSelected
                         ? theme.palette.primary.light
                         : theme.palette.action.hover,
                     },
                     // Active indicator
-                    ...(isSelected && {
+                    ...(isSelected && isSidebarOpen && {
                       borderLeft: `3px solid ${theme.palette.primary.main}`,
                       pl: 1.5,
                     }),
@@ -179,7 +197,8 @@ const Sidebar: React.FC = () => {
                 >
                   <ListItemIcon
                     sx={{
-                      minWidth: 40,
+                      minWidth: isSidebarOpen ? 40 : 'auto',
+                      mr: isSidebarOpen ? 0 : 0,
                       color: isSelected ? theme.palette.primary.main : theme.palette.text.secondary,
                     }}
                   >

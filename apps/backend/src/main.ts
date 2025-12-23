@@ -82,8 +82,14 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      // In production, we still allow this for mobile apps but log it
       if (!origin) {
+        if (nodeEnv === 'production') {
+          // Mobile apps and server-to-server requests don't have origin
+          // This is expected behavior, but we log it for monitoring
+          bootstrapLogger.debug('CORS: Request with no origin (mobile/server-to-server)');
+        }
         return callback(null, true);
       }
 
@@ -92,9 +98,11 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      // Log rejected origins in development
+      // Log rejected origins
       if (nodeEnv === 'development') {
         bootstrapLogger.warn(`CORS rejected origin: ${origin}`);
+      } else {
+        bootstrapLogger.warn(`CORS rejected origin in production: ${origin}`);
       }
 
       callback(new Error(`Origin ${origin} not allowed by CORS`));
@@ -166,6 +174,13 @@ Most endpoints are tenant-scoped. Include X-Tenant-Id header or use the tenantId
     const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, swaggerDocument);
   }
+
+  // Enable graceful shutdown hooks
+  app.enableShutdownHooks();
+
+  // Global request timeout (30 seconds)
+  const server = app.getHttpServer();
+  server.setTimeout(30000);
 
   // Start server
   const port = process.env.PORT || 3300;

@@ -1,25 +1,79 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AuthLayout, DashboardLayout } from '../layouts';
-import LoginPage from '../pages/auth/LoginPage';
-import DashboardPage from '../pages/dashboard/DashboardPage';
-import PodcastsPage from '../pages/podcasts/PodcastsPage';
-import CreatePodcastPage from '../pages/podcasts/CreatePodcastPage';
-import EditPodcastPage from '../pages/podcasts/EditPodcastPage';
-import EpisodesPage from '../pages/episodes/EpisodesPage';
-import EditEpisodePage from '../pages/episodes/EditEpisodePage';
-import UsersPage from '../pages/users/UsersPage';
-import HocasPage from '../pages/hocas/HocasPage';
-import AnalyticsPage from '../pages/analytics/AnalyticsPage';
-import AdvancedAnalyticsPage from '../pages/analytics/AdvancedAnalyticsPage';
-import CategoriesPage from '../pages/categories/CategoriesPage';
-import ModerationPage from '../pages/moderation/ModerationPage';
-import TenantsPage from '../pages/tenants/TenantsPage';
-import TenantDetailPage from '../pages/tenants/TenantDetailPage';
-import NotificationsPage from '../pages/notifications/NotificationsPage';
-import SendNotificationPage from '../pages/notifications/SendNotificationPage';
-import CommentsPage from '../pages/comments/CommentsPage';
-import ReviewsPage from '../pages/reviews/ReviewsPage';
 import { ProtectedRoute } from './ProtectedRoute';
+import { PageLoader, TablePageLoader } from '../components/common/PageLoader';
+
+// Lazy load pages for code splitting
+// Auth pages (loaded eagerly as entry point)
+import LoginPage from '../pages/auth/LoginPage';
+
+// Dashboard - loaded eagerly as main entry
+import DashboardPage from '../pages/dashboard/DashboardPage';
+
+// Podcast pages
+const PodcastsPage = lazy(() => import('../pages/podcasts/PodcastsPage'));
+const CreatePodcastPage = lazy(() => import('../pages/podcasts/CreatePodcastPage'));
+const EditPodcastPage = lazy(() => import('../pages/podcasts/EditPodcastPage'));
+
+// Episode pages
+const EpisodesPage = lazy(() => import('../pages/episodes/EpisodesPage'));
+const EditEpisodePage = lazy(() => import('../pages/episodes/EditEpisodePage'));
+
+// User management pages
+const UsersPage = lazy(() => import('../pages/users/UsersPage'));
+const HocasPage = lazy(() => import('../pages/hocas/HocasPage'));
+
+// Profile page
+const ProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
+
+// Content moderation pages
+const CategoriesPage = lazy(() => import('../pages/categories/CategoriesPage'));
+const ModerationPage = lazy(() => import('../pages/moderation/ModerationPage'));
+const CommentsPage = lazy(() => import('../pages/comments/CommentsPage'));
+const ReviewsPage = lazy(() => import('../pages/reviews/ReviewsPage'));
+
+// Analytics pages
+const AdvancedAnalyticsPage = lazy(() => import('../pages/analytics/AdvancedAnalyticsPage'));
+
+// Tenant pages
+const TenantsPage = lazy(() => import('../pages/tenants/TenantsPage'));
+const TenantDetailPage = lazy(() => import('../pages/tenants/TenantDetailPage'));
+
+// Notification pages
+const NotificationsPage = lazy(() => import('../pages/notifications/NotificationsPage'));
+const SendNotificationPage = lazy(() => import('../pages/notifications/SendNotificationPage'));
+
+// Settings pages
+const SystemSettingsPage = lazy(() => import('../pages/settings/SystemSettingsPage'));
+const PushConfigPage = lazy(() => import('../pages/push/PushConfigPage'));
+const PushLogsPage = lazy(() => import('../pages/push/PushLogsPage'));
+const SocialAuthConfigPage = lazy(() => import('../pages/social-auth/SocialAuthConfigPage'));
+const SmsConfigPage = lazy(() => import('../pages/sms/SmsConfigPage'));
+
+// Live streaming pages
+const LiveStreamsPage = lazy(() => import('../pages/live-stream/LiveStreamsPage'));
+const LiveBroadcastPage = lazy(() => import('../pages/live-stream/LiveBroadcastPage'));
+const LivePlayerPage = lazy(() => import('../pages/live-stream/LivePlayerPage'));
+
+// Wrapper component for lazy-loaded pages
+const LazyPage = ({ component: Component, loader: Loader = PageLoader }: {
+  component: React.LazyExoticComponent<React.ComponentType>;
+  loader?: React.ComponentType;
+}) => (
+  <Suspense fallback={<Loader />}>
+    <Component />
+  </Suspense>
+);
+
+// Table page wrapper with skeleton loader
+const LazyTablePage = ({ component: Component }: {
+  component: React.LazyExoticComponent<React.ComponentType>;
+}) => (
+  <Suspense fallback={<TablePageLoader />}>
+    <Component />
+  </Suspense>
+);
 
 export const router = createBrowserRouter([
   {
@@ -32,25 +86,56 @@ export const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
+          // Dashboard - eagerly loaded
           { path: '/', element: <DashboardPage /> },
           { path: '/dashboard', element: <DashboardPage /> },
-          { path: '/podcasts', element: <PodcastsPage /> },
-          { path: '/podcasts/new', element: <CreatePodcastPage /> },
-          { path: '/podcasts/:id', element: <EditPodcastPage /> },
-          { path: '/episodes', element: <EpisodesPage /> },
-          { path: '/episodes/:id', element: <EditEpisodePage /> },
-          { path: '/categories', element: <CategoriesPage /> },
-          { path: '/users', element: <UsersPage /> },
-          { path: '/hocas', element: <HocasPage /> },
-          { path: '/moderation', element: <ModerationPage /> },
-          { path: '/comments', element: <CommentsPage /> },
-          { path: '/reviews', element: <ReviewsPage /> },
-          { path: '/analytics', element: <AnalyticsPage /> },
-          { path: '/analytics/advanced', element: <AdvancedAnalyticsPage /> },
-          { path: '/tenants', element: <TenantsPage /> },
-          { path: '/tenants/:id', element: <TenantDetailPage /> },
-          { path: '/notifications', element: <NotificationsPage /> },
-          { path: '/notifications/send', element: <SendNotificationPage /> },
+
+          // Podcasts
+          { path: '/podcasts', element: <LazyTablePage component={PodcastsPage} /> },
+          { path: '/podcasts/new', element: <LazyPage component={CreatePodcastPage} /> },
+          { path: '/podcasts/:id', element: <LazyPage component={EditPodcastPage} /> },
+
+          // Episodes
+          { path: '/episodes', element: <LazyTablePage component={EpisodesPage} /> },
+          { path: '/episodes/:id', element: <LazyPage component={EditEpisodePage} /> },
+
+          // Categories
+          { path: '/categories', element: <LazyTablePage component={CategoriesPage} /> },
+
+          // Users
+          { path: '/users', element: <LazyTablePage component={UsersPage} /> },
+          { path: '/hocas', element: <LazyTablePage component={HocasPage} /> },
+
+          // Profile
+          { path: '/profile', element: <LazyPage component={ProfilePage} /> },
+
+          // Moderation
+          { path: '/moderation', element: <LazyTablePage component={ModerationPage} /> },
+          { path: '/comments', element: <LazyTablePage component={CommentsPage} /> },
+          { path: '/reviews', element: <LazyTablePage component={ReviewsPage} /> },
+
+          // Analytics
+          { path: '/analytics', element: <LazyPage component={AdvancedAnalyticsPage} /> },
+
+          // Tenants
+          { path: '/tenants', element: <LazyTablePage component={TenantsPage} /> },
+          { path: '/tenants/:id', element: <LazyPage component={TenantDetailPage} /> },
+
+          // Notifications
+          { path: '/notifications', element: <LazyTablePage component={NotificationsPage} /> },
+          { path: '/notifications/send', element: <LazyPage component={SendNotificationPage} /> },
+
+          // Settings
+          { path: '/settings', element: <LazyPage component={SystemSettingsPage} /> },
+          { path: '/push', element: <LazyPage component={PushConfigPage} /> },
+          { path: '/push/logs', element: <LazyTablePage component={PushLogsPage} /> },
+          { path: '/settings/social-auth', element: <LazyPage component={SocialAuthConfigPage} /> },
+          { path: '/settings/sms', element: <LazyPage component={SmsConfigPage} /> },
+
+          // Live Streaming
+          { path: '/live', element: <LazyTablePage component={LiveStreamsPage} /> },
+          { path: '/live/broadcast', element: <LazyPage component={LiveBroadcastPage} /> },
+          { path: '/live/:streamId', element: <LazyPage component={LivePlayerPage} /> },
         ],
       },
     ],

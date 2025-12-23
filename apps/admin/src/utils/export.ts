@@ -2,6 +2,8 @@
  * Export utilities for CSV, Excel, and PDF formats
  */
 
+import { logger } from './logger';
+
 // CSV Export
 export function exportToCSV<T extends Record<string, any>>(
   data: T[],
@@ -9,7 +11,7 @@ export function exportToCSV<T extends Record<string, any>>(
   columns?: { key: keyof T; label: string }[]
 ): void {
   if (data.length === 0) {
-    console.warn('No data to export');
+    logger.warn('No data to export');
     return;
   }
 
@@ -70,7 +72,7 @@ export function exportToJSON<T>(data: T[], filename: string): void {
 // PDF Export (basic HTML to PDF - for advanced PDF, use jsPDF or pdfmake)
 export async function exportToPDF(
   title: string,
-  data: any[],
+  data: Record<string, unknown>[],
   columns: { key: string; label: string }[],
   filename: string
 ): Promise<void> {
@@ -154,7 +156,7 @@ export async function exportToPDF(
       printWindow.print();
     };
   } else {
-    console.error('Failed to open print window');
+    logger.error('Failed to open print window');
   }
 }
 

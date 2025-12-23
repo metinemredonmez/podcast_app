@@ -1,8 +1,7 @@
 #!/bin/sh
 set -e
 
-# Ensure Prisma client and database migrations are up to date
-yarn prisma:generate
+# Run database migrations
 yarn prisma:migrate:deploy
 
 # Seed data for non-production environments

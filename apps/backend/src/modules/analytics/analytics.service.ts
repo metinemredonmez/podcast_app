@@ -441,6 +441,132 @@ export class AnalyticsService {
     }));
   }
 
+  async exportData(
+    from: string,
+    to: string,
+    actor: JwtPayload,
+  ): Promise<{
+    summary: any;
+    dailyStats: any[];
+    topPodcasts: any[];
+  }> {
+    if (actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only administrators can export analytics');
+    }
+
+    const fromDate = new Date(from);
+    fromDate.setHours(0, 0, 0, 0);
+    const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);
+
+    // Fetch all data in bulk queries instead of per-day queries
+    const [allPlays, allUsers, allComments, allReviews, topPodcasts] = await Promise.all([
+      // Get all plays in date range
+      this.prisma.analyticsEvent.findMany({
+        where: {
+          eventType: 'PODCAST_PLAY',
+          occurredAt: { gte: fromDate, lte: toDate },
+        },
+        select: { occurredAt: true, userId: true },
+      }),
+      // Get all new users in date range
+      this.prisma.user.findMany({
+        where: {
+          createdAt: { gte: fromDate, lte: toDate },
+        },
+        select: { createdAt: true },
+      }),
+      // Get all comments in date range
+      this.prisma.comment.findMany({
+        where: {
+          createdAt: { gte: fromDate, lte: toDate },
+        },
+        select: { createdAt: true },
+      }),
+      // Get all reviews in date range
+      this.prisma.review.findMany({
+        where: {
+          createdAt: { gte: fromDate, lte: toDate },
+        },
+        select: { createdAt: true },
+      }),
+      // Get top podcasts
+      this.getTopPodcasts(10, actor),
+    ]);
+
+    // Group data by date in memory
+    const dayMap = new Map<string, { plays: number; uniqueListeners: Set<string>; newUsers: number; comments: number; reviews: number }>();
+
+    // Initialize all days in the range
+    const currentDate = new Date(fromDate);
+    while (currentDate <= toDate) {
+      const dateKey = currentDate.toISOString().split('T')[0];
+      dayMap.set(dateKey, { plays: 0, uniqueListeners: new Set(), newUsers: 0, comments: 0, reviews: 0 });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Aggregate plays
+    for (const play of allPlays) {
+      const dateKey = play.occurredAt.toISOString().split('T')[0];
+      const day = dayMap.get(dateKey);
+      if (day) {
+        day.plays++;
+        if (play.userId) day.uniqueListeners.add(play.userId);
+      }
+    }
+
+    // Aggregate users
+    for (const user of allUsers) {
+      const dateKey = user.createdAt.toISOString().split('T')[0];
+      const day = dayMap.get(dateKey);
+      if (day) day.newUsers++;
+    }
+
+    // Aggregate comments
+    for (const comment of allComments) {
+      const dateKey = comment.createdAt.toISOString().split('T')[0];
+      const day = dayMap.get(dateKey);
+      if (day) day.comments++;
+    }
+
+    // Aggregate reviews
+    for (const review of allReviews) {
+      const dateKey = review.createdAt.toISOString().split('T')[0];
+      const day = dayMap.get(dateKey);
+      if (day) day.reviews++;
+    }
+
+    // Convert to array
+    const days = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => ({
+        date,
+        plays: data.plays,
+        uniqueListeners: data.uniqueListeners.size,
+        newUsers: data.newUsers,
+        comments: data.comments,
+        reviews: data.reviews,
+      }));
+
+    // Summary
+    const totalPlays = days.reduce((sum, d) => sum + d.plays, 0);
+    const totalNewUsers = days.reduce((sum, d) => sum + d.newUsers, 0);
+    const totalComments = days.reduce((sum, d) => sum + d.comments, 0);
+    const totalReviews = days.reduce((sum, d) => sum + d.reviews, 0);
+
+    return {
+      summary: {
+        period: { from, to },
+        totalPlays,
+        totalNewUsers,
+        totalComments,
+        totalReviews,
+      },
+      dailyStats: days,
+      topPodcasts,
+    };
+  }
+
   private resolveTenant(requestedTenantId: string, actor: JwtPayload): string {
     if (!requestedTenantId) {
       throw new ForbiddenException('tenantId is required for analytics operations.');

@@ -3,10 +3,9 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { USERS_REPOSITORY } from './repositories/users.repository';
 import { UsersPrismaRepository } from './repositories/users.prisma.repository';
-import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [StorageModule],
+  imports: [],
   controllers: [UsersController],
   providers: [
     UsersService,

@@ -1,8 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+// Date range type
+export interface DateRangeValue {
+  from?: string;
+  to?: string;
+}
+
+// Filter value can be string, number, boolean, array of strings, or date range
+export type FilterValueType = string | number | boolean | string[] | DateRangeValue | null | undefined;
+
 export interface FilterValue {
-  [key: string]: any;
+  [key: string]: FilterValueType;
 }
 
 export interface FilterDefinition {
@@ -11,7 +20,7 @@ export interface FilterDefinition {
   label: string;
   placeholder?: string;
   options?: { value: string; label: string }[];
-  defaultValue?: any;
+  defaultValue?: FilterValueType;
 }
 
 export interface SavedFilter {
@@ -23,12 +32,12 @@ export interface SavedFilter {
 
 export interface UseFiltersReturn {
   filters: FilterValue;
-  setFilter: (key: string, value: any) => void;
+  setFilter: (key: string, value: FilterValueType) => void;
   removeFilter: (key: string) => void;
   clearFilters: () => void;
   resetFilters: () => void;
   activeFilterCount: number;
-  activeFilters: { key: string; value: any; label: string }[];
+  activeFilters: { key: string; value: FilterValueType; label: string }[];
   savedFilters: SavedFilter[];
   saveCurrentFilters: (name: string) => void;
   loadSavedFilter: (filter: SavedFilter) => void;
@@ -119,11 +128,13 @@ export function useFilters({
               params.set(key, 'true');
             }
             break;
-          case 'daterange':
-            if (value.from && value.to) {
-              params.set(key, `${value.from}~${value.to}`);
+          case 'daterange': {
+            const dateRange = value as { from?: string; to?: string };
+            if (dateRange.from && dateRange.to) {
+              params.set(key, `${dateRange.from}~${dateRange.to}`);
             }
             break;
+          }
           default:
             params.set(key, String(value));
         }
@@ -138,7 +149,7 @@ export function useFilters({
     onFilterChange?.(filters);
   }, [filters, onFilterChange]);
 
-  const setFilter = useCallback((key: string, value: any) => {
+  const setFilter = useCallback((key: string, value: FilterValueType) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,
@@ -183,8 +194,11 @@ export function useFilters({
         } else if (def?.type === 'select' && def.options) {
           const option = def.options.find((o) => o.value === value);
           displayValue = option?.label || value;
-        } else if (def?.type === 'daterange' && value.from && value.to) {
-          displayValue = `${value.from} - ${value.to}`;
+        } else if (def?.type === 'daterange' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          const dateRange = value as { from?: string; to?: string };
+          if (dateRange.from && dateRange.to) {
+            displayValue = `${dateRange.from} - ${dateRange.to}`;
+          }
         }
 
         return {

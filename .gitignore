@@ -74,12 +74,15 @@ web_modules/
 .env.*
 !.env.example
 !.env.shared
+!.env.prod.example
+
+# App-specific dev configs (safe to commit - no secrets)
 !apps/backend/.env.dev
-!apps/backend/.env.prod
 !apps/admin/.env.dev
-!apps/admin/.env.prod
 !apps/mobile/.env.dev
-!apps/mobile/.env.prod
+
+# IMPORTANT: Production env files should NOT be committed (contain secrets)
+# .env.prod files are gitignored by default via .env.* pattern
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

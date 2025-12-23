@@ -29,6 +29,7 @@ import {
   IconBell,
   IconCategory,
 } from '@tabler/icons-react';
+import { logger } from '../../utils/logger';
 
 export interface BulkAction {
   id: string;
@@ -109,7 +110,7 @@ export const BulkActions: React.FC<BulkActionsProps> = ({
       await onAction(action.id);
       onClearSelection();
     } catch (error: any) {
-      console.error('Bulk action error:', error);
+      logger.error('Bulk action error:', error);
       if (progress) {
         setProgress((prev) =>
           prev

@@ -15,13 +15,12 @@ import {
   IconClock,
   IconCheck,
   IconUserPlus,
-  IconDownload,
   IconFileTypeCsv,
-  IconPhoto,
 } from '@tabler/icons-react';
 import { subDays, format as formatDate } from 'date-fns';
 import { DateRangePicker, KPICard, DateRange } from '../../components/analytics';
 import { LineChart, AreaChart, BarChart, PieChart, HeatmapChart } from '../../components/charts';
+import { logger } from '../../utils/logger';
 import {
   analyticsService,
   AnalyticsKPI,
@@ -84,9 +83,10 @@ const AdvancedAnalyticsPage: React.FC = () => {
       setDeviceBreakdown(devicesData);
       setGeography(geoData);
       setPeakHours(hoursData);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load analytics data');
-      console.error('Analytics error:', err);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load analytics data';
+      setError(message);
+      logger.error('Analytics error:', err);
     } finally {
       setLoading(false);
     }
@@ -96,29 +96,25 @@ const AdvancedAnalyticsPage: React.FC = () => {
     fetchData();
   }, [dateRange]);
 
-  const handleExport = async (format: 'csv' | 'png') => {
+  const handleExportCSV = async () => {
+    if (exporting) return; // Prevent double clicks
     setExporting(true);
     try {
-      if (format === 'csv') {
-        const blob = await analyticsService.exportData('csv', {
-          from: formatDate(dateRange.from, 'yyyy-MM-dd'),
-          to: formatDate(dateRange.to, 'yyyy-MM-dd'),
-        });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `analytics-${formatDate(dateRange.from, 'yyyy-MM-dd')}-to-${formatDate(dateRange.to, 'yyyy-MM-dd')}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      } else if (format === 'png') {
-        // For PNG export, we'd typically use a library like html2canvas
-        // For now, just show an alert
-        alert('PNG export would be implemented using html2canvas or similar library');
-      }
+      const blob = await analyticsService.exportData('csv', {
+        from: formatDate(dateRange.from, 'yyyy-MM-dd'),
+        to: formatDate(dateRange.to, 'yyyy-MM-dd'),
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `analytics-${formatDate(dateRange.from, 'yyyy-MM-dd')}-to-${formatDate(dateRange.to, 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
-      console.error('Export error:', err);
+      logger.error('Export error:', err);
+      setError('Export failed. Please try again.');
     } finally {
       setExporting(false);
     }
@@ -144,28 +140,20 @@ const AdvancedAnalyticsPage: React.FC = () => {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4" fontWeight={600} gutterBottom>
-            Advanced Analytics
+            Analitik
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Comprehensive insights and performance metrics
+            Detaylı istatistikler ve performans metrikleri
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
           <Button
             variant="outlined"
             startIcon={<IconFileTypeCsv size={18} />}
-            onClick={() => handleExport('csv')}
+            onClick={handleExportCSV}
             disabled={exporting}
           >
-            Export CSV
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<IconPhoto size={18} />}
-            onClick={() => handleExport('png')}
-            disabled={exporting}
-          >
-            Export PNG
+            {exporting ? 'Dışa Aktarılıyor...' : 'CSV İndir'}
           </Button>
           <DateRangePicker
             value={dateRange}
@@ -189,7 +177,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
         <Grid container spacing={3} mb={4}>
           <Grid item xs={12} sm={6} lg={2.4}>
             <KPICard
-              title="Total Plays"
+              title="Toplam Dinlenme"
               value={kpis.totalPlays}
               change={kpis.playsChange}
               icon={<IconHeadphones size={24} color="#fff" />}
@@ -198,7 +186,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} lg={2.4}>
             <KPICard
-              title="Unique Listeners"
+              title="Tekil Dinleyici"
               value={kpis.uniqueListeners}
               change={kpis.listenersChange}
               icon={<IconUsers size={24} color="#fff" />}
@@ -207,7 +195,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} lg={2.4}>
             <KPICard
-              title="Avg Listen Duration"
+              title="Ort. Dinleme Süresi"
               value={formatDuration(kpis.avgListenDuration)}
               change={kpis.durationChange}
               icon={<IconClock size={24} color="#fff" />}
@@ -216,7 +204,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} lg={2.4}>
             <KPICard
-              title="Completion Rate"
+              title="Tamamlanma Oranı"
               value={kpis.completionRate}
               change={kpis.completionChange}
               icon={<IconCheck size={24} color="#fff" />}
@@ -226,7 +214,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
           </Grid>
           <Grid item xs={12} sm={6} lg={2.4}>
             <KPICard
-              title="New Subscribers"
+              title="Yeni Aboneler"
               value={kpis.newSubscribers}
               change={kpis.subscribersChange}
               icon={<IconUserPlus size={24} color="#fff" />}
@@ -241,7 +229,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
         {/* Plays Over Time */}
         <Grid item xs={12} lg={8}>
           <AreaChart
-            title="Plays Over Time"
+            title="Zaman İçinde Dinlenmeler"
             data={playsOverTime}
             height={350}
             color={theme.palette.primary.main}
@@ -251,7 +239,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
         {/* Device Breakdown */}
         <Grid item xs={12} lg={4}>
           <PieChart
-            title="Device Breakdown"
+            title="Cihaz Dağılımı"
             data={deviceBreakdown.map((d) => ({ label: d.device, value: d.count }))}
             height={350}
             donut
@@ -261,7 +249,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
         {/* Top Podcasts */}
         <Grid item xs={12} lg={6}>
           <BarChart
-            title="Top 10 Podcasts"
+            title="En Çok Dinlenen 10 Podcast"
             data={topPodcasts.map((p) => ({ label: p.title, value: p.plays }))}
             height={400}
             horizontal
@@ -272,7 +260,7 @@ const AdvancedAnalyticsPage: React.FC = () => {
         {/* User Growth */}
         <Grid item xs={12} lg={6}>
           <LineChart
-            title="User Growth"
+            title="Kullanıcı Artışı"
             data={userGrowth}
             height={400}
             color={theme.palette.success.main}
@@ -281,13 +269,13 @@ const AdvancedAnalyticsPage: React.FC = () => {
 
         {/* Peak Listening Hours */}
         <Grid item xs={12}>
-          <HeatmapChart title="Peak Listening Hours" data={peakHours} height={300} />
+          <HeatmapChart title="Yoğun Dinleme Saatleri" data={peakHours} height={300} />
         </Grid>
 
         {/* Geographic Distribution */}
         <Grid item xs={12}>
           <BarChart
-            title="Top Countries"
+            title="Ülkelere Göre Dağılım"
             data={geography.slice(0, 10).map((g) => ({ label: g.country, value: g.count }))}
             height={350}
             color={theme.palette.info.main}

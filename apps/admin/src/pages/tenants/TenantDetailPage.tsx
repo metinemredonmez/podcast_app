@@ -190,8 +190,9 @@ const TenantDetailPage: React.FC = () => {
         adminEmail: data.adminEmail,
         logo: data.logo,
       });
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load tenant');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load tenant';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -213,11 +214,7 @@ const TenantDetailPage: React.FC = () => {
       const data = await tenantService.getApiKeys(id);
       setApiKeys(data);
     } catch {
-      // Demo data
-      setApiKeys([
-        { id: '1', name: 'Production API', key: 'sk_live_****abcd', permissions: ['read', 'write'], lastUsedAt: '2024-03-20T10:00:00Z', createdAt: '2024-02-01T10:00:00Z' },
-        { id: '2', name: 'Development', key: 'sk_test_****efgh', permissions: ['read'], lastUsedAt: '2024-03-19T15:30:00Z', createdAt: '2024-02-15T14:00:00Z' },
-      ]);
+      setApiKeys([]);
     }
   }, [id]);
 
@@ -227,14 +224,7 @@ const TenantDetailPage: React.FC = () => {
       const data = await tenantService.getActivity(id);
       setActivities(data.data);
     } catch {
-      // Demo data
-      setActivities([
-        { id: '1', type: 'login', action: 'User logged in', userName: 'John Doe', userEmail: 'john@acme.com', ipAddress: '192.168.1.1', createdAt: '2024-03-20T14:30:00Z' },
-        { id: '2', type: 'create', action: 'Created podcast "Tech Talk"', userName: 'Jane Smith', userEmail: 'jane@acme.com', createdAt: '2024-03-20T11:00:00Z' },
-        { id: '3', type: 'settings', action: 'Updated branding settings', userName: 'John Doe', userEmail: 'john@acme.com', createdAt: '2024-03-19T16:45:00Z' },
-        { id: '4', type: 'update', action: 'Published episode "Episode 15"', userName: 'Jane Smith', userEmail: 'jane@acme.com', createdAt: '2024-03-19T10:30:00Z' },
-        { id: '5', type: 'billing', action: 'Updated payment method', userName: 'John Doe', userEmail: 'john@acme.com', createdAt: '2024-03-18T09:00:00Z' },
-      ]);
+      setActivities([]);
     }
   }, [id]);
 
@@ -244,13 +234,7 @@ const TenantDetailPage: React.FC = () => {
       const data = await tenantService.getLoginHistory(id);
       setLoginHistory(data.data);
     } catch {
-      // Demo data
-      setLoginHistory([
-        { id: '1', userId: '1', userName: 'John Doe', userEmail: 'john@acme.com', ipAddress: '192.168.1.1', userAgent: 'Chrome/120.0', location: 'New York, US', success: true, createdAt: '2024-03-20T14:30:00Z' },
-        { id: '2', userId: '2', userName: 'Jane Smith', userEmail: 'jane@acme.com', ipAddress: '192.168.1.2', userAgent: 'Firefox/121.0', location: 'Los Angeles, US', success: true, createdAt: '2024-03-20T12:15:00Z' },
-        { id: '3', userId: '3', userName: 'Unknown', userEmail: 'hacker@evil.com', ipAddress: '10.0.0.1', userAgent: 'Bot/1.0', location: 'Unknown', success: false, failureReason: 'Invalid credentials', createdAt: '2024-03-20T08:00:00Z' },
-        { id: '4', userId: '1', userName: 'John Doe', userEmail: 'john@acme.com', ipAddress: '192.168.1.1', userAgent: 'Chrome/120.0', location: 'New York, US', success: true, createdAt: '2024-03-19T09:00:00Z' },
-      ]);
+      setLoginHistory([]);
     }
   }, [id]);
 
@@ -270,8 +254,9 @@ const TenantDetailPage: React.FC = () => {
       const updated = await tenantService.suspend(tenant.id);
       setTenant(updated);
       setSnackbar({ open: true, message: 'Tenant suspended', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to suspend', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to suspend';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -284,8 +269,9 @@ const TenantDetailPage: React.FC = () => {
       const updated = await tenantService.activate(tenant.id);
       setTenant(updated);
       setSnackbar({ open: true, message: 'Tenant activated', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to activate', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to activate';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -296,8 +282,9 @@ const TenantDetailPage: React.FC = () => {
     try {
       const result = await tenantService.impersonate(tenant.id);
       window.open(result.redirectUrl, '_blank');
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to impersonate', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to impersonate';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     }
   };
 
@@ -309,8 +296,9 @@ const TenantDetailPage: React.FC = () => {
       setTenant(updated);
       setEditDialogOpen(false);
       setSnackbar({ open: true, message: 'Tenant updated', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -323,8 +311,9 @@ const TenantDetailPage: React.FC = () => {
       await tenantService.delete(tenant.id);
       setSnackbar({ open: true, message: 'Tenant deleted', severity: 'success' });
       setTimeout(() => navigate('/tenants'), 500);
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to delete', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
       setDeleteDialogOpen(false);
@@ -339,8 +328,9 @@ const TenantDetailPage: React.FC = () => {
       setTenant(updated);
       setPlanDialogOpen(false);
       setSnackbar({ open: true, message: `Plan changed to ${plan}`, severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to change plan', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to change plan';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -354,8 +344,9 @@ const TenantDetailPage: React.FC = () => {
       setTenant(updated);
       setExtendTrialDialogOpen(false);
       setSnackbar({ open: true, message: `Trial extended by ${trialDays} days`, severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to extend trial', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to extend trial';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -369,8 +360,9 @@ const TenantDetailPage: React.FC = () => {
       setRoleDialogOpen(false);
       fetchUsers();
       setSnackbar({ open: true, message: 'User role updated', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update role', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update role';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -383,8 +375,9 @@ const TenantDetailPage: React.FC = () => {
       await tenantService.removeUser(tenant.id, userId);
       fetchUsers();
       setSnackbar({ open: true, message: 'User removed', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to remove user', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to remove user';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -399,8 +392,9 @@ const TenantDetailPage: React.FC = () => {
       setNewApiKeyDialog({ open: true, key: result.fullKey });
       setNewApiKeyName('');
       fetchApiKeys();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to create API key', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to create API key';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -413,8 +407,9 @@ const TenantDetailPage: React.FC = () => {
       await tenantService.revokeApiKey(tenant.id, keyId);
       fetchApiKeys();
       setSnackbar({ open: true, message: 'API key revoked', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to revoke API key', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to revoke API key';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -427,8 +422,9 @@ const TenantDetailPage: React.FC = () => {
       const updated = await tenantService.updateSettings(tenant.id, { [setting]: value });
       setTenant(updated);
       setSnackbar({ open: true, message: 'Setting updated', severity: 'success' });
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to update setting', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update setting';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }

@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/@prisma/client"
 }
 
 datasource db {
@@ -76,24 +75,92 @@ enum CollaboratorStatus {
   REMOVED
 }
 
+// Push Notification Enums
+enum DevicePlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum PushProviderType {
+  ONESIGNAL
+  FIREBASE
+}
+
+enum PushTargetType {
+  ALL
+  SEGMENT
+  USER_IDS
+  TOPIC
+}
+
+enum PushStatus {
+  PENDING
+  QUEUED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum SocialProvider {
+  GOOGLE
+  APPLE
+  FACEBOOK
+}
+
+// SMS Enums
+enum SmsProvider {
+  NETGSM
+}
+
+enum OtpType {
+  ADMIN_LOGIN
+  PHONE_VERIFY
+}
+
+enum SmsType {
+  OTP
+  NOTIFICATION
+}
+
+enum SmsStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+// Live Stream Enums
+enum LiveStreamStatus {
+  SCHEDULED
+  PREPARING
+  LIVE
+  PAUSED
+  ENDED
+  CANCELLED
+}
+
 // ==================== MODELS ====================
 
 model User {
-  id               String   @id @default(uuid())
+  id               String    @id @default(uuid())
   tenantId         String
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   email            String
   passwordHash     String
   refreshTokenHash String?
   name             String?
-  role             UserRole @default(LISTENER)
-  isActive         Boolean  @default(true)
-  emailVerified    Boolean  @default(false)
+  role             UserRole  @default(LISTENER)
+  isActive         Boolean   @default(true)
+  emailVerified    Boolean   @default(false)
+  phone            String?   @unique
+  phoneVerified    Boolean   @default(false)
+  phoneVerifiedAt  DateTime?
   avatarUrl        String?
-  bio              String?  @db.VarChar(500)
-  preferences      Json?    @default("{}")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  bio              String?   @db.VarChar(500)
+  preferences      Json?     @default("{}")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   ownedPodcasts         Podcast[]             @relation("PodcastOwner")
   episodes              Episode[]             @relation("EpisodeHosts")
@@ -117,10 +184,17 @@ model User {
   podcastCollabs        PodcastCollaborator[] @relation("CollaboratorUser")
   invitedCollaborations PodcastCollaborator[] @relation("CollaboratorInviter")
   storageAssets         StorageAsset[]
+  devices               UserDevice[]
+  pushSettings          UserPushSettings?
+  socialConnections     SocialConnection[]
+  hostedLiveStreams     LiveStream[]          @relation("LiveStreamHost")
+  liveListeners         LiveListener[]
+  loginHistory          LoginHistory[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@index([email])
+  @@index([phone])
   @@index([role])
   @@index([isActive])
 }
@@ -157,6 +231,19 @@ model Tenant {
   auditLogs          AuditLog[]
   scheduledEpisodes  ScheduledEpisode[]
   moderations        ModerationQueue[]
+  userDevices        UserDevice[]
+  userPushSettings   UserPushSettings[]
+  pushConfig         PushConfig?
+  pushLogs           PushNotificationLog[]
+  socialAuthConfig   SocialAuthConfig?
+  smsConfig          SmsConfig?
+  smsLogs            SmsLog[]
+  liveStreams        LiveStream[]
+  emailConfig        EmailConfig?
+  emailLogs          EmailLog[]
+  storageConfig      StorageConfig?
+  apiKeys            TenantApiKey[]
+  loginHistory       LoginHistory[]
 
   @@index([slug])
   @@index([isActive])
@@ -747,4 +834,501 @@ model PodcastCollaborator {
   @@index([userId])
   @@index([status])
   @@index([invitedBy])
+}
+
+// ==================== PUSH NOTIFICATIONS ====================
+
+model UserDevice {
+  id           String         @id @default(uuid())
+  tenantId     String
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceToken  String
+  platform     DevicePlatform
+  deviceName   String?
+  appVersion   String?
+  osVersion    String?
+  isActive     Boolean        @default(true)
+  lastActiveAt DateTime       @default(now())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([tenantId, deviceToken])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([platform])
+  @@index([isActive])
+  @@index([tenantId, userId, isActive])
+}
+
+model UserPushSettings {
+  id                   String   @id @default(uuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enablePush           Boolean  @default(true)
+  newEpisodes          Boolean  @default(true)
+  comments             Boolean  @default(true)
+  likes                Boolean  @default(true)
+  follows              Boolean  @default(true)
+  systemUpdates        Boolean  @default(true)
+  marketingPromotions  Boolean  @default(false)
+  quietHoursEnabled    Boolean  @default(false)
+  quietHoursStart      String?  // HH:mm format
+  quietHoursEnd        String?  // HH:mm format
+  timezone             String   @default("UTC")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([enablePush])
+}
+
+model PushConfig {
+  id                   String           @id @default(uuid())
+  tenantId             String           @unique
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  provider             PushProviderType @default(ONESIGNAL)
+  isEnabled            Boolean          @default(false)
+  // Encrypted credentials - OneSignal
+  oneSignalAppId       String?
+  oneSignalApiKey      String?          // Encrypted
+  // Encrypted credentials - Firebase
+  firebaseProjectId    String?
+  firebaseCredentials  String?          @db.Text // Encrypted JSON
+  // Web Push VAPID Keys
+  vapidPublicKey       String?          // Public key for web clients
+  vapidPrivateKey      String?          // Encrypted private key
+  vapidSubject         String?          // mailto: or URL for VAPID
+  // Settings
+  defaultTitle         String?
+  defaultIcon          String?
+  defaultBadge         String?
+  rateLimitPerMinute   Int              @default(1000)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([tenantId])
+  @@index([provider])
+  @@index([isEnabled])
+}
+
+model PushNotificationLog {
+  id              String         @id @default(uuid())
+  tenantId        String
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title           String
+  body            String
+  data            Json?
+  targetType      PushTargetType
+  targetIds       String[]       // User IDs, segment names, or topic names
+  totalRecipients Int            @default(0)
+  successCount    Int            @default(0)
+  failureCount    Int            @default(0)
+  status          PushStatus     @default(PENDING)
+  provider        PushProviderType?
+  providerMsgId   String?        // External message ID from provider
+  errorMessage    String?
+  sentAt          DateTime?
+  scheduledAt     DateTime?
+  createdBy       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([targetType])
+  @@index([createdAt])
+  @@index([sentAt])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+}
+
+// ==================== SOCIAL AUTH ====================
+
+model SocialAuthConfig {
+  id                   String   @id @default(uuid())
+  tenantId             String?  @unique
+  tenant               Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Google OAuth
+  googleEnabled        Boolean  @default(false)
+  googleClientId       String?
+  googleClientSecret   String?  // Encrypted
+  googleCallbackUrl    String?
+  // Apple Sign In (future)
+  appleEnabled         Boolean  @default(false)
+  appleClientId        String?
+  appleTeamId          String?
+  appleKeyId           String?
+  applePrivateKey      String?  @db.Text // Encrypted
+  // Facebook (future)
+  facebookEnabled      Boolean  @default(false)
+  facebookAppId        String?
+  facebookAppSecret    String?  // Encrypted
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model SocialConnection {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     SocialProvider
+  providerId   String         // Provider's user ID (e.g., Google sub)
+  email        String
+  displayName  String?
+  avatarUrl    String?
+  accessToken  String?        @db.Text // Encrypted
+  refreshToken String?        @db.Text // Encrypted
+  expiresAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([provider, providerId])
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([email])
+}
+
+// ==================== SMS & OTP ====================
+
+model SmsConfig {
+  id              String      @id @default(cuid())
+  tenantId        String?     @unique
+  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Provider
+  provider        SmsProvider @default(NETGSM)
+  isEnabled       Boolean     @default(false)
+
+  // NetGSM Credentials
+  netgsmUsercode  String?
+  netgsmPassword  String?     // Encrypted
+  netgsmMsgHeader String?
+
+  // OTP Settings
+  otpLength       Int         @default(6)
+  otpExpiryMins   Int         @default(5)
+  maxAttempts     Int         @default(3)
+  resendCooldown  Int         @default(60)
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([tenantId])
+}
+
+model OtpVerification {
+  id          String    @id @default(cuid())
+  phone       String
+  code        String    // Hashed OTP
+  type        OtpType
+  attempts    Int       @default(0)
+  verified    Boolean   @default(false)
+  verifiedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  @@index([phone, type])
+  @@index([expiresAt])
+}
+
+model SmsLog {
+  id          String      @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone       String
+  message     String      @db.Text
+  type        SmsType
+  provider    SmsProvider
+  providerId  String?
+  status      SmsStatus   @default(PENDING)
+  errorMsg    String?
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([tenantId])
+  @@index([phone, createdAt])
+  @@index([status])
+}
+
+// ==================== LIVE STREAMING MODELS ====================
+
+// Canlı yayın oturumu
+model LiveStream {
+  id              String           @id @default(cuid())
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Yayıncı (Hoca)
+  hostId          String
+  host            User             @relation("LiveStreamHost", fields: [hostId], references: [id], onDelete: Cascade)
+
+  // Yayın bilgileri
+  title           String
+  description     String?          @db.Text
+
+  // Teknik bilgiler
+  streamKey       String           @unique @default(cuid())
+  hlsUrl          String?
+  hlsPath         String?
+
+  // Durum
+  status          LiveStreamStatus @default(SCHEDULED)
+
+  // Zamanlama
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  duration        Int?             // Saniye cinsinden
+
+  // İstatistikler
+  peakViewers     Int              @default(0)
+  totalViewers    Int              @default(0)
+
+  // Kayıt (VOD)
+  recordingUrl    String?
+  recordingPath   String?
+  isRecorded      Boolean          @default(true)
+
+  // İlişkiler
+  rooms           LiveRoom[]
+  listeners       LiveListener[]
+  stats           LiveStreamStats[]
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([tenantId, status])
+  @@index([hostId])
+  @@index([status, scheduledAt])
+  @@index([status, startedAt])
+}
+
+// Canlı yayın odaları
+model LiveRoom {
+  id              String         @id @default(cuid())
+  streamId        String
+  stream          LiveStream     @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  // Oda bilgileri
+  roomNumber      Int
+  name            String
+
+  // Kapasite
+  capacity        Int            @default(20)
+  currentCount    Int            @default(0)
+
+  // Durum
+  isActive        Boolean        @default(true)
+
+  // İlişkiler
+  listeners       LiveListener[]
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([streamId, roomNumber])
+  @@index([streamId, isActive])
+}
+
+// Dinleyici kayıtları
+model LiveListener {
+  id              String       @id @default(cuid())
+  streamId        String
+  stream          LiveStream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  roomId          String
+  room            LiveRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  // Kullanıcı (opsiyonel - misafir dinleyici olabilir)
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Session
+  sessionId       String       @unique
+
+  // Bağlantı bilgileri
+  joinedAt        DateTime     @default(now())
+  leftAt          DateTime?
+  duration        Int?         // Saniye cinsinden
+
+  // Cihaz bilgisi
+  deviceType      String?
+  userAgent       String?
+  ipAddress       String?
+
+  @@index([streamId])
+  @@index([roomId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([streamId, leftAt])
+}
+
+// Yayın istatistikleri (dakikalık snapshot)
+model LiveStreamStats {
+  id              String     @id @default(cuid())
+  streamId        String
+  stream          LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  // Snapshot zamanı
+  timestamp       DateTime   @default(now())
+
+  // Metrikler
+  viewerCount     Int
+  roomCount       Int
+
+  @@index([streamId, timestamp])
+}
+
+// ==================== EMAIL CONFIG ====================
+
+enum EmailProvider {
+  SMTP
+  SES
+  SENDGRID
+}
+
+model EmailConfig {
+  id              String        @id @default(cuid())
+  tenantId        String?       @unique
+  tenant          Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Provider
+  provider        EmailProvider @default(SMTP)
+  isEnabled       Boolean       @default(false)
+
+  // SMTP Settings
+  smtpHost        String?
+  smtpPort        Int?          @default(587)
+  smtpUser        String?
+  smtpPassword    String?       // Encrypted
+  smtpSecure      Boolean       @default(false)
+
+  // SES Settings
+  sesRegion       String?
+  sesAccessKey    String?
+  sesSecretKey    String?       // Encrypted
+
+  // SendGrid Settings
+  sendgridApiKey  String?       // Encrypted
+
+  // Common Settings
+  fromEmail       String?
+  fromName        String?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([tenantId])
+}
+
+model EmailLog {
+  id              String      @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  to              String
+  subject         String
+  body            String?     @db.Text
+  provider        EmailProvider
+  providerId      String?
+  status          SmsStatus   @default(PENDING)  // Reusing SmsStatus enum
+  errorMsg        String?
+  sentAt          DateTime?
+  createdAt       DateTime    @default(now())
+
+  @@index([tenantId])
+  @@index([to, createdAt])
+  @@index([status])
+}
+
+// ==================== TENANT API KEYS ====================
+
+model TenantApiKey {
+  id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  key          String    @unique  // Hashed API key (first 8 chars visible: sk_live_****abcd)
+  keyHash      String              // Full hash for validation
+  permissions  String[]  @default(["read"])
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+  createdBy    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([key])
+  @@index([isActive])
+}
+
+// ==================== LOGIN HISTORY ====================
+
+model LoginHistory {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress     String?
+  userAgent     String?
+  location      String?
+  success       Boolean   @default(true)
+  failureReason String?
+  createdAt     DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([tenantId, createdAt])
+}
+
+// ==================== STORAGE CONFIG ====================
+
+enum StorageProvider {
+  LOCAL
+  S3
+  MINIO
+}
+
+model StorageConfig {
+  id              String          @id @default(cuid())
+  tenantId        String?         @unique
+  tenant          Tenant?         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Provider
+  provider        StorageProvider @default(LOCAL)
+
+  // Local Storage
+  localPath       String?         @default("./uploads")
+
+  // S3 Settings
+  s3Bucket        String?
+  s3Region        String?
+  s3AccessKey     String?
+  s3SecretKey     String?         // Encrypted
+  s3Endpoint      String?         // For S3-compatible services
+
+  // MinIO Settings (S3-compatible)
+  minioEndpoint   String?
+  minioBucket     String?
+  minioAccessKey  String?
+  minioSecretKey  String?         // Encrypted
+  minioUseSSL     Boolean         @default(false)
+
+  // Common Settings
+  maxFileSize     BigInt?         @default(104857600) // 100MB default
+  allowedMimeTypes String[]       @default(["image/*", "audio/*", "video/*"])
+  publicBaseUrl   String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([tenantId])
 }

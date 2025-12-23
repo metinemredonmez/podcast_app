@@ -1,0 +1,28 @@
+2025-12-12T15:10:12.655002Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/.turbo-cookie"), AnchoredSystemPathBuf(".turbo/cookies/1.cookie")}
+2025-12-12T15:10:12.655016Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T15:12:20.554766Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".turbo/cookies/2.cookie")}
+2025-12-12T15:12:20.554803Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:08:02.696817Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("docker-compose.prod.yml"), AnchoredSystemPathBuf("docker-compose.prod.yml.tmp.83349.1765570082617")}
+2025-12-12T20:08:02.696933Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:08:20.797320Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/.env.prod")}
+2025-12-12T20:08:20.797338Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-12-12T20:08:32.296201Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/admin/.env.prod")}
+2025-12-12T20:08:32.296222Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/admin"), path: AnchoredSystemPathBuf("apps/admin") }}))
+2025-12-12T20:09:40.097001Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/.env.prod")}
+2025-12-12T20:09:40.097107Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-12-12T20:09:51.895870Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/admin/.env.prod")}
+2025-12-12T20:09:51.895887Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/admin"), path: AnchoredSystemPathBuf("apps/admin") }}))
+2025-12-12T20:10:15.195927Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("scripts/deploy-prod.sh"), AnchoredSystemPathBuf("scripts/deploy-prod.sh.tmp.83349.1765570215109")}
+2025-12-12T20:10:15.195946Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:10:29.996045Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("scripts/deploy-prod.sh")}
+2025-12-12T20:10:29.996069Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:10:47.695248Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("apps/backend/src/modules/health/health.controller.ts"), AnchoredSystemPathBuf("apps/backend/src/modules/health/health.controller.ts.tmp.83349.1765570247630")}
+2025-12-12T20:10:47.695280Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Other("@podcast-app/backend"), path: AnchoredSystemPathBuf("apps/backend") }}))
+2025-12-12T20:11:00.100067Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("docker-compose.yml"), AnchoredSystemPathBuf("docker-compose.yml.tmp.83349.1765570260050")}
+2025-12-12T20:11:00.100128Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:11:19.495879Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("ecosystem.config.js"), AnchoredSystemPathBuf("ecosystem.config.js.tmp.83349.1765570279377")}
+2025-12-12T20:11:19.495922Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:11:40.996738Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf(".gitignore"), AnchoredSystemPathBuf(".gitignore.tmp.83349.1765570300919")}
+2025-12-12T20:11:40.996750Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))
+2025-12-12T20:12:07.197038Z  WARN turborepo_lib::package_changes_watcher: changed_files: {AnchoredSystemPathBuf("nginx"), AnchoredSystemPathBuf("nginx/podcast-app.conf"), AnchoredSystemPathBuf("nginx/podcast-app.conf.tmp.83349.1765570327171")}
+2025-12-12T20:12:07.197056Z  WARN turborepo_lib::package_changes_watcher: changed_packages: Ok(Some({WorkspacePackage { name: Root, path: AnchoredSystemPathBuf("") }}))

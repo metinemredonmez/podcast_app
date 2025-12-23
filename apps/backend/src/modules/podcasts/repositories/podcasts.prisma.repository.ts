@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../infra/prisma.service';
 import {
   CreatePodcastInput,
@@ -10,18 +11,21 @@ import {
   PodcastModel,
 } from './podcasts.repository';
 
+type PodcastOrderByInput = Prisma.PodcastOrderByWithRelationInput;
+
 @Injectable()
 export class PodcastsPrismaRepository implements PodcastsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findMany(options: PaginationOptions): Promise<PodcastModel[]> {
     const { tenantId, cursor, limit, orderBy = 'createdAt', orderDirection = 'desc' } = options;
+    const orderByInput: PodcastOrderByInput = { [orderBy]: orderDirection };
     const rows = await this.prisma.podcast.findMany({
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
       where: { tenantId },
-      orderBy: { [orderBy]: orderDirection } as any,
+      orderBy: orderByInput,
     });
     return rows as unknown as PodcastModel[];
   }
@@ -29,42 +33,32 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
   async searchPodcasts(options: SearchPodcastsOptions): Promise<PodcastModel[]> {
     const { tenantId, cursor, limit, orderBy = 'createdAt', orderDirection = 'desc', search, categoryId, ownerId, isPublished } = options;
 
-    // Build where clause
-    const where: any = { tenantId };
-
-    // Search filter (title OR description contains search term)
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    // Category filter
-    if (categoryId) {
-      where.categories = {
-        some: {
-          categoryId,
+    // Build where clause with proper typing
+    const where: Prisma.PodcastWhereInput = {
+      tenantId,
+      ...(search && {
+        OR: [
+          { title: { contains: search, mode: 'insensitive' as const } },
+          { description: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+      ...(categoryId && {
+        categories: {
+          some: { categoryId },
         },
-      };
-    }
+      }),
+      ...(ownerId && { ownerId }),
+      ...(isPublished !== undefined && { isPublished }),
+    };
 
-    // Owner filter
-    if (ownerId) {
-      where.ownerId = ownerId;
-    }
-
-    // Published status filter
-    if (isPublished !== undefined) {
-      where.isPublished = isPublished;
-    }
+    const orderByInput: PodcastOrderByInput = { [orderBy]: orderDirection };
 
     const rows = await this.prisma.podcast.findMany({
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
       where,
-      orderBy: { [orderBy]: orderDirection } as any,
+      orderBy: orderByInput,
     });
 
     return rows as unknown as PodcastModel[];
@@ -108,7 +102,7 @@ export class PodcastsPrismaRepository implements PodcastsRepository {
       updatedAt: podcast.updatedAt,
       owner: podcast.owner,
       episodes: podcast.episodes,
-      categories: podcast.categories.map((relation: any) => relation.category),
+      categories: podcast.categories.map((relation) => relation.category),
     };
   }
 

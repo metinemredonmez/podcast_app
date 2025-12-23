@@ -36,6 +36,7 @@ import {
   IconEye,
   IconMessage,
   IconMessageCircle,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { commentService, Comment } from '../../api/services/comment.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
@@ -71,8 +72,9 @@ const CommentsPage: React.FC = () => {
       });
       setComments(response.data || []);
       setTotal(response.total || 0);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load comments');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load comments';
+      setError(message);
       setComments([]);
     } finally {
       setLoading(false);
@@ -107,8 +109,9 @@ const CommentsPage: React.FC = () => {
       try {
         await commentService.delete(selectedComment.id);
         fetchComments();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to delete comment');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to delete comment';
+        setError(message);
       }
     }
     setDeleteDialogOpen(false);
@@ -122,8 +125,9 @@ const CommentsPage: React.FC = () => {
       try {
         await Promise.all(ids.map((id) => commentService.delete(id)));
         fetchComments();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to delete comments');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to delete comments';
+        setError(message);
       }
     }
   };
@@ -147,15 +151,24 @@ const CommentsPage: React.FC = () => {
     <Box>
       {/* Page Header */}
       <Box mb={3}>
-        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-          <IconMessage size={28} />
-          <Typography variant="h4" fontWeight={600}>
-            Comments
-          </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Box>
+            <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+              <IconMessage size={28} />
+              <Typography variant="h4" fontWeight={600}>
+                Comments
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              Manage and moderate user comments
+            </Typography>
+          </Box>
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchComments} disabled={loading}>
+              <IconRefresh size={20} />
+            </IconButton>
+          </Tooltip>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
-          Manage and moderate user comments
-        </Typography>
       </Box>
 
       {/* Error Alert */}
@@ -169,7 +182,7 @@ const CommentsPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search comments..."
               size="small"
@@ -178,7 +191,7 @@ const CommentsPage: React.FC = () => {
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">

@@ -6,7 +6,7 @@ import { UpdatePlaylistDto } from './dto/update-playlist.dto';
 import { AddEpisodeToPlaylistDto } from './dto/add-episode.dto';
 import { PlaylistResponseDto } from './dto/playlist-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 @ApiTags('Playlists')

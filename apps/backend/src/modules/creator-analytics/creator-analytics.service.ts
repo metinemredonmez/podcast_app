@@ -45,30 +45,26 @@ export class CreatorAnalyticsService {
       },
     });
 
-    // Get average completion rate
-    const progresses = await this.prisma.listeningProgress.findMany({
-      where: {
-        episode: {
-          podcast: { ownerId: user.userId },
-        },
-      },
-      select: {
-        currentTime: true,
-        episode: {
-          select: {
-            duration: true,
-          },
-        },
-      },
-    });
+    // Get average completion rate using aggregation instead of loading all records
+    // This prevents memory issues with large datasets
+    const completionStats = await this.prisma.$queryRaw<
+      Array<{ avg_completion: number | null; total_count: bigint }>
+    >`
+      SELECT
+        AVG(
+          CASE
+            WHEN e.duration > 0 THEN (lp."progressSeconds"::float / e.duration::float) * 100
+            ELSE 0
+          END
+        ) as avg_completion,
+        COUNT(*) as total_count
+      FROM "ListeningProgress" lp
+      INNER JOIN "Episode" e ON lp."episodeId" = e.id
+      INNER JOIN "Podcast" p ON e."podcastId" = p.id
+      WHERE p."ownerId" = ${user.userId}::uuid
+    `;
 
-    let avgCompletionRate = 0;
-    if (progresses.length > 0) {
-      const totalCompletion = progresses.reduce((sum, p) => {
-        return sum + (p.episode.duration > 0 ? (p.currentTime / p.episode.duration) * 100 : 0);
-      }, 0);
-      avgCompletionRate = totalCompletion / progresses.length;
-    }
+    const avgCompletionRate = completionStats[0]?.avg_completion ?? 0;
 
     // Get total comments
     const totalComments = await this.prisma.comment.count({

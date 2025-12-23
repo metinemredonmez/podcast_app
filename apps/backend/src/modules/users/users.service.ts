@@ -12,8 +12,6 @@ import * as bcrypt from 'bcrypt';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UnauthorizedException } from '@nestjs/common';
-import { StorageService } from '../storage/storage.service';
-import { FileCategory } from '../storage/constants/file-types';
 import { PrismaService } from '../../infra/prisma.service';
 
 @Injectable()
@@ -22,7 +20,6 @@ export class UsersService {
 
   constructor(
     @Inject(USERS_REPOSITORY) private readonly usersRepository: UsersRepository,
-    private readonly storageService: StorageService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -171,31 +168,47 @@ export class UsersService {
   }
 
   async uploadAvatar(file: Express.Multer.File, actor: JwtPayload): Promise<UserResponseDto> {
-    if (!file) {
-      throw new BadRequestException('No file provided');
+    try {
+      console.log('[uploadAvatar] Starting avatar upload for user:', actor.userId);
+      console.log('[uploadAvatar] File received:', file ? { originalname: file.originalname, mimetype: file.mimetype, size: file.size, hasBuffer: !!file.buffer } : 'NO FILE');
+
+      if (!file) {
+        throw new BadRequestException('No file provided');
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('image/')) {
+        throw new BadRequestException('File must be an image');
+      }
+
+      // Validate file size (max 2MB for base64 storage)
+      const maxSize = 2 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new BadRequestException('Image size must be less than 2MB');
+      }
+
+      // Convert to base64 data URL for direct DB storage
+      console.log('[uploadAvatar] Converting to base64...');
+      const base64 = file.buffer.toString('base64');
+      const avatarDataUrl = `data:${file.mimetype};base64,${base64}`;
+      console.log('[uploadAvatar] Base64 data URL length:', avatarDataUrl.length);
+
+      // Update user avatar URL with base64 data
+      console.log('[uploadAvatar] Updating profile in DB...');
+      const user = await this.usersRepository.updateProfile(actor.userId, actor.tenantId, {
+        avatarUrl: avatarDataUrl,
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found.');
+      }
+
+      console.log('[uploadAvatar] Avatar uploaded successfully for user:', user.id);
+      return this.toResponseDto(user);
+    } catch (error) {
+      console.error('[uploadAvatar] Error:', error);
+      throw error;
     }
-
-    // Upload to storage with image validation
-    const uploadResult = await this.storageService.uploadFile(
-      file,
-      { userId: actor.userId, tenantId: actor.tenantId, role: actor.role },
-      {
-        prefix: 'avatars',
-        expectedFileType: FileCategory.IMAGE,
-        expiresIn: 31536000, // 1 year
-      },
-    );
-
-    // Update user avatar URL
-    const user = await this.usersRepository.updateProfile(actor.userId, actor.tenantId, {
-      avatarUrl: uploadResult.url,
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found.');
-    }
-
-    return this.toResponseDto(user);
   }
 
   private ensureAdmin(actor: JwtPayload) {
@@ -221,6 +234,7 @@ export class UsersService {
       name: user.name ?? null,
       role: user.role,
       isActive: user.isActive,
+      avatarUrl: user.avatarUrl ?? null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     });

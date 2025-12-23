@@ -1,12 +1,18 @@
 import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import { Logger } from '@nestjs/common';
+
+// Note: @sentry/profiling-node disabled due to missing native binaries for Node.js v25
+// Re-enable when Sentry releases compatible binaries
+// import { nodeProfilingIntegration } from '@sentry/profiling-node';
+
+const logger = new Logger('Sentry');
 
 export function initSentry() {
   const sentryDsn = process.env.SENTRY_DSN;
 
   // Only initialize if DSN is provided
   if (!sentryDsn) {
-    console.log('Sentry DSN not provided, skipping initialization');
+    logger.log('Sentry DSN not provided, skipping initialization');
     return;
   }
 
@@ -18,12 +24,12 @@ export function initSentry() {
     // Performance Monitoring
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
 
-    // Profiling
-    profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    // Profiling disabled - native binaries not available for Node.js v25
+    // profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
 
     integrations: [
-      // Profiling integration
-      nodeProfilingIntegration(),
+      // Profiling disabled for Node.js v25 compatibility
+      // nodeProfilingIntegration(),
 
       // Auto-instrumentation for common libraries
       Sentry.httpIntegration(),
@@ -72,5 +78,5 @@ export function initSentry() {
     ],
   });
 
-  console.log('✅ Sentry initialized');
+  logger.log('Sentry initialized successfully');
 }

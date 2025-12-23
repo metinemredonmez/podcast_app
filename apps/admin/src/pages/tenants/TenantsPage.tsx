@@ -72,8 +72,8 @@ const statusConfig: Record<TenantStatus, { color: 'success' | 'error' | 'warning
 };
 
 // Plan config
-const planConfig: Record<TenantPlan, { color: 'default' | 'primary' | 'secondary'; label: string; icon: React.ReactNode }> = {
-  free: { color: 'default', label: 'Free', icon: null },
+const planConfig: Record<TenantPlan, { color: 'default' | 'primary' | 'secondary'; label: string; icon?: React.ReactElement }> = {
+  free: { color: 'default', label: 'Free', icon: undefined },
   pro: { color: 'primary', label: 'Pro', icon: <IconCrown size={14} /> },
   enterprise: { color: 'secondary', label: 'Enterprise', icon: <IconBuilding size={14} /> },
 };
@@ -139,12 +139,9 @@ const TenantsPage: React.FC = () => {
       });
       setTenants(response.data);
       setTotal(response.total);
-    } catch (err: any) {
-      setSnackbar({
-        open: true,
-        message: err.response?.data?.message || 'Failed to load tenants',
-        severity: 'error',
-      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load tenants';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -183,12 +180,9 @@ const TenantsPage: React.FC = () => {
         resetForm();
         fetchTenants();
         fetchStats();
-      } catch (err: any) {
-        setSnackbar({
-          open: true,
-          message: err.response?.data?.message || 'Failed to create tenant',
-          severity: 'error',
-        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to create tenant';
+        setSnackbar({ open: true, message: msg, severity: 'error' });
       } finally {
         setActionLoading(false);
       }
@@ -215,8 +209,9 @@ const TenantsPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Tenant suspended', severity: 'success' });
       fetchTenants();
       fetchStats();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to suspend tenant', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to suspend tenant';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -231,8 +226,9 @@ const TenantsPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Tenant activated', severity: 'success' });
       fetchTenants();
       fetchStats();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to activate tenant', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to activate tenant';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -245,8 +241,9 @@ const TenantsPage: React.FC = () => {
       const result = await tenantService.impersonate(menuTenant.id);
       // Open in new tab
       window.open(result.redirectUrl, '_blank');
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to impersonate', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to impersonate';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     }
   };
 
@@ -260,8 +257,9 @@ const TenantsPage: React.FC = () => {
       setSelectedTenant(null);
       fetchTenants();
       fetchStats();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to delete tenant', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete tenant';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -276,8 +274,9 @@ const TenantsPage: React.FC = () => {
       setSnackbar({ open: true, message: `Plan changed to ${plan}`, severity: 'success' });
       fetchTenants();
       fetchStats();
-    } catch (err: any) {
-      setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to change plan', severity: 'error' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to change plan';
+      setSnackbar({ open: true, message: msg, severity: 'error' });
     } finally {
       setActionLoading(false);
     }
@@ -390,9 +389,9 @@ const TenantsPage: React.FC = () => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ minWidth: 250 }}
+              sx={{ minWidth: { xs: '100%', sm: 250 } }}
             />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
@@ -405,7 +404,7 @@ const TenantsPage: React.FC = () => {
                 <MenuItem value="trial">Trial</MenuItem>
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+            <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 150 } }}>
               <InputLabel>Plan</InputLabel>
               <Select
                 value={planFilter}
@@ -483,12 +482,12 @@ const TenantsPage: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                        {tenant.domain || tenant.slug || 'N/A'}
+                        {tenant.domain || 'N/A'}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
-                        icon={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].icon as React.ReactElement : null}
+                        icon={tenant.plan && planConfig[tenant.plan]?.icon}
                         label={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].label : 'N/A'}
                         color={tenant.plan && planConfig[tenant.plan] ? planConfig[tenant.plan].color : 'default'}
                         size="small"

@@ -2,7 +2,7 @@ import { Controller, Get, Post, Delete, Patch, Body, Param, UseGuards, HttpCode,
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { CollaborationService } from './collaboration.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { InviteCollaboratorDto } from './dto/invite-collaborator.dto';
 import { UpdateCollaboratorDto, RespondInviteDto } from './dto/update-collaborator.dto';

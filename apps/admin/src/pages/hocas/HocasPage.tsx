@@ -39,6 +39,7 @@ import {
   IconTrash,
   IconMicrophone,
   IconUser,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { useFormik } from 'formik';
 import * as yup from 'yup';
@@ -118,8 +119,8 @@ const HocasPage: React.FC = () => {
         }
         handleCloseDialog();
         fetchHocas();
-      } catch (err: any) {
-        const message = err.response?.data?.message || 'Failed to save hoca';
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to save hoca';
         setSnackbar({ open: true, message, severity: 'error' });
       } finally {
         setSaving(false);
@@ -132,54 +133,18 @@ const HocasPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await hocaService.list({
+      const response = await hocaService.list({
         page: page + 1,
         limit: rowsPerPage,
         search: search || undefined,
       });
-      // Backend returns array directly
-      const hocaList = Array.isArray(data) ? data : [];
-      setHocas(hocaList);
-      setTotal(hocaList.length);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load hocas');
-      // Demo data for development
-      setHocas([
-        {
-          id: '1',
-          tenantId: '1',
-          name: 'Ahmet Yılmaz',
-          bio: 'Uzman podcast yapımcısı ve eğitmen. 10 yılı aşkın deneyim.',
-          expertise: 'Podcast Production',
-          avatarUrl: '',
-          isActive: true,
-          createdAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z',
-        },
-        {
-          id: '2',
-          tenantId: '1',
-          name: 'Fatma Demir',
-          bio: 'Teknoloji ve yazılım alanında içerik üreticisi.',
-          expertise: 'Technology',
-          avatarUrl: '',
-          isActive: true,
-          createdAt: '2024-02-20T14:30:00Z',
-          updatedAt: '2024-02-20T14:30:00Z',
-        },
-        {
-          id: '3',
-          tenantId: '1',
-          name: 'Mehmet Kaya',
-          bio: 'Kişisel gelişim ve motivasyon uzmanı.',
-          expertise: 'Personal Development',
-          avatarUrl: '',
-          isActive: true,
-          createdAt: '2024-03-10T09:15:00Z',
-          updatedAt: '2024-03-10T09:15:00Z',
-        },
-      ]);
-      setTotal(3);
+      setHocas(response.data || []);
+      setTotal(response.total || 0);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : 'Failed to load hocas';
+      setError(errMessage);
+      setHocas([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -198,8 +163,8 @@ const HocasPage: React.FC = () => {
 
   // Sort function
   const sortedHocas = [...hocas].sort((a, b) => {
-    let aValue: any = a[orderBy];
-    let bValue: any = b[orderBy];
+    let aValue: string | number = a[orderBy] as string;
+    let bValue: string | number = b[orderBy] as string;
 
     if (orderBy === 'createdAt') {
       aValue = new Date(aValue).getTime();
@@ -208,7 +173,7 @@ const HocasPage: React.FC = () => {
 
     if (typeof aValue === 'string') {
       aValue = aValue.toLowerCase();
-      bValue = (bValue || '').toLowerCase();
+      bValue = String(bValue || '').toLowerCase();
     }
 
     if (order === 'asc') {
@@ -266,8 +231,8 @@ const HocasPage: React.FC = () => {
       setDeleteDialogOpen(false);
       setSelectedHoca(null);
       fetchHocas();
-    } catch (err: any) {
-      const message = err.response?.data?.message || 'Failed to delete hoca';
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete hoca';
       setSnackbar({ open: true, message, severity: 'error' });
     } finally {
       setDeleting(false);
@@ -296,19 +261,26 @@ const HocasPage: React.FC = () => {
             Manage podcast hosts and mentors
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<IconPlus size={20} />}
-          onClick={() => handleOpenDialog('create')}
-        >
-          Add Hoca
-        </Button>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Tooltip title="Refresh">
+            <IconButton onClick={fetchHocas} disabled={loading}>
+              <IconRefresh size={20} />
+            </IconButton>
+          </Tooltip>
+          <Button
+            variant="contained"
+            startIcon={<IconPlus size={20} />}
+            onClick={() => handleOpenDialog('create')}
+          >
+            Add Hoca
+          </Button>
+        </Stack>
       </Stack>
 
       {/* Error Alert */}
       {error && (
         <Alert severity="warning" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error} - Showing demo data
+          {error}
         </Alert>
       )}
 
@@ -316,7 +288,7 @@ const HocasPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search */}
-          <Stack direction="row" spacing={2} mb={3}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
             <TextField
               placeholder="Search by name..."
               size="small"
@@ -325,7 +297,7 @@ const HocasPage: React.FC = () => {
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              sx={{ minWidth: 300 }}
+              sx={{ minWidth: { xs: '100%', sm: 300 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">

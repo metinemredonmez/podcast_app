@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Button, Typography, Paper, Stack } from '@mui/material';
 import { IconAlertTriangle, IconRefresh, IconBug } from '@tabler/icons-react';
+import { logger } from '../../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -33,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    logger.error('ErrorBoundary caught an error:', error, errorInfo);
     this.setState({
       error,
       errorInfo,
@@ -68,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
       url: window.location.href,
     };
 
-    console.log('Error Report:', errorReport);
+    logger.info('Error Report:', errorReport);
     // TODO: Send to backend error reporting endpoint
     alert('Error report has been logged. Please contact support if the issue persists.');
   };

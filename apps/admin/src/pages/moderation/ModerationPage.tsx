@@ -183,75 +183,11 @@ const ModerationPage: React.FC = () => {
       setItems(queueData.data);
       setTotal(queueData.total);
       setStats(statsData);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load moderation data');
-      // Demo data
-      setItems([
-        {
-          id: '1',
-          entityType: 'Episode',
-          entityId: 'ep-123',
-          reason: 'Inappropriate content reported by multiple users. Contains explicit language without proper warning.',
-          status: 'PENDING',
-          priority: 7,
-          reportCount: 5,
-          createdAt: '2024-01-20T10:00:00Z',
-          updatedAt: '2024-01-20T10:00:00Z',
-          reportedUser: { id: '1', name: 'John Doe', email: 'john@example.com' },
-          contentPreview: 'Episode Title: Tech Talk #45 - The Future of AI...',
-        },
-        {
-          id: '2',
-          entityType: 'Comment',
-          entityId: 'cmt-456',
-          reason: 'Spam content - promotional links',
-          status: 'PENDING',
-          priority: 3,
-          reportCount: 2,
-          createdAt: '2024-01-19T15:30:00Z',
-          updatedAt: '2024-01-19T15:30:00Z',
-          reportedUser: { id: '2', name: 'Jane Smith', email: 'jane@example.com' },
-          contentPreview: 'Check out this amazing deal at www.spam-link.com...',
-        },
-        {
-          id: '3',
-          entityType: 'Podcast',
-          entityId: 'pod-789',
-          reason: 'Copyright violation claim - using copyrighted music',
-          status: 'ESCALATED',
-          priority: 9,
-          reportCount: 1,
-          createdAt: '2024-01-18T09:00:00Z',
-          updatedAt: '2024-01-19T12:00:00Z',
-          reportedUser: { id: '3', name: 'Bob Wilson', email: 'bob@example.com' },
-          moderator: { id: '4', name: 'Admin User', email: 'admin@example.com' },
-          notes: 'Needs legal review - potential DMCA issue',
-          contentPreview: 'Podcast: Music Mix Daily - Featuring popular hits...',
-        },
-        {
-          id: '4',
-          entityType: 'User',
-          entityId: 'usr-101',
-          reason: 'Harassment and abusive behavior',
-          status: 'PENDING',
-          priority: 8,
-          reportCount: 12,
-          createdAt: '2024-01-20T08:00:00Z',
-          updatedAt: '2024-01-20T08:00:00Z',
-          reportedUser: { id: '5', name: 'Toxic User', email: 'toxic@example.com' },
-          contentPreview: 'User profile with multiple violations...',
-        },
-      ]);
-      setTotal(4);
-      setStats({
-        pending: 5,
-        approved: 23,
-        rejected: 8,
-        escalated: 2,
-        total: 38,
-        resolvedToday: 7,
-        avgResolutionTime: 45,
-      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load moderation data';
+      setError(message);
+      setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -318,16 +254,7 @@ const ModerationPage: React.FC = () => {
         );
         setReportHistory(history);
       } catch {
-        // Demo history
-        setReportHistory([
-          {
-            id: '1',
-            reason: selectedItem.reason || 'No reason',
-            reportedBy: selectedItem.reportedBy || 'anonymous',
-            reporterName: selectedItem.reportedUser?.name || 'Anonymous',
-            createdAt: selectedItem.createdAt,
-          },
-        ]);
+        setReportHistory([]);
       } finally {
         setLoadingHistory(false);
       }
@@ -376,10 +303,11 @@ const ModerationPage: React.FC = () => {
       handleCloseDetailDialog();
       setSelectedItem(null);
       fetchData();
-    } catch (err: any) {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Action failed';
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Action failed',
+        message,
         severity: 'error',
       });
     } finally {
@@ -507,7 +435,7 @@ const ModerationPage: React.FC = () => {
             </FormControl>
           </Stack>
 
-          {error && <Alert severity="warning" sx={{ mb: 2 }}>{error} - Showing demo data</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
           {/* Table */}
           {loading ? (

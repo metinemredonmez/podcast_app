@@ -1,8 +1,10 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, Logger } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import type { RedisClientOptions } from 'redis';
 import { CacheService } from './cache.service';
+
+const logger = new Logger('CacheModule');
 
 @Global()
 @Module({
@@ -20,7 +22,7 @@ import { CacheService } from './cache.service';
               connectTimeout: 10000,
               reconnectStrategy: (retries) => {
                 if (retries > 10) {
-                  console.error('Redis connection failed after 10 retries');
+                  logger.error('Redis connection failed after 10 retries');
                   return new Error('Redis connection failed');
                 }
                 return retries * 100; // Exponential backoff

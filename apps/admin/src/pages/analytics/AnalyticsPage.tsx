@@ -24,6 +24,7 @@ import {
   IconTrendingDown,
 } from '@tabler/icons-react';
 import { analyticsService, DashboardStats, TopPodcast } from '../../api/services/analytics.service';
+import { logger } from '../../utils/logger';
 
 interface StatCardProps {
   title: string;
@@ -93,9 +94,10 @@ const AnalyticsPage: React.FC = () => {
       ]);
       setStats(statsData);
       setTopPodcasts(podcastsData);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load analytics data. Please try again.');
-      console.error('Analytics fetch error:', err);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load analytics data. Please try again.';
+      setError(message);
+      logger.error('Analytics fetch error:', err);
     } finally {
       setLoading(false);
     }

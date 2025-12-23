@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 export interface ChatMessage {
   id: string;
@@ -20,19 +20,62 @@ export interface ChatRoom {
   slowMode: boolean;
   slowModeInterval: number;
   lastMessageTime: Map<string, Date>;
+  createdAt: Date;
+  lastActivityAt: Date;
 }
 
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ChatService.name);
   private readonly rooms = new Map<string, ChatRoom>();
   private readonly maxMessagesPerRoom = 500;
+  private readonly roomTtlMs = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly cleanupIntervalMs = 60 * 60 * 1000; // 1 hour
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  onModuleInit() {
+    // Start periodic cleanup of stale rooms
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupStaleRooms();
+    }, this.cleanupIntervalMs);
+    this.logger.log('Chat service initialized with periodic cleanup');
+  }
+
+  onModuleDestroy() {
+    // Clear interval and all rooms on shutdown
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.rooms.clear();
+    this.logger.log('Chat service destroyed, all rooms cleared');
+  }
+
+  private cleanupStaleRooms(): void {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [sessionId, room] of this.rooms) {
+      const inactiveTime = now - room.lastActivityAt.getTime();
+      if (inactiveTime > this.roomTtlMs) {
+        this.rooms.delete(sessionId);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      this.logger.log(`Cleaned up ${cleanedCount} stale chat rooms`);
+    }
+  }
 
   createRoom(sessionId: string, options?: { isModerated?: boolean; slowMode?: boolean; slowModeInterval?: number }) {
     if (this.rooms.has(sessionId)) {
-      return this.rooms.get(sessionId)!;
+      const existingRoom = this.rooms.get(sessionId)!;
+      existingRoom.lastActivityAt = new Date();
+      return existingRoom;
     }
 
+    const now = new Date();
     const room: ChatRoom = {
       sessionId,
       messages: [],
@@ -41,6 +84,8 @@ export class ChatService {
       slowMode: options?.slowMode ?? false,
       slowModeInterval: options?.slowModeInterval ?? 5,
       lastMessageTime: new Map(),
+      createdAt: now,
+      lastActivityAt: now,
     };
 
     this.rooms.set(sessionId, room);
@@ -115,6 +160,7 @@ export class ChatService {
 
     room.messages.push(message);
     room.lastMessageTime.set(userId, message.timestamp);
+    room.lastActivityAt = message.timestamp;
 
     if (room.messages.length > this.maxMessagesPerRoom) {
       room.messages = room.messages.slice(-this.maxMessagesPerRoom);

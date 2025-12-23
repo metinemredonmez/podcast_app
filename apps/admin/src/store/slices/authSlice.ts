@@ -15,10 +15,20 @@ interface AuthState {
   isLoading: boolean;
 }
 
+// Try to restore user from localStorage
+const storedUser = localStorage.getItem('user');
+const parsedUser = storedUser ? (() => {
+  try {
+    return JSON.parse(storedUser) as User;
+  } catch {
+    return null;
+  }
+})() : null;
+
 const initialState: AuthState = {
   token: localStorage.getItem('accessToken'),
   refreshToken: localStorage.getItem('refreshToken'),
-  user: null,
+  user: parsedUser,
   isLoading: false,
 };
 
@@ -26,12 +36,17 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials(state, action: PayloadAction<{ accessToken: string; refreshToken: string; user: User }>) {
+    setCredentials(state, action: PayloadAction<{ accessToken: string; refreshToken: string; user: User | null }>) {
       state.token = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
       state.user = action.payload.user;
       localStorage.setItem('accessToken', action.payload.accessToken);
       localStorage.setItem('refreshToken', action.payload.refreshToken);
+      if (action.payload.user) {
+        localStorage.setItem('user', JSON.stringify(action.payload.user));
+      } else {
+        localStorage.removeItem('user');
+      }
     },
     setToken(state, action: PayloadAction<string>) {
       state.token = action.payload;
@@ -39,6 +54,7 @@ const authSlice = createSlice({
     },
     setUser(state, action: PayloadAction<User>) {
       state.user = action.payload;
+      localStorage.setItem('user', JSON.stringify(action.payload));
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
@@ -49,6 +65,7 @@ const authSlice = createSlice({
       state.user = null;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
     },
     // Legacy support
     clearToken(state) {
@@ -57,6 +74,7 @@ const authSlice = createSlice({
       state.user = null;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
     },
   },
 });
