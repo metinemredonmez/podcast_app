@@ -93,19 +93,22 @@ async function bootstrap() {
         return callback(null, true);
       }
 
+      // Handle duplicated origin from proxy (e.g., "https://example.com, https://example.com")
+      const cleanOrigin = origin.includes(',') ? origin.split(',')[0].trim() : origin;
+
       // Check if origin is in allowed list
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      if (allowedOrigins.includes(cleanOrigin)) {
+        return callback(null, cleanOrigin);
       }
 
       // Log rejected origins
       if (nodeEnv === 'development') {
-        bootstrapLogger.warn(`CORS rejected origin: ${origin}`);
+        bootstrapLogger.warn(`CORS rejected origin: ${cleanOrigin}`);
       } else {
-        bootstrapLogger.warn(`CORS rejected origin in production: ${origin}`);
+        bootstrapLogger.warn(`CORS rejected origin in production: ${cleanOrigin}`);
       }
 
-      callback(new Error(`Origin ${origin} not allowed by CORS`));
+      callback(new Error(`Origin ${cleanOrigin} not allowed by CORS`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],

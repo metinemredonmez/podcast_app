@@ -1,14 +1,42 @@
-// Re-export from shared-types
-export {
-  UserRole,
-  UserRoleValues,
-  NotificationType,
-  NotificationTypeValues,
-  AnalyticsEventType,
-  AnalyticsEventTypeValues,
-} from '@podcast-app/shared-types';
+// User roles
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  CREATOR = 'CREATOR',
+  HOCA = 'HOCA',
+  USER = 'USER',
+}
 
-// New enums defined in Prisma schema
+export const UserRoleValues = Object.values(UserRole);
+
+// Notification types
+export enum NotificationType {
+  NEW_EPISODE = 'NEW_EPISODE',
+  NEW_COMMENT = 'NEW_COMMENT',
+  NEW_REVIEW = 'NEW_REVIEW',
+  NEW_FOLLOWER = 'NEW_FOLLOWER',
+  EPISODE_APPROVED = 'EPISODE_APPROVED',
+  EPISODE_REJECTED = 'EPISODE_REJECTED',
+  SYSTEM = 'SYSTEM',
+}
+
+export const NotificationTypeValues = Object.values(NotificationType);
+
+// Analytics event types
+export enum AnalyticsEventType {
+  PLAY = 'PLAY',
+  PAUSE = 'PAUSE',
+  COMPLETE = 'COMPLETE',
+  SKIP = 'SKIP',
+  DOWNLOAD = 'DOWNLOAD',
+  SHARE = 'SHARE',
+  LIKE = 'LIKE',
+  COMMENT = 'COMMENT',
+  SUBSCRIBE = 'SUBSCRIBE',
+}
+
+export const AnalyticsEventTypeValues = Object.values(AnalyticsEventType);
+
+// Enums defined in Prisma schema
 export enum DownloadStatus {
   PENDING = 'PENDING',
   COMPLETED = 'COMPLETED',

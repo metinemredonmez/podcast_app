@@ -1,13 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { StreamStatus } from '@podcast-app/shared-types';
 import { PrismaService } from '../../infra/prisma.service';
 import { LiveStreamGateway } from '../../ws/gateways/live-stream.gateway';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { UpdateStreamingDto } from './dto/update-streaming.dto';
 import { UpdateSessionStatusDto } from './dto/update-session-status.dto';
 import { ListStreamingDto } from './dto/list-streaming.dto';
-import { UserRole } from '../../common/enums/prisma.enums';
+import { UserRole, StreamStatus } from '../../common/enums/prisma.enums';
 
 const sessionInclude = {
   host: {
