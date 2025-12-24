@@ -164,56 +164,54 @@ const LoginPage: React.FC = () => {
       sx={{
         minHeight: '100vh',
         display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        p: 3,
       }}
     >
-      {/* Left Side - Branding */}
+      {/* Branding - Top */}
       <Box
         sx={{
-          flex: 1,
-          display: { xs: 'none', md: 'flex' },
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          p: 4,
+          textAlign: 'center',
           color: 'white',
+          mb: 4,
         }}
       >
-        <Box sx={{ textAlign: 'center', maxWidth: 400 }}>
-          <Box
-            sx={{
-              width: 80,
-              height: 80,
-              borderRadius: '20px',
-              backgroundColor: 'rgba(255,255,255,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mx: 'auto',
-              mb: 3,
-            }}
-          >
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-          </Box>
-          <Typography variant="h3" fontWeight={700} gutterBottom>
-            Podcast Admin
-          </Typography>
-          <Typography variant="h6" sx={{ opacity: 0.9 }}>
-            Podcastlerinizi, bölümleri ve kullanıcıları tek bir panelden yönetin
-          </Typography>
+        <Box
+          sx={{
+            width: 80,
+            height: 80,
+            borderRadius: '20px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mx: 'auto',
+            mb: 3,
+          }}
+        >
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
         </Box>
+        <Typography variant="h3" fontWeight={700} gutterBottom>
+          Podcast Admin
+        </Typography>
+        <Typography variant="h6" sx={{ opacity: 0.9 }}>
+          Podcastlerinizi, bölümleri ve kullanıcıları tek bir panelden yönetin
+        </Typography>
       </Box>
 
-      {/* Right Side - Login Form */}
+      {/* Login Form - Center */}
       <Box
         sx={{
-          flex: { xs: 1, md: '0 0 500px' },
+          width: '100%',
+          maxWidth: 420,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: 3,
         }}
       >
         <Paper
@@ -221,7 +219,6 @@ const LoginPage: React.FC = () => {
           sx={{
             p: 4,
             width: '100%',
-            maxWidth: { xs: '100%', sm: 420 },
             borderRadius: 3,
           }}
         >

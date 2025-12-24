@@ -10,6 +10,7 @@ import LoginPage from '../pages/auth/LoginPage';
 import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
+import ApplicationPendingPage from '../pages/auth/ApplicationPendingPage';
 
 // Legal pages
 import PrivacyPage from '../pages/legal/PrivacyPage';
@@ -99,6 +100,8 @@ export const router = createBrowserRouter([
   // Legal pages (no auth required)
   { path: '/privacy', element: <PrivacyPage /> },
   { path: '/terms', element: <TermsPage /> },
+  // Application pending page
+  { path: '/application-pending', element: <ApplicationPendingPage /> },
   {
     element: <ProtectedRoute />,
     children: [

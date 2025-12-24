@@ -184,11 +184,13 @@ const RegisterPage: React.FC = () => {
           position: values.position || undefined,
         });
 
-        setSuccess('Başvurunuz alındı! Onaylandıktan sonra size bilgi vereceğiz.');
-        setPhoneStep('phone');
-        setPhoneVerified(false);
-        setApplicationToken('');
-        hocaFormik.resetForm();
+        // Navigate to application pending page
+        navigate('/application-pending', {
+          state: {
+            phone: hocaFormik.values.phone,
+            name: values.name
+          }
+        });
       } catch (err: any) {
         const message = err.response?.data?.message || 'Başvuru gönderilemedi';
         setError(message);
