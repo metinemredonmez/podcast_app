@@ -270,13 +270,13 @@ const SystemSettingsPage: React.FC = () => {
         provider: pushProvider,
       };
 
-      if (pushProvider === 'ONESIGNAL') {
-        if (oneSignalAppId) payload.oneSignalAppId = oneSignalAppId;
-        if (oneSignalApiKey) payload.oneSignalApiKey = oneSignalApiKey;
-      } else {
-        if (firebaseProjectId) payload.firebaseProjectId = firebaseProjectId;
-        if (firebaseCredentials) payload.firebaseCredentials = firebaseCredentials;
-      }
+      // Always send OneSignal fields if they have values
+      if (oneSignalAppId) payload.oneSignalAppId = oneSignalAppId;
+      if (oneSignalApiKey) payload.oneSignalApiKey = oneSignalApiKey;
+
+      // Always send Firebase fields if they have values
+      if (firebaseProjectId) payload.firebaseProjectId = firebaseProjectId;
+      if (firebaseCredentials) payload.firebaseCredentials = firebaseCredentials;
 
       await apiClient.patch('/push/config', payload);
       setSuccess('Push ayarları kaydedildi');
