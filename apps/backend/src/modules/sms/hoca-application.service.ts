@@ -126,22 +126,33 @@ export class HocaApplicationService {
       throw new ConflictException('Bu telefon numarası zaten kayıtlı');
     }
 
-    // Check for pending application
-    const pendingApp = await this.prisma.hocaApplication.findFirst({
+    // Check for pending application - check phone and email separately for specific error messages
+    const pendingPhoneApp = await this.prisma.hocaApplication.findFirst({
       where: {
-        OR: [
-          { phone: normalizedPhone },
-          { email: data.email },
-        ],
+        phone: normalizedPhone,
         status: { in: ['PENDING', 'APPROVED'] },
       },
     });
 
-    if (pendingApp) {
-      if (pendingApp.status === 'APPROVED') {
-        throw new ConflictException('Başvurunuz onaylandı. Giriş yapabilirsiniz.');
+    if (pendingPhoneApp) {
+      if (pendingPhoneApp.status === 'APPROVED') {
+        throw new ConflictException('Bu telefon numarası ile bir başvuru onaylandı. Giriş yapabilirsiniz.');
       }
-      throw new ConflictException('Bu bilgiler ile bekleyen bir başvuru var');
+      throw new ConflictException('Bu telefon numarası ile bekleyen bir başvuru var');
+    }
+
+    const pendingEmailApp = await this.prisma.hocaApplication.findFirst({
+      where: {
+        email: data.email,
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+    });
+
+    if (pendingEmailApp) {
+      if (pendingEmailApp.status === 'APPROVED') {
+        throw new ConflictException('Bu email adresi ile bir başvuru onaylandı. Giriş yapabilirsiniz.');
+      }
+      throw new ConflictException('Bu email adresi ile bekleyen bir başvuru var');
     }
 
     // Delete rejected applications for same phone/email
