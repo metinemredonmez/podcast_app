@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { buildPaginatedResponse, decodeCursor } from '../../common/utils/pagination.util';
-import { PODCASTS_REPOSITORY, PodcastDetail, PodcastsRepository, PodcastModel } from './repositories/podcasts.repository';
+import { PODCASTS_REPOSITORY, PodcastDetail, PodcastsRepository, PodcastModel, PodcastListItem } from './repositories/podcasts.repository';
 import { CreatePodcastDto } from './dto/create-podcast.dto';
 import { UpdatePodcastDto } from './dto/update-podcast.dto';
 import { PodcastResponseDto } from './dto/podcast-response.dto';
@@ -16,7 +16,10 @@ export class PodcastsService {
   constructor(@Inject(PODCASTS_REPOSITORY) private readonly podcastsRepository: PodcastsRepository) {}
 
   async findAll(query: CursorPaginationDto & { tenantId?: string }, actor: JwtPayload): Promise<PaginatedResponseDto<PodcastResponseDto>> {
-    const tenantId = this.resolveTenant(query.tenantId, actor, { allowCrossTenantForAdmin: false });
+    // Admin can see all podcasts across tenants if no specific tenantId is requested
+    const tenantId = actor.role === UserRole.ADMIN && !query.tenantId
+      ? undefined
+      : this.resolveTenant(query.tenantId, actor, { allowCrossTenantForAdmin: true });
     const limit = Number(query.limit ?? 20);
     const decodedRaw = query.cursor ? decodeCursor(query.cursor) : undefined;
     const decoded = decodedRaw || undefined;
@@ -71,8 +74,21 @@ export class PodcastsService {
   }
 
   async findOne(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastDetailDto> {
-    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
-    const podcast = await this.podcastsRepository.findDetailedById(id, resolvedTenantId);
+    // First find the podcast without tenant filter to check if it exists
+    const podcastBasic = await this.podcastsRepository.findById(id);
+    if (!podcastBasic) {
+      throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Check tenant access (allow cross-tenant for HOCA role as well since they own their podcasts)
+    if (podcastBasic.tenantId !== actor.tenantId &&
+        actor.role !== UserRole.ADMIN &&
+        podcastBasic.ownerId !== actor.userId) {
+      throw new ForbiddenException('Access to this podcast is not permitted.');
+    }
+
+    // Get detailed podcast info
+    const podcast = await this.podcastsRepository.findDetailedById(id, podcastBasic.tenantId);
     if (!podcast) {
       throw new NotFoundException(`Podcast ${id} not found.`);
     }
@@ -94,28 +110,55 @@ export class PodcastsService {
       ? new Date()
       : undefined;
 
+    // Use ownerId from payload, or default to current user
+    const ownerId = payload.ownerId || actor.userId;
+
+    // Support both categoryId (singular) and categoryIds (array)
+    let categoryIds = payload.categoryIds;
+    if (!categoryIds && payload.categoryId) {
+      categoryIds = [payload.categoryId];
+    }
+
     const podcast = await this.podcastsRepository.create({
       tenantId,
-      ownerId: payload.ownerId,
+      ownerId,
       title: payload.title,
       slug,
       description: payload.description,
       coverImageUrl: payload.coverImageUrl,
       isPublished: payload.isPublished,
       publishedAt,
-      categoryIds: payload.categoryIds,
+      categoryIds,
+      // Media type and quality
+      mediaType: payload.mediaType,
+      defaultQuality: payload.defaultQuality,
+      // Media fields
+      audioUrl: payload.audioUrl,
+      audioMimeType: payload.audioMimeType,
+      videoUrl: payload.videoUrl,
+      videoMimeType: payload.videoMimeType,
+      youtubeUrl: payload.youtubeUrl,
+      externalVideoUrl: payload.externalVideoUrl,
+      thumbnailUrl: payload.thumbnailUrl,
+      duration: payload.duration,
+      // Metadata
+      tags: payload.tags,
+      isFeatured: payload.isFeatured,
     });
 
     return this.toResponseDto(podcast);
   }
 
   async update(id: string, payload: UpdatePodcastDto, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
-    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
-
-    // Check if podcast exists
-    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    // First find the podcast without tenant filter to check if it exists
+    const podcast = await this.podcastsRepository.findById(id);
     if (!podcast) {
       throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Check tenant access
+    if (podcast.tenantId !== actor.tenantId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Access to this podcast is not permitted.');
     }
 
     // Authorization: Only owner or admin can update
@@ -125,7 +168,7 @@ export class PodcastsService {
 
     const publishedAt = payload.publishedAt ? new Date(payload.publishedAt) : undefined;
 
-    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+    const updated = await this.podcastsRepository.update(id, podcast.tenantId, {
       ...payload,
       publishedAt,
     });
@@ -134,12 +177,15 @@ export class PodcastsService {
   }
 
   async delete(id: string, actor: JwtPayload, tenantId?: string): Promise<void> {
-    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
-
-    // Check if podcast exists
-    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    // First find the podcast without tenant filter to check if it exists
+    const podcast = await this.podcastsRepository.findById(id);
     if (!podcast) {
       throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Check tenant access
+    if (podcast.tenantId !== actor.tenantId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Access to this podcast is not permitted.');
     }
 
     // Authorization: Only owner or admin can delete
@@ -147,22 +193,26 @@ export class PodcastsService {
       throw new ForbiddenException('You are not authorized to delete this podcast.');
     }
 
-    await this.podcastsRepository.delete(id, resolvedTenantId);
+    await this.podcastsRepository.delete(id, podcast.tenantId);
   }
 
   async publish(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
-    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
-
-    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    // First find the podcast without tenant filter to check if it exists
+    const podcast = await this.podcastsRepository.findById(id);
     if (!podcast) {
       throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Check tenant access
+    if (podcast.tenantId !== actor.tenantId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Access to this podcast is not permitted.');
     }
 
     if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
       throw new ForbiddenException('You are not authorized to publish this podcast.');
     }
 
-    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+    const updated = await this.podcastsRepository.update(id, podcast.tenantId, {
       isPublished: true,
       publishedAt: podcast.publishedAt || new Date(),
     });
@@ -171,25 +221,30 @@ export class PodcastsService {
   }
 
   async unpublish(id: string, actor: JwtPayload, tenantId?: string): Promise<PodcastResponseDto> {
-    const resolvedTenantId = this.resolveTenant(tenantId, actor, { allowCrossTenantForAdmin: true });
-
-    const podcast = await this.podcastsRepository.findById(id, resolvedTenantId);
+    // First find the podcast without tenant filter to check if it exists
+    const podcast = await this.podcastsRepository.findById(id);
     if (!podcast) {
       throw new NotFoundException(`Podcast ${id} not found.`);
+    }
+
+    // Authorization: Check tenant access
+    if (podcast.tenantId !== actor.tenantId && actor.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Access to this podcast is not permitted.');
     }
 
     if (podcast.ownerId !== actor.userId && actor.role !== UserRole.ADMIN) {
       throw new ForbiddenException('You are not authorized to unpublish this podcast.');
     }
 
-    const updated = await this.podcastsRepository.update(id, resolvedTenantId, {
+    const updated = await this.podcastsRepository.update(id, podcast.tenantId, {
       isPublished: false,
     });
 
     return this.toResponseDto(updated);
   }
 
-  private toResponseDto(podcast: PodcastDetail | PodcastModel): PodcastResponseDto {
+  private toResponseDto(podcast: PodcastDetail | PodcastModel | PodcastListItem): PodcastResponseDto {
+    const listItem = podcast as PodcastListItem;
     return plainToInstance(PodcastResponseDto, {
       id: podcast.id,
       tenantId: podcast.tenantId,
@@ -202,6 +257,25 @@ export class PodcastsService {
       publishedAt: podcast.publishedAt,
       createdAt: podcast.createdAt,
       updatedAt: podcast.updatedAt,
+      // Media type and quality
+      mediaType: podcast.mediaType,
+      defaultQuality: podcast.defaultQuality,
+      // Media fields
+      audioUrl: podcast.audioUrl,
+      audioMimeType: podcast.audioMimeType,
+      videoUrl: podcast.videoUrl,
+      videoMimeType: podcast.videoMimeType,
+      youtubeUrl: podcast.youtubeUrl,
+      externalVideoUrl: podcast.externalVideoUrl,
+      thumbnailUrl: podcast.thumbnailUrl,
+      duration: podcast.duration,
+      // Metadata
+      tags: podcast.tags,
+      isFeatured: podcast.isFeatured,
+      // Relations (from list queries)
+      owner: listItem.owner,
+      categories: listItem.categories,
+      _count: listItem._count,
     });
   }
 
@@ -219,8 +293,8 @@ export class PodcastsService {
   }
 
   private ensureCreatorRole(actor: JwtPayload) {
-    if (![UserRole.CREATOR, UserRole.ADMIN].includes(actor.role)) {
-      throw new ForbiddenException('Only creators or admins may manage podcasts.');
+    if (![UserRole.CREATOR, UserRole.HOCA, UserRole.ADMIN].includes(actor.role)) {
+      throw new ForbiddenException('Only creators, hocas, or admins may manage podcasts.');
     }
   }
 }

@@ -1,15 +1,17 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsDate,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   ValidateNested,
 } from 'class-validator';
+import { MediaType, MediaQuality } from '../../../common/enums/prisma.enums';
 
 class PodcastEpisodeSummaryDto {
   @ApiProperty()
@@ -118,6 +120,65 @@ export class PodcastDetailDto {
   @Type(() => Date)
   @IsDate()
   updatedAt!: Date;
+
+  // Media type and quality
+  @ApiProperty({ enum: MediaType })
+  @IsEnum(MediaType)
+  mediaType!: MediaType;
+
+  @ApiProperty({ enum: MediaQuality })
+  @IsEnum(MediaQuality)
+  defaultQuality!: MediaQuality;
+
+  // Media fields
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  audioUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  audioMimeType!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoMimeType!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  youtubeUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  externalVideoUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl!: string | null;
+
+  @ApiProperty()
+  @IsNumber()
+  duration!: number;
+
+  // Metadata
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  tags!: string[];
+
+  @ApiProperty()
+  @IsBoolean()
+  isFeatured!: boolean;
 
   @ApiProperty({ type: PodcastOwnerDto })
   @ValidateNested()

@@ -126,8 +126,20 @@ const LoginPage: React.FC = () => {
       setResendTimer(response.data.resendAfter);
       setShowOtpModal(true);
       setSuccess('Doğrulama kodu gönderildi');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Kod gönderilemedi';
+    } catch (err: unknown) {
+      // Extract error message from axios error
+      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+      let msg = axiosErr.response?.data?.message || axiosErr.message || 'Kod gönderilemedi';
+
+      // Check for rate limit error and extract seconds
+      const waitMatch = msg.match(/(\d+)\s*saniye/);
+      if (waitMatch) {
+        const waitSeconds = parseInt(waitMatch[1], 10);
+        // Set timer and show modal so user can see countdown
+        setResendTimer(waitSeconds);
+        msg = `Lütfen ${waitSeconds} saniye bekleyin`;
+      }
+
       setError(msg);
     } finally {
       setPhoneLoading(false);

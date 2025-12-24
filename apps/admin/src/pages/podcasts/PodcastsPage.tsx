@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -25,6 +25,12 @@ import {
   Alert,
   Checkbox,
   Tooltip,
+  Paper,
+  Slider,
+  Collapse,
+  Dialog,
+  DialogContent,
+  keyframes,
 } from '@mui/material';
 import {
   IconSearch,
@@ -32,9 +38,14 @@ import {
   IconDotsVertical,
   IconEdit,
   IconTrash,
-  IconEye,
   IconFilter,
   IconRefresh,
+  IconPlayerPlay,
+  IconPlayerPause,
+  IconVolume,
+  IconVolumeOff,
+  IconX,
+  IconVideo,
 } from '@tabler/icons-react';
 import { podcastService, Podcast } from '../../api/services/podcast.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
@@ -44,6 +55,12 @@ import { IconDownload } from '@tabler/icons-react';
 import { useFilters, FilterDefinition } from '../../hooks/useFilters';
 import { FilterSidebar, FilterChips } from '../../components/filters';
 import { logger } from '../../utils/logger';
+
+// Audio wave animation keyframes
+const soundWave = keyframes`
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+`;
 
 const PodcastsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -56,6 +73,17 @@ const PodcastsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
+
+  // Player Modal state
+  const [playingPodcast, setPlayingPodcast] = useState<Podcast | null>(null);
+  const [playerModalOpen, setPlayerModalOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Bulk selection
   const bulkSelection = useBulkSelection({
@@ -142,9 +170,10 @@ const PodcastsPage: React.FC = () => {
         search: search || undefined,
       });
       setPodcasts(response.data || []);
-      setTotal(response.total || 0);
+      // Backend returns cursor pagination, so we estimate total
+      setTotal(response.hasMore ? (page + 2) * rowsPerPage : (page * rowsPerPage) + (response.data?.length || 0));
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load podcasts');
+      setError(err.response?.data?.message || 'Podcasts yüklenemedi');
       setPodcasts([]);
     } finally {
       setLoading(false);
@@ -208,18 +237,100 @@ const PodcastsPage: React.FC = () => {
     setExportDialogOpen(true);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'success';
-      case 'draft':
-        return 'warning';
-      case 'archived':
-        return 'default';
-      default:
-        return 'default';
+  // Player functions
+  const handlePlayPodcast = (podcast: Podcast) => {
+    const mediaUrl = podcast.audioUrl || podcast.videoUrl;
+    if (!mediaUrl) {
+      setError('Bu podcast için medya dosyası yok');
+      return;
+    }
+
+    setPlayingPodcast(podcast);
+    setPlayerModalOpen(true);
+    setIsPlaying(true);
+    setCurrentTime(0);
+  };
+
+  const getMediaRef = () => {
+    const isVideo = playingPodcast?.videoUrl && !playingPodcast?.audioUrl;
+    return isVideo ? videoRef.current : audioRef.current;
+  };
+
+  const togglePlay = () => {
+    const media = getMediaRef();
+    if (!media) return;
+    if (isPlaying) {
+      media.pause();
+    } else {
+      media.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleTimeUpdate = () => {
+    const media = getMediaRef();
+    if (media) {
+      setCurrentTime(media.currentTime);
     }
   };
+
+  const handleLoadedMetadata = () => {
+    const media = getMediaRef();
+    if (media) {
+      setDuration(media.duration);
+      media.play().catch(() => {
+        setError('Medya oynatılamadı');
+      });
+    }
+  };
+
+  const handleSeek = (_: Event, value: number | number[]) => {
+    const time = value as number;
+    const media = getMediaRef();
+    if (media) {
+      media.currentTime = time;
+      setCurrentTime(time);
+    }
+  };
+
+  const handleVolumeChange = (_: Event, value: number | number[]) => {
+    const vol = value as number;
+    setVolume(vol);
+    const media = getMediaRef();
+    if (media) {
+      media.volume = vol;
+    }
+    setIsMuted(vol === 0);
+  };
+
+  const toggleMute = () => {
+    const media = getMediaRef();
+    if (media) {
+      media.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const closePlayerModal = () => {
+    const media = getMediaRef();
+    if (media) {
+      media.pause();
+    }
+    setPlayerModalOpen(false);
+    setPlayingPodcast(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const isVideoPlaying = playingPodcast?.videoUrl && !playingPodcast?.audioUrl;
 
   return (
     <Box>
@@ -350,31 +461,67 @@ const PodcastsPage: React.FC = () => {
                           </TableCell>
                           <TableCell>
                             <Stack direction="row" spacing={2} alignItems="center">
-                              <Avatar
-                                src={podcast.coverImage}
-                                variant="rounded"
-                                sx={{ width: 48, height: 48 }}
+                              <Box
+                                sx={{
+                                  position: 'relative',
+                                  cursor: (podcast.audioUrl || podcast.videoUrl) ? 'pointer' : 'default',
+                                  '&:hover .play-overlay': {
+                                    opacity: 1,
+                                  },
+                                }}
+                                onClick={() => handlePlayPodcast(podcast)}
                               >
-                                {podcast.title.charAt(0)}
-                              </Avatar>
+                                <Avatar
+                                  src={podcast.coverImageUrl || '/images/default-podcast-cover.svg'}
+                                  variant="rounded"
+                                  sx={{ width: 48, height: 48 }}
+                                >
+                                  {podcast.title.charAt(0)}
+                                </Avatar>
+                                {(podcast.audioUrl || podcast.videoUrl) && (
+                                  <Box
+                                    className="play-overlay"
+                                    sx={{
+                                      position: 'absolute',
+                                      top: 0,
+                                      left: 0,
+                                      width: 48,
+                                      height: 48,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      bgcolor: 'rgba(0,0,0,0.5)',
+                                      borderRadius: 1,
+                                      opacity: playingPodcast?.id === podcast.id ? 1 : 0,
+                                      transition: 'opacity 0.2s',
+                                    }}
+                                  >
+                                    {playingPodcast?.id === podcast.id && isPlaying ? (
+                                      <IconPlayerPause size={24} color="white" />
+                                    ) : (
+                                      <IconPlayerPlay size={24} color="white" />
+                                    )}
+                                  </Box>
+                                )}
+                              </Box>
                               <Box>
                                 <Typography variant="subtitle2" fontWeight={600}>
                                   {podcast.title}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  by {podcast.author}
+                                  by {podcast.owner?.name || 'Unknown'}
                                 </Typography>
                               </Box>
                             </Stack>
                           </TableCell>
-                          <TableCell>{podcast.category}</TableCell>
-                          <TableCell>{podcast.episodeCount}</TableCell>
-                          <TableCell>{podcast.totalPlays?.toLocaleString() || 0}</TableCell>
+                          <TableCell>{podcast.categories?.[0]?.name || '-'}</TableCell>
+                          <TableCell>{podcast._count?.episodes || 0}</TableCell>
+                          <TableCell>0</TableCell>
                           <TableCell>
                             <Chip
-                              label={podcast.status}
+                              label={podcast.isPublished ? 'Yayında' : 'Taslak'}
                               size="small"
-                              color={getStatusColor(podcast.status) as any}
+                              color={podcast.isPublished ? 'success' : 'default'}
                             />
                           </TableCell>
                           <TableCell align="right">
@@ -417,17 +564,13 @@ const PodcastsPage: React.FC = () => {
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
-        <MenuItem onClick={() => { navigate(`/podcasts/${selectedPodcast?.id}`); handleMenuClose(); }}>
-          <IconEye size={18} style={{ marginRight: 8 }} />
-          View
-        </MenuItem>
         <MenuItem onClick={handleEdit}>
           <IconEdit size={18} style={{ marginRight: 8 }} />
-          Edit
+          Düzenle
         </MenuItem>
         <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
           <IconTrash size={18} style={{ marginRight: 8 }} />
-          Delete
+          Sil
         </MenuItem>
       </Menu>
 
@@ -454,6 +597,195 @@ const PodcastsPage: React.FC = () => {
         onLoadFilter={loadSavedFilter}
         onDeleteFilter={deleteSavedFilter}
       />
+
+      {/* Player Modal */}
+      <Dialog
+        open={playerModalOpen}
+        onClose={closePlayerModal}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: 'background.paper',
+            backgroundImage: 'none',
+            borderRadius: 3,
+            overflow: 'hidden',
+          },
+        }}
+      >
+        <DialogContent sx={{ p: 0 }}>
+          {/* Close Button */}
+          <IconButton
+            onClick={closePlayerModal}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+              zIndex: 10,
+              bgcolor: 'rgba(0,0,0,0.5)',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+            }}
+          >
+            <IconX size={20} color="white" />
+          </IconButton>
+
+          {/* Video Player */}
+          {isVideoPlaying && playingPodcast?.videoUrl && (
+            <Box sx={{ bgcolor: 'black' }}>
+              <video
+                ref={videoRef}
+                src={playingPodcast.videoUrl}
+                style={{ width: '100%', maxHeight: 400 }}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+              />
+            </Box>
+          )}
+
+          {/* Audio Player with Cover Art */}
+          {!isVideoPlaying && playingPodcast && (
+            <Box
+              sx={{
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                p: 4,
+                minHeight: 300,
+                background: 'linear-gradient(180deg, rgba(99,102,241,0.2) 0%, rgba(99,102,241,0.05) 100%)',
+              }}
+            >
+              {/* Hidden Audio Element */}
+              <audio
+                ref={audioRef}
+                src={playingPodcast.audioUrl || undefined}
+                onTimeUpdate={handleTimeUpdate}
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={() => setIsPlaying(false)}
+                style={{ display: 'none' }}
+              />
+
+              {/* Cover Image with Sound Wave Animation */}
+              <Box
+                sx={{
+                  position: 'relative',
+                  width: 180,
+                  height: 180,
+                  mb: 3,
+                }}
+              >
+                <Avatar
+                  src={playingPodcast.coverImageUrl || '/images/default-podcast-cover.svg'}
+                  variant="rounded"
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  {playingPodcast.title?.charAt(0)}
+                </Avatar>
+
+                {/* Sound Wave Animation Overlay */}
+                {isPlaying && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: 40,
+                      display: 'flex',
+                      alignItems: 'flex-end',
+                      justifyContent: 'center',
+                      gap: 0.5,
+                      bgcolor: 'rgba(0,0,0,0.5)',
+                      borderRadius: '0 0 8px 8px',
+                      p: 1,
+                    }}
+                  >
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          width: 4,
+                          height: 20,
+                          bgcolor: 'primary.main',
+                          borderRadius: 1,
+                          animation: `${soundWave} 0.5s ease-in-out infinite`,
+                          animationDelay: `${i * 0.1}s`,
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+
+              {/* Podcast Info */}
+              <Typography variant="h6" fontWeight={600} textAlign="center">
+                {playingPodcast.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" textAlign="center">
+                {playingPodcast.owner?.name || 'Unknown'}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Player Controls */}
+          <Box sx={{ p: 3, bgcolor: 'background.default' }}>
+            {/* Progress Slider */}
+            <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+              <Typography variant="caption" sx={{ minWidth: 40 }}>
+                {formatTime(currentTime)}
+              </Typography>
+              <Slider
+                value={currentTime}
+                max={duration || 100}
+                onChange={handleSeek}
+                sx={{ flex: 1 }}
+              />
+              <Typography variant="caption" sx={{ minWidth: 40 }}>
+                {formatTime(duration)}
+              </Typography>
+            </Stack>
+
+            {/* Play/Pause and Volume */}
+            <Stack direction="row" alignItems="center" justifyContent="center" spacing={2}>
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                <IconButton onClick={toggleMute} size="small">
+                  {isMuted ? <IconVolumeOff size={20} /> : <IconVolume size={20} />}
+                </IconButton>
+                <Slider
+                  value={isMuted ? 0 : volume}
+                  max={1}
+                  step={0.1}
+                  onChange={handleVolumeChange}
+                  size="small"
+                  sx={{ width: 80 }}
+                />
+              </Stack>
+
+              <IconButton
+                onClick={togglePlay}
+                color="primary"
+                sx={{
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                  width: 56,
+                  height: 56,
+                  '&:hover': { bgcolor: 'primary.dark' },
+                }}
+              >
+                {isPlaying ? <IconPlayerPause size={32} /> : <IconPlayerPlay size={32} />}
+              </IconButton>
+
+              <Box sx={{ width: 100 }} />
+            </Stack>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box,
@@ -19,9 +19,11 @@ import {
   DialogActions,
   Snackbar,
   Skeleton,
-  Slider,
-  IconButton,
   Paper,
+  FormControlLabel,
+  Switch,
+  Autocomplete,
+  MenuItem,
 } from '@mui/material';
 import {
   IconArrowLeft,
@@ -29,22 +31,31 @@ import {
   IconDeviceFloppy,
   IconPlayerPlay,
   IconPlayerPause,
-  IconVolume,
-  IconUpload,
   IconMicrophone,
+  IconStar,
 } from '@tabler/icons-react';
+// Note: IconPlayerPlay and IconPlayerPause used for Publish/Unpublish buttons
 import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { episodeService, Episode, UpdateEpisodeDto } from '../../api/services/episode.service';
-import { AudioUpload } from '../../components/upload';
+import { AudioUpload, VideoUpload, ImageUpload } from '../../components/upload';
+
+const QUALITY_OPTIONS = ['SD', 'HD', '4K'];
 
 const validationSchema = yup.object({
   title: yup.string().required('Title is required').min(3, 'Title must be at least 3 characters').max(160, 'Max 160 characters'),
   description: yup.string().max(2000, 'Description must be less than 2000 characters'),
-  audioUrl: yup.string().url('Must be a valid URL').required('Audio URL is required'),
+  audioUrl: yup.string().url('Must be a valid URL'),
+  videoUrl: yup.string().url('Must be a valid URL'),
+  youtubeUrl: yup.string(),
+  externalVideoUrl: yup.string(),
+  thumbnailUrl: yup.string().url('Must be a valid URL'),
   duration: yup.number().min(1, 'Duration must be at least 1 second').required('Duration is required'),
   episodeNumber: yup.number().min(1, 'Must be at least 1').nullable(),
   seasonNumber: yup.number().min(1, 'Must be at least 1').nullable(),
+  tags: yup.array().of(yup.string()),
+  quality: yup.string(),
+  isFeatured: yup.boolean(),
 });
 
 const formatDuration = (seconds: number): string => {
@@ -60,7 +71,6 @@ const formatDuration = (seconds: number): string => {
 const EditEpisodePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   // States
   const [episode, setEpisode] = useState<Episode | null>(null);
@@ -74,11 +84,6 @@ const EditEpisodePage: React.FC = () => {
     message: '',
     severity: 'success',
   });
-
-  // Audio player state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
 
   // Fetch episode
   useEffect(() => {
@@ -110,9 +115,16 @@ const EditEpisodePage: React.FC = () => {
       title: episode?.title || '',
       description: episode?.description || '',
       audioUrl: episode?.audioUrl || '',
+      videoUrl: episode?.videoUrl || '',
+      youtubeUrl: episode?.youtubeUrl || '',
+      externalVideoUrl: episode?.externalVideoUrl || '',
+      thumbnailUrl: episode?.thumbnailUrl || '',
       duration: episode?.duration || 0,
       episodeNumber: episode?.episodeNumber || '',
       seasonNumber: episode?.seasonNumber || '',
+      tags: episode?.tags || [],
+      quality: episode?.quality || '',
+      isFeatured: episode?.isFeatured || false,
     },
     enableReinitialize: true,
     validationSchema,
@@ -126,10 +138,17 @@ const EditEpisodePage: React.FC = () => {
         const updateData: UpdateEpisodeDto = {
           title: values.title,
           description: values.description || undefined,
-          audioUrl: values.audioUrl,
+          audioUrl: values.audioUrl || undefined,
+          videoUrl: values.videoUrl || undefined,
+          youtubeUrl: values.youtubeUrl || undefined,
+          externalVideoUrl: values.externalVideoUrl || undefined,
+          thumbnailUrl: values.thumbnailUrl || undefined,
           duration: values.duration,
           episodeNumber: values.episodeNumber ? Number(values.episodeNumber) : undefined,
           seasonNumber: values.seasonNumber ? Number(values.seasonNumber) : undefined,
+          tags: values.tags?.length ? values.tags : undefined,
+          quality: values.quality || undefined,
+          isFeatured: values.isFeatured,
         };
 
         const updated = await episodeService.update(id, updateData);
@@ -186,37 +205,6 @@ const EditEpisodePage: React.FC = () => {
     }
   };
 
-  // Audio player handlers
-  const togglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
-      }
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setAudioDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleSliderChange = (_: Event, value: number | number[]) => {
-    if (audioRef.current && typeof value === 'number') {
-      audioRef.current.currentTime = value;
-      setCurrentTime(value);
-    }
-  };
-
   // Loading skeleton
   if (loading) {
     return (
@@ -268,15 +256,6 @@ const EditEpisodePage: React.FC = () => {
 
   return (
     <Box>
-      {/* Hidden Audio Element */}
-      <audio
-        ref={audioRef}
-        src={formik.values.audioUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => setIsPlaying(false)}
-      />
-
       {/* Page Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
         <Stack direction="row" alignItems="center" spacing={2}>
@@ -374,18 +353,149 @@ const EditEpisodePage: React.FC = () => {
                     }
                   />
 
-                  <TextField
-                    fullWidth
-                    id="audioUrl"
-                    name="audioUrl"
-                    label="Audio URL"
-                    placeholder="https://example.com/audio.mp3"
-                    value={formik.values.audioUrl}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.audioUrl && Boolean(formik.errors.audioUrl)}
-                    helperText={formik.touched.audioUrl && formik.errors.audioUrl}
+                  {/* Audio Upload */}
+                  <AudioUpload
+                    label="Ses Dosyası"
+                    prefix="episodes"
+                    currentAudioUrl={formik.values.audioUrl || undefined}
+                    currentFileName={episode?.title ? `${episode.title}.mp3` : undefined}
+                    onUploadComplete={(response) => {
+                      formik.setFieldValue('audioUrl', response.url);
+                    }}
+                    onDurationChange={(duration) => {
+                      formik.setFieldValue('duration', duration);
+                    }}
+                    onRemove={() => {
+                      formik.setFieldValue('audioUrl', '');
+                      formik.setFieldValue('duration', 0);
+                    }}
+                    disabled={saving}
                   />
+                  {formik.touched.audioUrl && formik.errors.audioUrl && (
+                    <Typography variant="caption" color="error">
+                      {formik.errors.audioUrl}
+                    </Typography>
+                  )}
+
+                  {/* Video Upload */}
+                  <VideoUpload
+                    label="Video Dosyası / YouTube / Harici URL"
+                    prefix="episodes"
+                    currentVideoUrl={formik.values.videoUrl || undefined}
+                    currentYoutubeUrl={formik.values.youtubeUrl || undefined}
+                    currentExternalUrl={formik.values.externalVideoUrl || undefined}
+                    currentFileName={episode?.title ? `${episode.title}.mp4` : undefined}
+                    onUploadComplete={(response) => {
+                      formik.setFieldValue('videoUrl', response.url);
+                      formik.setFieldValue('youtubeUrl', '');
+                      formik.setFieldValue('externalVideoUrl', '');
+                    }}
+                    onDurationChange={(duration) => {
+                      formik.setFieldValue('duration', duration);
+                    }}
+                    onYoutubeUrlChange={(url) => {
+                      formik.setFieldValue('youtubeUrl', url);
+                      formik.setFieldValue('videoUrl', '');
+                      formik.setFieldValue('externalVideoUrl', '');
+                    }}
+                    onExternalUrlChange={(url) => {
+                      formik.setFieldValue('externalVideoUrl', url);
+                      formik.setFieldValue('videoUrl', '');
+                      formik.setFieldValue('youtubeUrl', '');
+                    }}
+                    onRemove={() => {
+                      formik.setFieldValue('videoUrl', '');
+                      formik.setFieldValue('youtubeUrl', '');
+                      formik.setFieldValue('externalVideoUrl', '');
+                    }}
+                    disabled={saving}
+                  />
+
+                  {/* Thumbnail Upload */}
+                  <ImageUpload
+                    label="Episode Kapak Resmi (Thumbnail)"
+                    prefix="episodes/thumbnails"
+                    currentImageUrl={formik.values.thumbnailUrl || undefined}
+                    onUploadComplete={(response) => {
+                      formik.setFieldValue('thumbnailUrl', response.url);
+                    }}
+                    onRemove={() => {
+                      formik.setFieldValue('thumbnailUrl', '');
+                    }}
+                    disabled={saving}
+                    aspectRatio="16:9"
+                  />
+
+                  {/* Tags */}
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={[]}
+                    value={formik.values.tags || []}
+                    onChange={(_, newValue) => {
+                      formik.setFieldValue('tags', newValue);
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            label={option}
+                            size="small"
+                            {...tagProps}
+                          />
+                        );
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Etiketler (Tags)"
+                        placeholder="Etiket eklemek için yazın ve Enter'a basın"
+                        helperText="Örn: kuran, bakara, sureler, dua"
+                      />
+                    )}
+                    disabled={saving}
+                  />
+
+                  {/* Quality & Featured */}
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <TextField
+                      select
+                      fullWidth
+                      id="quality"
+                      name="quality"
+                      label="Video Kalitesi"
+                      value={formik.values.quality}
+                      onChange={formik.handleChange}
+                      disabled={saving}
+                    >
+                      <MenuItem value="">Seçiniz</MenuItem>
+                      {QUALITY_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                          {option}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={formik.values.isFeatured}
+                          onChange={(e) => formik.setFieldValue('isFeatured', e.target.checked)}
+                          disabled={saving}
+                        />
+                      }
+                      label={
+                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                          <IconStar size={18} />
+                          <span>Öne Çıkan</span>
+                        </Stack>
+                      }
+                      sx={{ minWidth: 150 }}
+                    />
+                  </Stack>
 
                   <Stack direction="row" spacing={2}>
                     <TextField
@@ -468,61 +578,6 @@ const EditEpisodePage: React.FC = () => {
               </Grid>
 
               <Grid item xs={12} md={4}>
-                {/* Audio Player */}
-                <Paper elevation={0} sx={{ p: 3, bgcolor: 'grey.50', borderRadius: 2 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Audio Preview
-                  </Typography>
-
-                  {formik.values.audioUrl ? (
-                    <Box>
-                      <Stack direction="row" alignItems="center" spacing={2} mb={2}>
-                        <IconButton
-                          onClick={togglePlay}
-                          sx={{
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            '&:hover': { bgcolor: 'primary.dark' },
-                          }}
-                        >
-                          {isPlaying ? <IconPlayerPause size={24} /> : <IconPlayerPlay size={24} />}
-                        </IconButton>
-                        <Box flex={1}>
-                          <Typography variant="body2" fontWeight={600}>
-                            {formatDuration(Math.floor(currentTime))} / {formatDuration(Math.floor(audioDuration || formik.values.duration))}
-                          </Typography>
-                        </Box>
-                      </Stack>
-
-                      <Slider
-                        value={currentTime}
-                        max={audioDuration || formik.values.duration}
-                        onChange={handleSliderChange}
-                        sx={{ mb: 2 }}
-                      />
-
-                      <Typography variant="caption" color="text.secondary">
-                        Click play to preview the audio
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        border: '2px dashed',
-                        borderColor: 'divider',
-                        borderRadius: 2,
-                        p: 3,
-                        textAlign: 'center',
-                      }}
-                    >
-                      <IconUpload size={32} color="#ccc" />
-                      <Typography variant="body2" color="text.secondary" mt={1}>
-                        Enter audio URL to preview
-                      </Typography>
-                    </Box>
-                  )}
-                </Paper>
-
                 {/* Episode Stats */}
                 {episode && (
                   <Paper elevation={0} sx={{ p: 3, bgcolor: 'grey.50', borderRadius: 2, mt: 2 }}>

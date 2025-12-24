@@ -1,6 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsBoolean, IsDate, IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import { MediaType, MediaQuality } from '../../../common/enums/prisma.enums';
 
 export class PodcastResponseDto {
   @ApiProperty()
@@ -52,4 +53,77 @@ export class PodcastResponseDto {
   @Type(() => Date)
   @IsDate()
   updatedAt!: Date;
+
+  // Media type and quality
+  @ApiProperty({ enum: MediaType })
+  @IsEnum(MediaType)
+  mediaType!: MediaType;
+
+  @ApiProperty({ enum: MediaQuality })
+  @IsEnum(MediaQuality)
+  defaultQuality!: MediaQuality;
+
+  // Media fields
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  audioUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  audioMimeType!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoMimeType!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  youtubeUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  externalVideoUrl!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl!: string | null;
+
+  @ApiProperty()
+  @IsNumber()
+  duration!: number;
+
+  // Metadata
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  tags!: string[];
+
+  @ApiProperty()
+  @IsBoolean()
+  isFeatured!: boolean;
+
+  // Relations for list view
+  @ApiPropertyOptional({ description: 'Owner information' })
+  @IsOptional()
+  owner?: { id: string; name: string | null };
+
+  @ApiPropertyOptional({ description: 'Categories', type: 'array' })
+  @IsOptional()
+  @IsArray()
+  categories?: Array<{ id: string; name: string; slug: string }>;
+
+  @ApiPropertyOptional({ description: 'Episode count' })
+  @IsOptional()
+  _count?: { episodes: number };
 }

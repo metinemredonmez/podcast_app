@@ -26,6 +26,7 @@ const EditPodcastPage = lazy(() => import('../pages/podcasts/EditPodcastPage'));
 
 // Episode pages
 const EpisodesPage = lazy(() => import('../pages/episodes/EpisodesPage'));
+const CreateEpisodePage = lazy(() => import('../pages/episodes/CreateEpisodePage'));
 const EditEpisodePage = lazy(() => import('../pages/episodes/EditEpisodePage'));
 
 // User management pages
@@ -120,6 +121,7 @@ export const router = createBrowserRouter([
 
           // Episodes
           { path: '/episodes', element: <LazyTablePage component={EpisodesPage} /> },
+          { path: '/episodes/new', element: <LazyPage component={CreateEpisodePage} /> },
           { path: '/episodes/:id', element: <LazyPage component={EditEpisodePage} /> },
 
           // Categories

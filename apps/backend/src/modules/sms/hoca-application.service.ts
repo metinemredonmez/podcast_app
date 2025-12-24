@@ -536,16 +536,39 @@ export class HocaApplicationService {
       throw new BadRequestException('Bu başvuru zaten işlenmiş');
     }
 
-    // Generate random password
-    const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    // Find valid tenant - first try application.tenantId, then find first available
+    let tenant = await this.prisma.tenant.findUnique({
+      where: { id: application.tenantId },
+    });
+
+    if (!tenant) {
+      // Application's tenantId is invalid, find a valid tenant
+      tenant = await this.prisma.tenant.findFirst({
+        orderBy: { createdAt: 'asc' },
+      });
+    }
+
+    if (!tenant) {
+      throw new BadRequestException('Sistemde geçerli bir tenant bulunamadı');
+    }
+
+    const validTenantId = tenant.id;
+
+    // Use password from application if available, otherwise generate a random one
+    let passwordHash: string;
+    if (application.passwordHash) {
+      passwordHash = application.passwordHash;
+    } else {
+      const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
+      passwordHash = await bcrypt.hash(tempPassword, 10);
+    }
 
     // Create user and hoca in transaction
     const result = await this.prisma.$transaction(async (tx) => {
-      // Create user
+      // Create user with valid tenant
       const user = await tx.user.create({
         data: {
-          tenantId: application.tenantId,
+          tenantId: validTenantId,
           email: application.email || `${application.phone}@hoca.local`,
           passwordHash,
           name: application.name,
@@ -558,10 +581,10 @@ export class HocaApplicationService {
         },
       });
 
-      // Create hoca profile
+      // Create hoca profile with valid tenant
       await tx.hoca.create({
         data: {
-          tenantId: application.tenantId,
+          tenantId: validTenantId,
           userId: user.id,
           name: application.name,
           bio: application.bio,
@@ -571,7 +594,7 @@ export class HocaApplicationService {
         },
       });
 
-      // Update application
+      // Update application with correct tenantId if it was wrong
       await tx.hocaApplication.update({
         where: { id: applicationId },
         data: {
@@ -580,6 +603,7 @@ export class HocaApplicationService {
           reviewedAt: new Date(),
           reviewNotes: notes,
           userId: user.id,
+          tenantId: validTenantId, // Fix the tenantId if it was invalid
         },
       });
 

@@ -3,6 +3,7 @@ export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
   HOCA = 'HOCA',
+  CREATOR = 'HOCA', // CREATOR is alias for HOCA
   USER = 'USER',
   GUEST = 'GUEST',
 }
@@ -90,3 +91,22 @@ export enum StreamStatus {
 }
 
 export const StreamStatusValues = Object.values(StreamStatus);
+
+// Media Type for Podcasts
+export enum MediaType {
+  AUDIO = 'AUDIO',
+  VIDEO = 'VIDEO',
+  BOTH = 'BOTH',
+}
+
+export const MediaTypeValues = Object.values(MediaType);
+
+// Media Quality
+export enum MediaQuality {
+  SD = 'SD',
+  HD = 'HD',
+  FULL_HD = 'FULL_HD',
+  UHD_4K = 'UHD_4K',
+}
+
+export const MediaQualityValues = Object.values(MediaQuality);

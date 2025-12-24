@@ -149,6 +149,21 @@ enum LiveStreamStatus {
   CANCELLED
 }
 
+// Podcast Media Type
+enum MediaType {
+  AUDIO
+  VIDEO
+  BOTH
+}
+
+// Media Quality
+enum MediaQuality {
+  SD
+  HD
+  FULL_HD
+  UHD_4K
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -246,7 +261,6 @@ model Tenant {
   pushLogs           PushNotificationLog[]
   socialAuthConfig   SocialAuthConfig?
   smsConfig          SmsConfig?
-  smsLogs            SmsLog[]
   liveStreams        LiveStream[]
   emailConfig        EmailConfig?
   emailLogs          EmailLog[]
@@ -259,22 +273,36 @@ model Tenant {
 }
 
 model Podcast {
-  id            String    @id @default(uuid())
+  id            String       @id @default(uuid())
   tenantId      String
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ownerId       String
-  owner         User      @relation("PodcastOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner         User         @relation("PodcastOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   hocaId        String?
-  hoca          Hoca?     @relation(fields: [hocaId], references: [id], onDelete: SetNull)
+  hoca          Hoca?        @relation(fields: [hocaId], references: [id], onDelete: SetNull)
   title         String
   slug          String
-  description   String?   @db.Text
+  description   String?      @db.Text
   coverImageUrl String?
-  language      String?   @default("tr")
-  isPublished   Boolean   @default(false)
-  isExplicit    Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  language      String?      @default("tr")
+  mediaType     MediaType    @default(AUDIO)
+  defaultQuality MediaQuality @default(HD)
+  // Media fields
+  audioUrl         String?
+  audioMimeType    String?
+  videoUrl         String?
+  videoMimeType    String?
+  youtubeUrl       String?
+  externalVideoUrl String?
+  thumbnailUrl     String?
+  duration         Int?          @default(0)
+  // Metadata
+  tags             String[]      @default([])
+  isFeatured       Boolean       @default(false)
+  isPublished   Boolean      @default(false)
+  isExplicit    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   publishedAt   DateTime?
 
   episodes         Episode[]
@@ -310,11 +338,22 @@ model Episode {
   slug          String
   description   String?   @db.Text
   duration      Int
-  audioUrl      String
+  audioUrl      String?
   audioMimeType String?   @default("audio/mpeg")
+  // Video support
+  videoUrl      String?
+  videoMimeType String?
+  youtubeUrl    String?
+  externalVideoUrl String?   // Dailymotion, Vimeo etc.
+  // Content metadata
+  tags          String[]  @default([])
+  quality       String?   // HD, SD, 4K etc.
+  thumbnailUrl  String?   // Episode-specific thumbnail
+  // Publication
   publishedAt   DateTime?
   isPublished   Boolean   @default(false)
   isExplicit    Boolean   @default(false)
+  isFeatured    Boolean   @default(false)
   episodeNumber Int?
   seasonNumber  Int?
   createdAt     DateTime  @default(now())
@@ -1056,7 +1095,6 @@ model OtpVerification {
 model SmsLog {
   id          String      @id @default(cuid())
   tenantId    String?
-  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   phone       String
   message     String      @db.Text
   type        SmsType

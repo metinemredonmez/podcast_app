@@ -106,7 +106,7 @@ export class PodcastsController {
   }
 
   @Post()
-  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN)
   @ApiOperation({ summary: 'Create a podcast' })
   @ApiResponse({ status: 201, description: 'Podcast created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -117,7 +117,7 @@ export class PodcastsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN)
   @ApiOperation({ summary: 'Update a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast updated' })
@@ -134,7 +134,7 @@ export class PodcastsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
@@ -151,7 +151,7 @@ export class PodcastsController {
   }
 
   @Post(':id/publish')
-  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN)
   @ApiOperation({ summary: 'Publish a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast published', type: PodcastResponseDto })
@@ -167,7 +167,7 @@ export class PodcastsController {
   }
 
   @Post(':id/unpublish')
-  @Roles(UserRole.CREATOR, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN)
   @ApiOperation({ summary: 'Unpublish a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast unpublished', type: PodcastResponseDto })

@@ -32,6 +32,10 @@ interface ImageUploadProps {
   aspectRatio?: '1:1' | '16:9' | '4:3';
   /** Preview width */
   previewWidth?: number;
+  /** Placeholder image to show when no image is uploaded */
+  placeholderImage?: string;
+  /** Optional helper text */
+  helperText?: string;
 }
 
 const formatFileSize = (bytes: number): string => {
@@ -57,6 +61,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   label = 'Cover Image',
   aspectRatio = '1:1',
   previewWidth = 200,
+  placeholderImage,
+  helperText,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -271,8 +277,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
       )}
 
       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-        JPG, PNG, WebP, GIF • Max 5MB
+        {helperText || 'JPG, PNG, WebP, GIF • Max 5MB'}
       </Typography>
+      {placeholderImage && !imageUrl && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+          Eklenmezse varsayılan resim kullanılır
+        </Typography>
+      )}
     </Box>
   );
 };

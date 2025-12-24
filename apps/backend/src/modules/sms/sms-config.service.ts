@@ -45,6 +45,7 @@ export class SmsConfigService {
 
   /**
    * Get SMS configuration (for admin - with masked password)
+   * Falls back to environment variables if no database config exists
    */
   async getConfig(tenantId?: string): Promise<SmsConfigResponseDto> {
     const config = await this.prisma.smsConfig.findFirst({
@@ -52,6 +53,58 @@ export class SmsConfigService {
     });
 
     if (!config) {
+      // Check for environment variables fallback
+      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioFromNumber = process.env.TWILIO_FROM_NUMBER;
+      const twilioVerifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+      const netgsmUsercode = process.env.NETGSM_USERCODE;
+      const netgsmPassword = process.env.NETGSM_PASSWORD;
+      const netgsmMsgHeader = process.env.NETGSM_MSG_HEADER;
+
+      const hasTwilio = !!(twilioAccountSid && twilioAuthToken && twilioFromNumber);
+      const hasNetgsm = !!(netgsmUsercode && netgsmPassword && netgsmMsgHeader);
+
+      if (hasTwilio) {
+        return {
+          isEnabled: true,
+          provider: 'TWILIO',
+          netgsmUsercode: null,
+          hasNetgsmPassword: false,
+          netgsmMsgHeader: null,
+          twilioAccountSid,
+          hasTwilioAuthToken: true,
+          twilioFromNumber,
+          twilioVerifyServiceSid: twilioVerifyServiceSid || null,
+          otpLength: 6,
+          otpExpiryMins: 5,
+          maxAttempts: 3,
+          resendCooldown: 60,
+          updatedAt: null,
+        };
+      }
+
+      if (hasNetgsm) {
+        return {
+          isEnabled: true,
+          provider: 'NETGSM',
+          netgsmUsercode,
+          hasNetgsmPassword: true,
+          netgsmMsgHeader,
+          twilioAccountSid: null,
+          hasTwilioAuthToken: false,
+          twilioFromNumber: null,
+          twilioVerifyServiceSid: null,
+          otpLength: 6,
+          otpExpiryMins: 5,
+          maxAttempts: 3,
+          resendCooldown: 60,
+          updatedAt: null,
+        };
+      }
+
+      // No configuration found
       return {
         isEnabled: false,
         provider: 'NETGSM',
@@ -188,16 +241,28 @@ export class SmsConfigService {
 
   /**
    * Get decrypted credentials (for internal service use)
+   * Falls back to environment variables if no database config exists or is disabled
    */
   async getCredentials(tenantId?: string): Promise<DecryptedCredentials | null> {
+    // Always check environment variables first for simplicity
+    const envCredentials = this.getCredentialsFromEnv();
+    if (envCredentials) {
+      return envCredentials;
+    }
+
+    // Then check database config
     const config = await this.prisma.smsConfig.findFirst({
       where: {
-        tenantId: tenantId || null,
-        isEnabled: true,
+        OR: [
+          { tenantId: tenantId || null },
+          { tenantId: null },
+          { tenantId: '' },
+        ],
       },
+      orderBy: { tenantId: 'desc' },
     });
 
-    if (!config) {
+    if (!config || !config.isEnabled) {
       return null;
     }
 
@@ -340,7 +405,7 @@ export class SmsConfigService {
     // Log the test SMS
     await this.prisma.smsLog.create({
       data: {
-        tenantId,
+        tenantId: tenantId || null,
         phone: normalizedPhone,
         message,
         type: 'NOTIFICATION',
@@ -414,6 +479,60 @@ export class SmsConfigService {
       })),
       total,
     };
+  }
+
+  /**
+   * Get credentials from environment variables (fallback)
+   */
+  private getCredentialsFromEnv(): DecryptedCredentials | null {
+    const defaultSettings = {
+      otpLength: 6,
+      otpExpiryMins: 5,
+      maxAttempts: 3,
+      resendCooldown: 60,
+    };
+
+    // Check for Twilio env vars
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFromNumber = process.env.TWILIO_FROM_NUMBER;
+    const twilioVerifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
+
+    if (twilioAccountSid && twilioAuthToken && twilioFromNumber) {
+      this.logger.log('Using Twilio credentials from environment variables');
+      return {
+        provider: 'TWILIO',
+        usercode: '',
+        password: '',
+        msgHeader: '',
+        twilioAccountSid,
+        twilioAuthToken,
+        twilioFromNumber,
+        twilioVerifyServiceSid: twilioVerifyServiceSid || undefined,
+        settings: defaultSettings,
+      };
+    }
+
+    // Check for NetGSM env vars
+    const netgsmUsercode = process.env.NETGSM_USERCODE;
+    const netgsmPassword = process.env.NETGSM_PASSWORD;
+    const netgsmMsgHeader = process.env.NETGSM_MSG_HEADER;
+
+    if (netgsmUsercode && netgsmPassword && netgsmMsgHeader) {
+      this.logger.log('Using NetGSM credentials from environment variables');
+      return {
+        provider: 'NETGSM',
+        usercode: netgsmUsercode,
+        password: netgsmPassword,
+        msgHeader: netgsmMsgHeader,
+        twilioAccountSid: '',
+        twilioAuthToken: '',
+        twilioFromNumber: '',
+        settings: defaultSettings,
+      };
+    }
+
+    return null;
   }
 
   /**

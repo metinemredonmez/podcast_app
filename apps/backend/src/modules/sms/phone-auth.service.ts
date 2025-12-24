@@ -11,6 +11,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../infra/prisma.service';
 import { SmsConfigService } from './sms-config.service';
 import { NetGsmService } from './providers/netgsm.service';
+import { TwilioService } from './providers/twilio.service';
 import {
   SendOtpResponseDto,
   AuthProvidersResponseDto,
@@ -36,6 +37,7 @@ export class PhoneAuthService {
     private readonly prisma: PrismaService,
     private readonly smsConfigService: SmsConfigService,
     private readonly netgsm: NetGsmService,
+    private readonly twilio: TwilioService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -63,7 +65,7 @@ export class PhoneAuthService {
         : this.prisma.socialAuthConfig.findFirst(),
     ]);
 
-    // Check if phone auth is enabled (either NETGSM or Twilio)
+    // Check if phone auth is enabled (either NETGSM or Twilio) from database
     const netgsmEnabled =
       !!smsConfig?.netgsmUsercode &&
       !!smsConfig?.netgsmPassword &&
@@ -74,12 +76,30 @@ export class PhoneAuthService {
       !!smsConfig?.twilioAuthToken &&
       !!smsConfig?.twilioFromNumber;
 
-    const phoneEnabled = smsConfig?.isEnabled && (netgsmEnabled || twilioEnabled);
+    let phoneEnabled = smsConfig?.isEnabled && (netgsmEnabled || twilioEnabled);
+
+    // Fallback to environment variables if no database config
+    if (!phoneEnabled) {
+      const envTwilioEnabled =
+        !!process.env.TWILIO_ACCOUNT_SID &&
+        !!process.env.TWILIO_AUTH_TOKEN &&
+        !!process.env.TWILIO_FROM_NUMBER;
+
+      const envNetgsmEnabled =
+        !!process.env.NETGSM_USERCODE &&
+        !!process.env.NETGSM_PASSWORD &&
+        !!process.env.NETGSM_MSG_HEADER;
+
+      phoneEnabled = envTwilioEnabled || envNetgsmEnabled;
+
+      if (phoneEnabled) {
+        this.logger.log('Phone auth enabled via environment variables');
+      }
+    }
 
     // Debug logging
     this.logger.log(`getAuthProviders - tenantId: ${tenantId}`);
-    this.logger.log(`getAuthProviders - smsConfig: ${JSON.stringify(smsConfig)}`);
-    this.logger.log(`getAuthProviders - netgsmEnabled: ${netgsmEnabled}, twilioEnabled: ${twilioEnabled}, phoneEnabled: ${phoneEnabled}`);
+    this.logger.log(`getAuthProviders - phoneEnabled: ${phoneEnabled}`);
 
     const googleEnabled =
       socialConfig?.googleEnabled &&
@@ -120,13 +140,16 @@ export class PhoneAuthService {
       throw new BadRequestException('Telefon ile giriş aktif değil');
     }
 
-    const normalizedPhone = this.netgsm.normalizePhone(phone);
+    // Normalize phone based on provider
+    const normalizedPhone = credentials.provider === 'TWILIO'
+      ? this.twilio.normalizePhone(phone)
+      : this.netgsm.normalizePhone(phone);
 
-    // Check if phone belongs to an admin/editor
+    // Check if phone belongs to an admin/hoca (allowed roles for phone login)
     const user = await this.prisma.user.findFirst({
       where: {
         phone: normalizedPhone,
-        role: { in: ['ADMIN', 'EDITOR'] },
+        role: { in: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
         isActive: true,
       },
     });
@@ -172,45 +195,67 @@ export class PhoneAuthService {
       },
     });
 
-    // Send SMS
+    // Send SMS using the configured provider
     const message = `Admin Panel giriş kodunuz: ${otp}\n\nBu kod ${settings.otpExpiryMins} dakika geçerlidir.`;
 
-    const result = await this.netgsm.sendSms(
-      {
-        usercode: credentials.usercode,
-        password: credentials.password,
-        msgHeader: credentials.msgHeader,
-      },
-      normalizedPhone,
-      message,
-    );
+    let result: { success: boolean; jobId?: string; messageId?: string; error?: string };
 
-    // Log the SMS
-    await this.prisma.smsLog.create({
-      data: {
-        tenantId,
-        phone: normalizedPhone,
+    if (credentials.provider === 'TWILIO') {
+      result = await this.twilio.sendSms(
+        {
+          accountSid: credentials.twilioAccountSid,
+          authToken: credentials.twilioAuthToken,
+          fromNumber: credentials.twilioFromNumber,
+        },
+        normalizedPhone,
         message,
-        type: 'OTP',
-        provider: 'NETGSM',
-        providerId: result.jobId,
-        status: result.success ? 'SENT' : 'FAILED',
-        errorMsg: result.error,
-        sentAt: result.success ? new Date() : null,
-      },
-    });
+      );
+    } else {
+      result = await this.netgsm.sendSms(
+        {
+          usercode: credentials.usercode,
+          password: credentials.password,
+          msgHeader: credentials.msgHeader,
+        },
+        normalizedPhone,
+        message,
+      );
+    }
+
+    // Log the SMS - skip if it fails
+    try {
+      await this.prisma.smsLog.create({
+        data: {
+          phone: normalizedPhone,
+          message,
+          type: 'OTP',
+          provider: credentials.provider,
+          providerId: result.messageId || result.jobId,
+          status: result.success ? 'SENT' : 'FAILED',
+          errorMsg: result.error,
+          sentAt: result.success ? new Date() : null,
+        },
+      });
+    } catch (e) {
+      this.logger.warn('Failed to log SMS, continuing anyway');
+    }
 
     if (!result.success) {
       this.logger.error(`OTP SMS failed: ${result.error}`);
       throw new InternalServerErrorException('SMS gönderilemedi. Lütfen tekrar deneyin.');
     }
 
+    // Mask phone for response
+    const maskedPhone = credentials.provider === 'TWILIO'
+      ? this.twilio.maskPhone(phone)
+      : this.netgsm.maskPhone(phone);
+
     return {
       success: true,
       message: 'Doğrulama kodu gönderildi',
       expiresIn: settings.otpExpiryMins * 60,
       resendAfter: settings.resendCooldown,
-      maskedPhone: this.netgsm.maskPhone(phone),
+      maskedPhone,
       codeLength: settings.otpLength,
     };
   }
@@ -229,7 +274,10 @@ export class PhoneAuthService {
       throw new BadRequestException('Telefon ile giriş aktif değil');
     }
 
-    const normalizedPhone = this.netgsm.normalizePhone(phone);
+    // Normalize phone based on provider
+    const normalizedPhone = credentials.provider === 'TWILIO'
+      ? this.twilio.normalizePhone(phone)
+      : this.netgsm.normalizePhone(phone);
     const { settings } = credentials;
 
     // Find valid OTP
@@ -275,11 +323,11 @@ export class PhoneAuthService {
       data: { verified: true, verifiedAt: new Date() },
     });
 
-    // Find admin user
+    // Find admin/hoca user
     const user = await this.prisma.user.findFirst({
       where: {
         phone: normalizedPhone,
-        role: { in: ['ADMIN', 'EDITOR'] },
+        role: { in: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
         isActive: true,
       },
     });
@@ -319,10 +367,12 @@ export class PhoneAuthService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
+      secret: this.configService.get('jwt.accessSecret'),
       expiresIn: this.configService.get('jwt.accessTokenExpiry', '15m'),
     });
 
     const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get('jwt.refreshSecret'),
       expiresIn: this.configService.get('jwt.refreshTokenExpiry', '7d'),
     });
 

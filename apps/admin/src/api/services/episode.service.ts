@@ -9,11 +9,22 @@ export interface Episode {
   slug: string;
   description?: string;
   duration: number;
-  audioUrl: string;
+  audioUrl?: string;
   audioMimeType?: string;
+  // Video support
+  videoUrl?: string;
+  videoMimeType?: string;
+  youtubeUrl?: string;
+  externalVideoUrl?: string;
+  // Content metadata
+  tags?: string[];
+  quality?: string;
+  thumbnailUrl?: string;
+  // Publication
   publishedAt?: string;
   isPublished: boolean;
   isExplicit: boolean;
+  isFeatured: boolean;
   episodeNumber?: number;
   seasonNumber?: number;
   createdAt: string;
@@ -35,11 +46,26 @@ export interface EpisodeListResponse {
 
 export interface CreateEpisodeDto {
   title: string;
-  description: string;
-  audioUrl: string;
+  description?: string;
   podcastId: string;
+  // Audio support
+  audioUrl?: string;
+  audioMimeType?: string;
+  // Video support
+  videoUrl?: string;
+  videoMimeType?: string;
+  youtubeUrl?: string;
+  externalVideoUrl?: string;
+  // Content metadata
+  duration?: number;
+  tags?: string[];
+  quality?: string;
+  thumbnailUrl?: string;
+  // Publication
   episodeNumber?: number;
-  publishDate?: string;
+  seasonNumber?: number;
+  isPublished?: boolean;
+  isFeatured?: boolean;
 }
 
 export interface UpdateEpisodeDto {
@@ -47,8 +73,19 @@ export interface UpdateEpisodeDto {
   description?: string;
   audioUrl?: string;
   duration?: number;
+  // Video support
+  videoUrl?: string;
+  videoMimeType?: string;
+  youtubeUrl?: string;
+  externalVideoUrl?: string;
+  // Content metadata
+  tags?: string[];
+  quality?: string;
+  thumbnailUrl?: string;
+  // Publication
   isPublished?: boolean;
   publishedAt?: string;
+  isFeatured?: boolean;
   episodeNumber?: number;
   seasonNumber?: number;
 }
