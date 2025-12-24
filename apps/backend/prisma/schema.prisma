@@ -1228,21 +1228,23 @@ model EmailConfig {
 }
 
 model EmailLog {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   tenantId        String?
-  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  to              String
+  tenant          Tenant?       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  toEmail         String
+  toName          String?
   subject         String
-  body            String?     @db.Text
+  body            String?       @db.Text
+  type            String        @default("NOTIFICATION")  // TEST, NOTIFICATION, OTP, etc.
   provider        EmailProvider
   providerId      String?
-  status          SmsStatus   @default(PENDING)  // Reusing SmsStatus enum
+  status          SmsStatus     @default(PENDING)  // Reusing SmsStatus enum
   errorMsg        String?
   sentAt          DateTime?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime      @default(now())
 
   @@index([tenantId])
-  @@index([to, createdAt])
+  @@index([toEmail, createdAt])
   @@index([status])
 }
 

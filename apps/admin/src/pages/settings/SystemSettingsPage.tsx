@@ -77,6 +77,7 @@ interface EmailConfig {
   smtpPort?: number | null;
   smtpUser?: string | null;
   hasSmtpPassword: boolean;
+  smtpSecure?: boolean;
   fromEmail?: string | null;
   fromName?: string | null;
 }
@@ -175,11 +176,12 @@ const SystemSettingsPage: React.FC = () => {
   const fetchAllConfigs = async () => {
     setLoading(true);
     try {
-      const [socialRes, smsRes, pushRes, storageRes] = await Promise.allSettled([
+      const [socialRes, smsRes, pushRes, storageRes, emailRes] = await Promise.allSettled([
         apiClient.get<SocialAuthConfig>('/admin/social-auth/config'),
         apiClient.get<SmsConfig>('/admin/sms/config'),
         apiClient.get<PushConfig>('/push/config'),
         apiClient.get<StorageConfig>('/admin/storage/config'),
+        apiClient.get<EmailConfig>('/admin/email/config'),
       ]);
 
       if (socialRes.status === 'fulfilled') {
@@ -214,6 +216,18 @@ const SystemSettingsPage: React.FC = () => {
         setS3Region(data.s3Region || '');
         setMinioEndpoint(data.minioEndpoint || '');
         setMinioBucket(data.minioBucket || '');
+      }
+
+      if (emailRes.status === 'fulfilled') {
+        const data = emailRes.value.data;
+        setEmailConfig(data);
+        setEmailEnabled(data.isEnabled);
+        setEmailProvider(data.provider);
+        setSmtpHost(data.smtpHost || '');
+        setSmtpPort(String(data.smtpPort || 587));
+        setSmtpUser(data.smtpUser || '');
+        setFromEmail(data.fromEmail || '');
+        setFromName(data.fromName || '');
       }
     } catch (err) {
       console.error('Failed to fetch configs:', err);
@@ -314,6 +328,36 @@ const SystemSettingsPage: React.FC = () => {
       setSuccess('Storage ayarları kaydedildi');
       setS3SecretKey('');
       setMinioSecretKey('');
+      fetchAllConfigs();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Kaydetme başarısız');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      const payload: Record<string, unknown> = {
+        isEnabled: emailEnabled,
+        provider: emailProvider,
+      };
+
+      if (emailProvider === 'SMTP') {
+        if (smtpHost) payload.smtpHost = smtpHost;
+        if (smtpPort) payload.smtpPort = parseInt(smtpPort, 10);
+        if (smtpUser) payload.smtpUser = smtpUser;
+        if (smtpPassword) payload.smtpPassword = smtpPassword;
+      }
+
+      if (fromEmail) payload.fromEmail = fromEmail;
+      if (fromName) payload.fromName = fromName;
+
+      await apiClient.put('/admin/email/config', payload);
+      setSuccess('Email ayarları kaydedildi');
+      setSmtpPassword('');
       fetchAllConfigs();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Kaydetme başarısız');
@@ -911,12 +955,8 @@ const SystemSettingsPage: React.FC = () => {
                 </Grid>
               </Grid>
 
-              <Alert severity="warning">
-                Email API henüz backend'de oluşturulmadı. UI hazır, backend entegrasyonu yapılacak.
-              </Alert>
-
-              <Button variant="contained" disabled>
-                Email Ayarlarını Kaydet (Backend Bekleniyor)
+              <Button variant="contained" onClick={handleSaveEmail} disabled={saving}>
+                {saving ? 'Kaydediliyor...' : 'Email Ayarlarını Kaydet'}
               </Button>
             </Stack>
           </TabPanel>
