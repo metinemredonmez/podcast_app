@@ -33,6 +33,7 @@ import {
   IconBrandGoogle,
   IconSettings,
   IconBroadcast,
+  IconUserPlus,
 } from '@tabler/icons-react';
 import { CustomizerContext } from '../../context/customizerContext';
 import SimpleBar from 'simplebar-react';
@@ -77,6 +78,7 @@ const menuItems: MenuItem[] = [
   { id: 'nav-users', title: 'Users', subheader: 'Kullanıcı Yönetimi', navlabel: true, icon: IconUsers, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'users', title: 'Kullanıcılar', icon: IconUsers, href: '/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'hocas', title: 'Hocalar', icon: IconUser, href: '/hocas', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'hoca-applications', title: 'Hoca Başvuruları', icon: IconUserPlus, href: '/hoca-applications', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
   // Moderasyon - sadece ADMIN
   { id: 'nav-moderation', title: 'Moderation', subheader: 'Moderasyon', navlabel: true, icon: IconShieldCheck, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
@@ -84,13 +86,10 @@ const menuItems: MenuItem[] = [
   { id: 'comments', title: 'Yorumlar', icon: IconMessage, href: '/comments', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'reviews', title: 'Değerlendirmeler', icon: IconStar, href: '/reviews', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  // Yönetim - sadece ADMIN
-  { id: 'nav-admin', title: 'Admin', subheader: 'Yönetim', navlabel: true, icon: IconBuilding, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  // Yönetim & Ayarlar - sadece ADMIN
+  { id: 'nav-settings', title: 'Settings', subheader: 'Yönetim & Ayarlar', navlabel: true, icon: IconSettings, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'tenants', title: 'Tenantlar', icon: IconBuilding, href: '/tenants', roles: ['SUPER_ADMIN'] },
   { id: 'notifications', title: 'Bildirimler', icon: IconBell, href: '/notifications', roles: ['SUPER_ADMIN', 'ADMIN'] },
-
-  // Ayarlar - sadece ADMIN
-  { id: 'nav-settings', title: 'Settings', subheader: 'Ayarlar', navlabel: true, icon: IconSettings, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms', roles: ['SUPER_ADMIN', 'ADMIN'] },
@@ -171,36 +170,42 @@ const Sidebar: React.FC = () => {
 
   // Filter menu items and also filter out section headers if no items in that section are visible
   const getFilteredMenuItems = (): MenuItem[] => {
-    const filtered: MenuItem[] = [];
-    let lastNavLabel: MenuItem | null = null;
-    let hasItemsAfterLabel = false;
+    const result: MenuItem[] = [];
+    const addedLabels = new Set<string>();
 
-    for (const item of menuItems) {
+    for (let i = 0; i < menuItems.length; i++) {
+      const item = menuItems[i];
+
       if (item.navlabel) {
-        // If we had a previous navlabel with items, add it
-        if (lastNavLabel && hasItemsAfterLabel) {
-          filtered.push(lastNavLabel);
-        }
-        // Check if this section header itself has role restrictions
-        if (canUserSeeItem(item)) {
-          lastNavLabel = item;
-          hasItemsAfterLabel = false;
-        } else {
-          lastNavLabel = null;
-        }
-      } else {
-        // Regular menu item
-        if (canUserSeeItem(item)) {
-          if (lastNavLabel && !hasItemsAfterLabel) {
-            filtered.push(lastNavLabel);
-            hasItemsAfterLabel = true;
-          }
-          filtered.push(item);
+        // Skip navlabel for now, will be added when we find visible items after it
+        continue;
+      }
+
+      // Regular menu item - check if user can see it
+      if (!canUserSeeItem(item)) {
+        continue;
+      }
+
+      // Find the navlabel that precedes this item
+      let navLabelForItem: MenuItem | null = null;
+      for (let j = i - 1; j >= 0; j--) {
+        if (menuItems[j].navlabel) {
+          navLabelForItem = menuItems[j];
+          break;
         }
       }
+
+      // Add the navlabel if not already added and user can see it
+      if (navLabelForItem && !addedLabels.has(navLabelForItem.id) && canUserSeeItem(navLabelForItem)) {
+        result.push(navLabelForItem);
+        addedLabels.add(navLabelForItem.id);
+      }
+
+      // Add the menu item
+      result.push(item);
     }
 
-    return filtered;
+    return result;
   };
 
   const filteredMenuItems = getFilteredMenuItems();

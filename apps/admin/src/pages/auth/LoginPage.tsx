@@ -24,6 +24,8 @@ import { useFormik } from 'formik';
 import * as yup from 'yup';
 import { useAuth } from '../../hooks/useAuth';
 import { apiClient } from '../../api/client';
+import { useDispatch } from 'react-redux';
+import { setCredentials } from '../../store/slices/authSlice';
 
 interface AuthProviders {
   email: boolean;
@@ -45,6 +47,7 @@ const emailValidationSchema = yup.object({
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const dispatch = useDispatch();
   const { login, setTokens } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -131,8 +134,22 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const handleOtpSuccess = (tokens: { accessToken: string; refreshToken: string }) => {
-    setTokens(tokens.accessToken, tokens.refreshToken);
+  const handleOtpSuccess = (response: {
+    accessToken: string;
+    refreshToken: string;
+    user: { id: string; email: string; name: string | null; avatarUrl: string | null; role: string }
+  }) => {
+    dispatch(setCredentials({
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+      user: {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name || '',
+        role: response.user.role,
+        avatar: response.user.avatarUrl || undefined,
+      },
+    }));
     setShowOtpModal(false);
     navigate('/dashboard');
   };
@@ -522,7 +539,11 @@ interface OtpModalProps {
   codeLength: number;
   resendTimer: number;
   setResendTimer: (timer: number) => void;
-  onSuccess: (tokens: { accessToken: string; refreshToken: string }) => void;
+  onSuccess: (response: {
+    accessToken: string;
+    refreshToken: string;
+    user: { id: string; email: string; name: string | null; avatarUrl: string | null; role: string }
+  }) => void;
   onResend: () => void;
 }
 

@@ -31,6 +31,7 @@ const EditEpisodePage = lazy(() => import('../pages/episodes/EditEpisodePage'));
 // User management pages
 const UsersPage = lazy(() => import('../pages/users/UsersPage'));
 const HocasPage = lazy(() => import('../pages/hocas/HocasPage'));
+const HocaApplicationsPage = lazy(() => import('../pages/hocas/HocaApplicationsPage'));
 
 // Profile page
 const ProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
@@ -127,6 +128,7 @@ export const router = createBrowserRouter([
           // Users
           { path: '/users', element: <LazyTablePage component={UsersPage} /> },
           { path: '/hocas', element: <LazyTablePage component={HocasPage} /> },
+          { path: '/hoca-applications', element: <LazyTablePage component={HocaApplicationsPage} /> },
 
           // Profile & User pages
           { path: '/profile', element: <LazyPage component={ProfilePage} /> },
