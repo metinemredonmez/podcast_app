@@ -44,9 +44,23 @@ export class PhoneAuthService {
    * Get available authentication providers for login page
    */
   async getAuthProviders(tenantId?: string): Promise<AuthProvidersResponseDto> {
+    // If tenantId provided, search for that tenant's config first, then fallback to global (null)
+    // If no tenantId, search for any available config (global or first found)
     const [smsConfig, socialConfig] = await Promise.all([
-      this.prisma.smsConfig.findFirst({ where: { tenantId: tenantId || null } }),
-      this.prisma.socialAuthConfig.findFirst({ where: { tenantId: tenantId || null } }),
+      tenantId
+        ? this.prisma.smsConfig.findFirst({
+            where: { OR: [{ tenantId }, { tenantId: null }] },
+            orderBy: { tenantId: 'desc' }, // Prefer tenant-specific over global
+          })
+        : this.prisma.smsConfig.findFirst({
+            where: { isEnabled: true },
+          }),
+      tenantId
+        ? this.prisma.socialAuthConfig.findFirst({
+            where: { OR: [{ tenantId }, { tenantId: null }] },
+            orderBy: { tenantId: 'desc' },
+          })
+        : this.prisma.socialAuthConfig.findFirst(),
     ]);
 
     // Check if phone auth is enabled (either NETGSM or Twilio)
