@@ -704,6 +704,37 @@ const RegisterPage: React.FC = () => {
               </Typography>
             </Typography>
           </Box>
+
+          {/* Privacy & Terms Links */}
+          <Box sx={{ textAlign: 'center', mt: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              <Typography
+                component={RouterLink}
+                to="/privacy"
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                Gizlilik Politikası
+              </Typography>
+              {' • '}
+              <Typography
+                component={RouterLink}
+                to="/terms"
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                Kullanım Şartları
+              </Typography>
+            </Typography>
+          </Box>
         </Paper>
       </Box>
     </Box>

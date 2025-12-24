@@ -11,6 +11,10 @@ import RegisterPage from '../pages/auth/RegisterPage';
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 
+// Legal pages
+import PrivacyPage from '../pages/legal/PrivacyPage';
+import TermsPage from '../pages/legal/TermsPage';
+
 // Dashboard - loaded eagerly as main entry
 import DashboardPage from '../pages/dashboard/DashboardPage';
 
@@ -92,6 +96,9 @@ export const router = createBrowserRouter([
       { path: '/reset-password', element: <ResetPasswordPage /> },
     ],
   },
+  // Legal pages (no auth required)
+  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/terms', element: <TermsPage /> },
   {
     element: <ProtectedRoute />,
     children: [
