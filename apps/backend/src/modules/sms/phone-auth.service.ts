@@ -49,11 +49,18 @@ export class PhoneAuthService {
       this.prisma.socialAuthConfig.findFirst({ where: { tenantId: tenantId || null } }),
     ]);
 
-    const phoneEnabled =
-      smsConfig?.isEnabled &&
+    // Check if phone auth is enabled (either NETGSM or Twilio)
+    const netgsmEnabled =
       !!smsConfig?.netgsmUsercode &&
       !!smsConfig?.netgsmPassword &&
       !!smsConfig?.netgsmMsgHeader;
+
+    const twilioEnabled =
+      !!smsConfig?.twilioAccountSid &&
+      !!smsConfig?.twilioAuthToken &&
+      !!smsConfig?.twilioPhoneNumber;
+
+    const phoneEnabled = smsConfig?.isEnabled && (netgsmEnabled || twilioEnabled);
 
     const googleEnabled =
       socialConfig?.googleEnabled &&
