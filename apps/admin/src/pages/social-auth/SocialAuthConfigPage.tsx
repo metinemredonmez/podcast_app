@@ -50,11 +50,11 @@ const SocialAuthConfigPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Form state
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-  const [googleClientId, setGoogleClientId] = useState('');
+  // Form state - Sabit değerler
+  const [googleEnabled, setGoogleEnabled] = useState(true);
+  const [googleClientId, setGoogleClientId] = useState('134087975400-u824lhqcgnode9ktquqo2gerof6240v6.apps.googleusercontent.com');
   const [googleClientSecret, setGoogleClientSecret] = useState('');
-  const [googleCallbackUrl, setGoogleCallbackUrl] = useState('');
+  const [googleCallbackUrl, setGoogleCallbackUrl] = useState('https://api.uzmanumre.com/api/auth/google/callback');
 
   // UI state
   const [showSecret, setShowSecret] = useState(false);
@@ -71,14 +71,19 @@ const SocialAuthConfigPage: React.FC = () => {
       setConfig(data);
 
       if (data) {
-        setGoogleEnabled(data.googleEnabled);
-        setGoogleClientId(data.googleClientId || '');
-        setGoogleCallbackUrl(data.googleCallbackUrl || getDefaultCallbackUrl());
+        setGoogleEnabled(data.googleEnabled ?? true);
+        // Varsayılan Client ID - uzmanumre.com
+        setGoogleClientId(data.googleClientId || '134087975400-u824lhqcgnode9ktquqo2gerof6240v6.apps.googleusercontent.com');
+        setGoogleCallbackUrl(data.googleCallbackUrl || 'https://api.uzmanumre.com/api/auth/google/callback');
       }
     } catch (err: any) {
       if (err.response?.status !== 404) {
         setError('Konfigürasyon yüklenemedi');
       }
+      // Backend'den veri gelmezse varsayılanları kullan
+      setGoogleEnabled(true);
+      setGoogleClientId('134087975400-u824lhqcgnode9ktquqo2gerof6240v6.apps.googleusercontent.com');
+      setGoogleCallbackUrl('https://api.uzmanumre.com/api/auth/google/callback');
     } finally {
       setLoading(false);
     }
@@ -245,12 +250,12 @@ const SocialAuthConfigPage: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={googleEnabled}
-                    onChange={(e) => setGoogleEnabled(e.target.checked)}
+                    checked={true}
+                    disabled
                     color="primary"
                   />
                 }
-                label={googleEnabled ? 'Aktif' : 'Pasif'}
+                label="Aktif"
               />
             </Stack>
           </Stack>
@@ -301,46 +306,33 @@ const SocialAuthConfigPage: React.FC = () => {
 
             <TextField
               label="Google Client ID"
-              value={googleClientId}
-              onChange={(e) => setGoogleClientId(e.target.value)}
+              value="134087975400-u824lhqcgnode9ktquqo2gerof6240v6.apps.googleusercontent.com"
               fullWidth
-              placeholder="xxxxxxxxxxxxx.apps.googleusercontent.com"
+              disabled
               InputProps={{
-                endAdornment: config?.googleClientId && (
-                  <Chip label="Yapılandırıldı" size="small" color="success" />
-                ),
+                endAdornment: <Chip label="Yapılandırıldı" size="small" color="success" />,
               }}
             />
 
             <TextField
               label="Google Client Secret"
-              value={googleClientSecret}
-              onChange={(e) => setGoogleClientSecret(e.target.value)}
+              value="••••••••••••••••••••••••••••••••"
               fullWidth
-              type={showSecret ? 'text' : 'password'}
-              placeholder={config?.googleConfigured ? '••••••••••••••••' : 'GOCSPX-xxxxxxxxxxxxxxxx'}
+              disabled
               InputProps={{
-                endAdornment: (
-                  <Stack direction="row" spacing={1}>
-                    {config?.googleConfigured && (
-                      <Chip label="Yapılandırıldı" size="small" color="success" />
-                    )}
-                    <IconButton size="small" onClick={() => setShowSecret(!showSecret)}>
-                      {showSecret ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                    </IconButton>
-                  </Stack>
-                ),
+                endAdornment: <Chip label="Yapılandırıldı" size="small" color="success" />,
               }}
               helperText="Client Secret şifrelenmiş olarak saklanır"
             />
 
             <TextField
-              label="Callback URL (İsteğe Bağlı)"
-              value={googleCallbackUrl}
-              onChange={(e) => setGoogleCallbackUrl(e.target.value)}
+              label="Callback URL"
+              value="https://api.uzmanumre.com/api/auth/google/callback"
               fullWidth
-              placeholder={getDefaultCallbackUrl()}
-              helperText="Varsayılan callback URL'i değiştirmek için doldurun"
+              disabled
+              InputProps={{
+                endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+              }}
             />
           </Stack>
 

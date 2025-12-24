@@ -7,6 +7,9 @@ import { PageLoader, TablePageLoader } from '../components/common/PageLoader';
 // Lazy load pages for code splitting
 // Auth pages (loaded eagerly as entry point)
 import LoginPage from '../pages/auth/LoginPage';
+import RegisterPage from '../pages/auth/RegisterPage';
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 
 // Dashboard - loaded eagerly as main entry
 import DashboardPage from '../pages/dashboard/DashboardPage';
@@ -26,6 +29,10 @@ const HocasPage = lazy(() => import('../pages/hocas/HocasPage'));
 
 // Profile page
 const ProfilePage = lazy(() => import('../pages/profile/ProfilePage'));
+
+// User pages (history, favorites)
+const MyHistoryPage = lazy(() => import('../pages/user/MyHistoryPage'));
+const MyFavoritesPage = lazy(() => import('../pages/user/MyFavoritesPage'));
 
 // Content moderation pages
 const CategoriesPage = lazy(() => import('../pages/categories/CategoriesPage'));
@@ -78,7 +85,12 @@ const LazyTablePage = ({ component: Component }: {
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
-    children: [{ path: '/login', element: <LoginPage /> }],
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
+    ],
   },
   {
     element: <ProtectedRoute />,
@@ -106,8 +118,10 @@ export const router = createBrowserRouter([
           { path: '/users', element: <LazyTablePage component={UsersPage} /> },
           { path: '/hocas', element: <LazyTablePage component={HocasPage} /> },
 
-          // Profile
+          // Profile & User pages
           { path: '/profile', element: <LazyPage component={ProfilePage} /> },
+          { path: '/my-history', element: <LazyPage component={MyHistoryPage} /> },
+          { path: '/my-favorites', element: <LazyPage component={MyFavoritesPage} /> },
 
           // Moderation
           { path: '/moderation', element: <LazyTablePage component={ModerationPage} /> },

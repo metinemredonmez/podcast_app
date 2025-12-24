@@ -139,8 +139,8 @@ const LoginPage: React.FC = () => {
 
   const formik = useFormik({
     initialValues: {
-      email: 'admin@podcast.dev',
-      password: 'changeme',
+      email: '',
+      password: '',
     },
     validationSchema: emailValidationSchema,
     onSubmit: async (values) => {
@@ -262,11 +262,13 @@ const LoginPage: React.FC = () => {
                   fontWeight: 500,
                   textTransform: 'none',
                   borderRadius: 2,
-                  borderColor: '#dadce0',
+                  borderColor: 'rgba(255,255,255,0.3)',
                   color: 'text.primary',
+                  backgroundColor: 'background.paper',
                   '&:hover': {
-                    backgroundColor: '#f8f9fa',
-                    borderColor: '#dadce0',
+                    backgroundColor: 'primary.main',
+                    borderColor: 'primary.main',
+                    color: 'white',
                   },
                 }}
               >
@@ -319,33 +321,6 @@ const LoginPage: React.FC = () => {
             <EmailLoginForm formik={formik} loading={loading} />
           )}
 
-          {/* Demo Credentials */}
-          {activeTab === 0 && (
-            <>
-              <Divider sx={{ my: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Demo Hesabı
-                </Typography>
-              </Divider>
-
-              <Box
-                sx={{
-                  p: 2,
-                  bgcolor: 'primary.50',
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'primary.100',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  <strong>Email:</strong> admin@podcast.dev
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  <strong>Şifre:</strong> changeme
-                </Typography>
-              </Box>
-            </>
-          )}
         </Paper>
       </Box>
 
@@ -400,24 +375,10 @@ const EmailLoginForm: React.FC<EmailLoginFormProps> = ({ formik, loading }) => (
         helperText={formik.touched.password && formik.errors.password}
       />
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <FormControlLabel
-          control={<Checkbox defaultChecked color="primary" />}
-          label="Beni hatırla"
-        />
-        <Typography
-          component={RouterLink}
-          to="/forgot-password"
-          variant="body2"
-          sx={{
-            color: 'primary.main',
-            textDecoration: 'none',
-            '&:hover': { textDecoration: 'underline' },
-          }}
-        >
-          Şifremi unuttum
-        </Typography>
-      </Stack>
+      <FormControlLabel
+        control={<Checkbox defaultChecked color="primary" />}
+        label="Beni hatırla"
+      />
 
       <Button
         type="submit"
@@ -435,6 +396,45 @@ const EmailLoginForm: React.FC<EmailLoginFormProps> = ({ formik, loading }) => (
       >
         {loading ? <CircularProgress size={24} color="inherit" /> : 'Giriş Yap'}
       </Button>
+
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography
+          component={RouterLink}
+          to="/forgot-password"
+          variant="body2"
+          sx={{
+            color: 'primary.main',
+            textDecoration: 'none',
+            fontWeight: 500,
+            '&:hover': {
+              textDecoration: 'underline',
+            },
+          }}
+        >
+          Şifremi Unuttum
+        </Typography>
+      </Box>
+
+      <Box sx={{ textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">
+          Hesabınız yok mu?{' '}
+          <Typography
+            component={RouterLink}
+            to="/register"
+            variant="body2"
+            sx={{
+              color: 'primary.main',
+              textDecoration: 'none',
+              fontWeight: 600,
+              '&:hover': {
+                textDecoration: 'underline',
+              },
+            }}
+          >
+            Kayıt Ol
+          </Typography>
+        </Typography>
+      </Box>
     </Stack>
   </form>
 );

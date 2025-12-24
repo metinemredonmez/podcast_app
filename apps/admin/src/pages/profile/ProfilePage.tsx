@@ -18,6 +18,18 @@ import { IconUser, IconMail, IconShield, IconCamera, IconLock } from '@tabler/ic
 import { useAuth } from '../../hooks/useAuth';
 import { userService } from '../../api/services/user.service';
 
+// Rol isimlerini Türkçeleştir
+const getRoleDisplayName = (role: string | undefined): string => {
+  const roleNames: Record<string, string> = {
+    SUPER_ADMIN: 'Süper Admin',
+    ADMIN: 'Yönetici',
+    HOCA: 'Hoca',
+    USER: 'Kullanıcı',
+    GUEST: 'Misafir',
+  };
+  return role ? roleNames[role] || role : 'Kullanıcı';
+};
+
 const ProfilePage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -257,7 +269,7 @@ const ProfilePage: React.FC = () => {
               >
                 <IconShield size={16} />
                 <Typography variant="caption" fontWeight={600}>
-                  {user?.role || 'Admin'}
+                  {getRoleDisplayName(user?.role)}
                 </Typography>
               </Box>
             </CardContent>
@@ -327,10 +339,10 @@ const ProfilePage: React.FC = () => {
                   <Stack direction="row" alignItems="center" spacing={1} mb={1}>
                     <IconShield size={18} />
                     <Typography variant="subtitle2" color="text.secondary">
-                      Rol
+                      Hesap Türü
                     </Typography>
                   </Stack>
-                  <Typography>{user?.role || 'Admin'}</Typography>
+                  <Typography>{getRoleDisplayName(user?.role)}</Typography>
                 </Box>
               </Stack>
 

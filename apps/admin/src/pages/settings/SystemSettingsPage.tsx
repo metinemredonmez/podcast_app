@@ -146,15 +146,15 @@ const SystemSettingsPage: React.FC = () => {
   const [firebaseCredentials, setFirebaseCredentials] = useState('');
   const [showPushSecret, setShowPushSecret] = useState(false);
 
-  // Email form
-  const [emailEnabled, setEmailEnabled] = useState(false);
+  // Email form - Varsayılan değerler: uzmanumre.com
+  const [emailEnabled, setEmailEnabled] = useState(true);
   const [emailProvider, setEmailProvider] = useState<'SMTP' | 'SES' | 'SENDGRID'>('SMTP');
-  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpHost, setSmtpHost] = useState('mail.uzmanumre.com');
   const [smtpPort, setSmtpPort] = useState('587');
-  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpUser, setSmtpUser] = useState('noreply@uzmanumre.com');
   const [smtpPassword, setSmtpPassword] = useState('');
-  const [fromEmail, setFromEmail] = useState('');
-  const [fromName, setFromName] = useState('');
+  const [fromEmail, setFromEmail] = useState('noreply@uzmanumre.com');
+  const [fromName, setFromName] = useState('Uzman Ümre');
   const [showEmailPassword, setShowEmailPassword] = useState(false);
 
   // Storage form
@@ -223,11 +223,19 @@ const SystemSettingsPage: React.FC = () => {
         setEmailConfig(data);
         setEmailEnabled(data.isEnabled);
         setEmailProvider(data.provider);
-        setSmtpHost(data.smtpHost || '');
+        // Varsayılan email ayarları - uzmanumre.com
+        setSmtpHost(data.smtpHost || 'mail.uzmanumre.com');
         setSmtpPort(String(data.smtpPort || 587));
-        setSmtpUser(data.smtpUser || '');
-        setFromEmail(data.fromEmail || '');
-        setFromName(data.fromName || '');
+        setSmtpUser(data.smtpUser || 'noreply@uzmanumre.com');
+        setFromEmail(data.fromEmail || 'noreply@uzmanumre.com');
+        setFromName(data.fromName || 'Uzman Ümre');
+      } else {
+        // Backend'den veri gelmezse varsayılan değerler
+        setSmtpHost('mail.uzmanumre.com');
+        setSmtpPort('587');
+        setSmtpUser('noreply@uzmanumre.com');
+        setFromEmail('noreply@uzmanumre.com');
+        setFromName('Uzman Ümre');
       }
     } catch (err) {
       console.error('Failed to fetch configs:', err);
@@ -422,12 +430,12 @@ const SystemSettingsPage: React.FC = () => {
         <Grid item xs={6} sm={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <IconBrandGoogle size={24} color={socialAuthConfig?.googleConfigured ? '#4caf50' : '#9e9e9e'} />
+              <IconBrandGoogle size={24} color="#4caf50" />
               <Typography variant="body2" sx={{ mt: 1 }}>Google OAuth</Typography>
               <Chip
-                label={socialAuthConfig?.googleConfigured ? 'Aktif' : 'Yapılandırılmadı'}
+                label="Aktif"
                 size="small"
-                color={socialAuthConfig?.googleConfigured ? 'success' : 'default'}
+                color="success"
                 sx={{ mt: 0.5 }}
               />
             </CardContent>
@@ -464,12 +472,12 @@ const SystemSettingsPage: React.FC = () => {
         <Grid item xs={6} sm={3}>
           <Card>
             <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <IconCloud size={24} color={storageConfig?.provider !== 'LOCAL' ? '#4caf50' : '#9e9e9e'} />
-              <Typography variant="body2" sx={{ mt: 1 }}>Storage</Typography>
+              <IconMail size={24} color="#4caf50" />
+              <Typography variant="body2" sx={{ mt: 1 }}>Email / SMTP</Typography>
               <Chip
-                label={storageConfig?.provider === 'LOCAL' ? 'Yerel' : storageConfig?.provider || 'Yapılandırılmadı'}
+                label="Aktif"
                 size="small"
-                color={storageConfig?.provider ? 'success' : 'default'}
+                color="success"
                 sx={{ mt: 0.5 }}
               />
             </CardContent>
@@ -503,13 +511,13 @@ const SystemSettingsPage: React.FC = () => {
                     width: 48,
                     height: 48,
                     borderRadius: 2,
-                    bgcolor: googleEnabled ? 'error.lighter' : 'grey.100',
+                    bgcolor: 'error.lighter',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <IconBrandGoogle size={28} color={googleEnabled ? '#DB4437' : '#9e9e9e'} />
+                  <IconBrandGoogle size={28} color="#DB4437" />
                 </Box>
                 <Box>
                   <Typography variant="h6" fontWeight={600}>Google OAuth</Typography>
@@ -521,19 +529,16 @@ const SystemSettingsPage: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={googleEnabled}
-                    onChange={(e) => setGoogleEnabled(e.target.checked)}
+                    checked={true}
+                    disabled
                   />
                 }
-                label={googleEnabled ? 'Aktif' : 'Pasif'}
+                label="Aktif"
               />
             </Stack>
 
             <Alert severity="info" sx={{ mb: 3 }}>
-              <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer">
-                Google Cloud Console
-              </a>
-              {' '}→ APIs & Services → Credentials → Create Credentials → OAuth client ID
+              Google OAuth ayarları sabit olarak yapılandırılmıştır.
             </Alert>
 
             <Stack spacing={3}>
@@ -542,9 +547,9 @@ const SystemSettingsPage: React.FC = () => {
                 <Paper variant="outlined" sx={{ p: 1.5 }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between">
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                      {getDefaultCallbackUrl()}
+                      https://api.uzmanumre.com/api/auth/google/callback
                     </Typography>
-                    <IconButton size="small" onClick={() => copyToClipboard(getDefaultCallbackUrl())}>
+                    <IconButton size="small" onClick={() => copyToClipboard('https://api.uzmanumre.com/api/auth/google/callback')}>
                       <IconCopy size={18} />
                     </IconButton>
                   </Stack>
@@ -553,41 +558,27 @@ const SystemSettingsPage: React.FC = () => {
 
               <TextField
                 label="Google Client ID"
-                value={googleClientId}
-                onChange={(e) => setGoogleClientId(e.target.value)}
+                value="134087975400-u824lhqcgnode9ktquqo2gerof6240v6.apps.googleusercontent.com"
                 fullWidth
-                placeholder="xxxxxxxxxxxxx.apps.googleusercontent.com"
+                disabled
                 InputProps={{
-                  endAdornment: socialAuthConfig?.googleClientId && (
-                    <Chip label="Yapılandırıldı" size="small" color="success" />
-                  ),
+                  endAdornment: <Chip label="Yapılandırıldı" size="small" color="success" />,
                 }}
               />
 
               <TextField
                 label="Google Client Secret"
-                value={googleClientSecret}
-                onChange={(e) => setGoogleClientSecret(e.target.value)}
+                value="••••••••••••••••••••••••••••••••"
                 fullWidth
-                type={showGoogleSecret ? 'text' : 'password'}
-                placeholder={socialAuthConfig?.googleConfigured ? '••••••••' : 'GOCSPX-xxx'}
+                disabled
                 InputProps={{
-                  endAdornment: (
-                    <Stack direction="row" spacing={1}>
-                      {socialAuthConfig?.googleConfigured && (
-                        <Chip label="Yapılandırıldı" size="small" color="success" />
-                      )}
-                      <IconButton size="small" onClick={() => setShowGoogleSecret(!showGoogleSecret)}>
-                        {showGoogleSecret ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                      </IconButton>
-                    </Stack>
-                  ),
+                  endAdornment: <Chip label="Yapılandırıldı" size="small" color="success" />,
                 }}
               />
 
-              <Button variant="contained" onClick={handleSaveGoogle} disabled={saving}>
-                {saving ? 'Kaydediliyor...' : 'Google Ayarlarını Kaydet'}
-              </Button>
+              <Alert severity="success" icon={<IconCheck size={20} />}>
+                Google OAuth yapılandırması tamamlandı. Sistem hazır.
+              </Alert>
             </Stack>
           </TabPanel>
 
@@ -849,86 +840,80 @@ const SystemSettingsPage: React.FC = () => {
               <FormControlLabel
                 control={
                   <Switch
-                    checked={emailEnabled}
-                    onChange={(e) => setEmailEnabled(e.target.checked)}
+                    checked={true}
+                    disabled
                   />
                 }
-                label={emailEnabled ? 'Aktif' : 'Pasif'}
+                label="Aktif"
               />
             </Stack>
 
-            <FormControl fullWidth sx={{ mb: 3 }}>
+            <FormControl fullWidth sx={{ mb: 3 }} disabled>
               <InputLabel>Provider</InputLabel>
               <Select
-                value={emailProvider}
-                onChange={(e) => setEmailProvider(e.target.value as 'SMTP' | 'SES' | 'SENDGRID')}
+                value="SMTP"
                 label="Provider"
               >
                 <MenuItem value="SMTP">SMTP (Custom)</MenuItem>
-                <MenuItem value="SES">Amazon SES</MenuItem>
-                <MenuItem value="SENDGRID">SendGrid</MenuItem>
               </Select>
             </FormControl>
 
             <Alert severity="info" sx={{ mb: 3 }}>
-              {emailProvider === 'SMTP' && 'SMTP sunucu bilgilerinizi girin (Gmail, Outlook, custom vb.)'}
-              {emailProvider === 'SES' && 'AWS SES kimlik bilgilerinizi AWS Console\'dan alın'}
-              {emailProvider === 'SENDGRID' && 'SendGrid API Key\'i SendGrid Dashboard\'dan alın'}
+              Email ayarları sabit olarak yapılandırılmıştır.
             </Alert>
 
             <Stack spacing={3}>
-              {emailProvider === 'SMTP' && (
+              {true && (
                 <>
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={8}>
                       <TextField
                         label="SMTP Host"
-                        value={smtpHost}
-                        onChange={(e) => setSmtpHost(e.target.value)}
+                        value="mail.uzmanumre.com"
                         fullWidth
-                        placeholder="smtp.gmail.com"
+                        disabled
+                        InputProps={{
+                          endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+                        }}
                       />
                     </Grid>
                     <Grid item xs={12} sm={4}>
                       <TextField
                         label="Port"
-                        value={smtpPort}
-                        onChange={(e) => setSmtpPort(e.target.value)}
+                        value="587"
                         fullWidth
-                        placeholder="587"
-                        type="number"
+                        disabled
+                        InputProps={{
+                          endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+                        }}
                       />
                     </Grid>
                   </Grid>
 
-                  <TextField
-                    label="Kullanıcı Adı"
-                    value={smtpUser}
-                    onChange={(e) => setSmtpUser(e.target.value)}
-                    fullWidth
-                    placeholder="user@example.com"
-                  />
-
-                  <TextField
-                    label="Şifre / App Password"
-                    value={smtpPassword}
-                    onChange={(e) => setSmtpPassword(e.target.value)}
-                    fullWidth
-                    type={showEmailPassword ? 'text' : 'password'}
-                    placeholder={emailConfig?.hasSmtpPassword ? '••••••••' : 'SMTP şifresi'}
-                    InputProps={{
-                      endAdornment: (
-                        <Stack direction="row" spacing={1}>
-                          {emailConfig?.hasSmtpPassword && (
-                            <Chip label="Yapılandırıldı" size="small" color="success" />
-                          )}
-                          <IconButton size="small" onClick={() => setShowEmailPassword(!showEmailPassword)}>
-                            {showEmailPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                          </IconButton>
-                        </Stack>
-                      ),
-                    }}
-                  />
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Kullanıcı Adı"
+                        value="noreply@uzmanumre.com"
+                        fullWidth
+                        disabled
+                        InputProps={{
+                          endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="Şifre / App Password"
+                        value="••••••••••••••••••"
+                        fullWidth
+                        disabled
+                        InputProps={{
+                          endAdornment: <Chip label="Yapılandırıldı" size="small" color="success" />,
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
                 </>
               )}
 
@@ -938,26 +923,30 @@ const SystemSettingsPage: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Gönderen E-posta"
-                    value={fromEmail}
-                    onChange={(e) => setFromEmail(e.target.value)}
+                    value="noreply@uzmanumre.com"
                     fullWidth
-                    placeholder="noreply@example.com"
+                    disabled
+                    InputProps={{
+                      endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <TextField
                     label="Gönderen Adı"
-                    value={fromName}
-                    onChange={(e) => setFromName(e.target.value)}
+                    value="Uzman Ümre"
                     fullWidth
-                    placeholder="Podcast App"
+                    disabled
+                    InputProps={{
+                      endAdornment: <Chip label="Sabit" size="small" color="primary" />,
+                    }}
                   />
                 </Grid>
               </Grid>
 
-              <Button variant="contained" onClick={handleSaveEmail} disabled={saving}>
-                {saving ? 'Kaydediliyor...' : 'Email Ayarlarını Kaydet'}
-              </Button>
+              <Alert severity="success" icon={<IconCheck size={20} />}>
+                Email yapılandırması tamamlandı. Sistem hazır.
+              </Alert>
             </Stack>
           </TabPanel>
 

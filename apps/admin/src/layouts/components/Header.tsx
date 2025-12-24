@@ -45,6 +45,9 @@ const Header: React.FC = () => {
   const topbarHeight = 70;
   const { user, logout } = useAuth();
 
+  // Admin rolleri kontrolü
+  const isAdmin = user?.role && ['SUPER_ADMIN', 'ADMIN', 'HOCA'].includes(user.role);
+
   const toggleTheme = () => {
     setActiveMode(activeMode === 'light' ? 'dark' : 'light');
   };
@@ -252,18 +255,20 @@ const Header: React.FC = () => {
                 <MenuList>
                   <MuiMenuItem onClick={() => { setProfileOpen(false); navigate('/profile'); }}>
                     <IconUser size={18} style={{ marginRight: 8 }} />
-                    Profile
+                    Profil
                   </MuiMenuItem>
-                  <MuiMenuItem onClick={() => { setProfileOpen(false); navigate('/settings'); }}>
-                    <IconSettings size={18} style={{ marginRight: 8 }} />
-                    Settings
-                  </MuiMenuItem>
+                  {isAdmin && (
+                    <MuiMenuItem onClick={() => { setProfileOpen(false); navigate('/settings'); }}>
+                      <IconSettings size={18} style={{ marginRight: 8 }} />
+                      Ayarlar
+                    </MuiMenuItem>
+                  )}
                 </MenuList>
                 <Divider />
                 <MenuList>
                   <MuiMenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
                     <IconLogout size={18} style={{ marginRight: 8 }} />
-                    Logout
+                    Çıkış Yap
                   </MuiMenuItem>
                 </MenuList>
               </Paper>

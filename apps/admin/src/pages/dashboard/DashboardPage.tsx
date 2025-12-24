@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Grid,
@@ -19,8 +20,11 @@ import {
   IconChartBar,
   IconTrendingUp,
   IconTrendingDown,
+  IconHeart,
+  IconHistory,
 } from '@tabler/icons-react';
 import { dashboardService, DashboardStats, TopPodcast } from '../../api/services/dashboard.service';
+import { selectUser } from '../../store/slices/authSlice';
 
 interface StatCardProps {
   title: string;
@@ -130,32 +134,45 @@ const formatTimeAgo = (dateString: string): string => {
 
 const DashboardPage: React.FC = () => {
   const theme = useTheme();
+  const user = useSelector(selectUser);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [topPodcasts, setTopPodcasts] = useState<TopPodcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Admin rolleri - bu roller admin istatistiklerini görebilir
+  const isAdmin = user?.role && ['SUPER_ADMIN', 'ADMIN', 'HOCA'].includes(user.role);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const [statsData, topPodcastsData] = await Promise.all([
-          dashboardService.getStats(),
-          dashboardService.getTopPodcasts(5),
-        ]);
-        setStats(statsData);
-        setTopPodcasts(topPodcastsData);
+
+        // Sadece admin rolleri için istatistikleri çek
+        if (isAdmin) {
+          const [statsData, topPodcastsData] = await Promise.all([
+            dashboardService.getStats(),
+            dashboardService.getTopPodcasts(5),
+          ]);
+          setStats(statsData);
+          setTopPodcasts(topPodcastsData);
+        }
       } catch (err: any) {
         console.error('Dashboard fetch error:', err);
-        setError(err?.response?.data?.message || 'Dashboard verileri yüklenirken hata oluştu');
+        // 403 hatası için özel mesaj
+        if (err?.response?.status === 403) {
+          setError(null); // 403 için hata gösterme, sadece USER dashboard'u göster
+        } else {
+          setError(err?.response?.data?.message || 'Dashboard verileri yüklenirken hata oluştu');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [isAdmin]);
 
   const statCards = [
     {
@@ -193,6 +210,107 @@ const DashboardPage: React.FC = () => {
     ? Math.max(...topPodcasts.map(p => p.playCount))
     : 1;
 
+  // USER için özel dashboard
+  if (!isAdmin) {
+    return (
+      <Box>
+        {/* Page Header */}
+        <Box mb={4}>
+          <Typography variant="h4" fontWeight={600} gutterBottom>
+            Hoş Geldiniz, {user?.name || 'Kullanıcı'}!
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Podcast dünyasını keşfedin ve favori içeriklerinizi takip edin.
+          </Typography>
+        </Box>
+
+        {/* Quick Actions for USER */}
+        <Grid container spacing={3} mb={4}>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card
+              sx={{
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' }
+              }}
+              onClick={() => window.location.href = '/my-history'}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 64, height: 64, mx: 'auto', mb: 2 }}>
+                  <IconHistory size={32} color="#fff" />
+                </Avatar>
+                <Typography variant="h6" fontWeight={600}>
+                  Dinleme Geçmişi
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Son dinlediğiniz podcast'ler
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card
+              sx={{
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' }
+              }}
+              onClick={() => window.location.href = '/my-favorites'}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <Avatar sx={{ bgcolor: theme.palette.error.main, width: 64, height: 64, mx: 'auto', mb: 2 }}>
+                  <IconHeart size={32} color="#fff" />
+                </Avatar>
+                <Typography variant="h6" fontWeight={600}>
+                  Favorilerim
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Beğendiğiniz içerikler
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Card
+              sx={{
+                cursor: 'pointer',
+                transition: 'transform 0.2s',
+                '&:hover': { transform: 'translateY(-4px)' }
+              }}
+              onClick={() => window.location.href = '/profile'}
+            >
+              <CardContent sx={{ textAlign: 'center', py: 4 }}>
+                <Avatar sx={{ bgcolor: theme.palette.success.main, width: 64, height: 64, mx: 'auto', mb: 2 }}>
+                  <IconUsers size={32} color="#fff" />
+                </Avatar>
+                <Typography variant="h6" fontWeight={600}>
+                  Profilim
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Hesap ayarlarınız
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Info Card */}
+        <Card>
+          <CardContent>
+            <Typography variant="h6" fontWeight={600} mb={2}>
+              Podcast Keşfet
+            </Typography>
+            <Typography color="text.secondary">
+              Mobil uygulamamızı indirerek binlerce podcast'e erişebilir,
+              çevrimdışı dinleyebilir ve kişiselleştirilmiş öneriler alabilirsiniz.
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
+
+  // ADMIN / HOCA için dashboard
   return (
     <Box>
       {/* Page Header */}

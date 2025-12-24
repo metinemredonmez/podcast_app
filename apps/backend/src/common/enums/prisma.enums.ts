@@ -1,9 +1,10 @@
 // User roles
 export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
-  CREATOR = 'CREATOR',
   HOCA = 'HOCA',
   USER = 'USER',
+  GUEST = 'GUEST',
 }
 
 export const UserRoleValues = Object.values(UserRole);

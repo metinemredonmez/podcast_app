@@ -15,6 +15,7 @@ import { Response } from 'express';
 import { GoogleAuthService } from './google-auth.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import {
   GoogleTokenDto,
   SocialProvidersResponseDto,
@@ -39,6 +40,7 @@ export class GoogleAuthController {
   /**
    * Get available social providers (public)
    */
+  @Public()
   @Get('social/providers')
   @ApiOperation({ summary: 'Get available social login providers' })
   @ApiResponse({ status: 200, type: SocialProvidersResponseDto })
@@ -51,6 +53,7 @@ export class GoogleAuthController {
   /**
    * Initiate Google OAuth flow (redirect)
    */
+  @Public()
   @Get('google')
   @ApiOperation({ summary: 'Initiate Google OAuth flow' })
   @ApiResponse({ status: 302, description: 'Redirects to Google' })
@@ -68,6 +71,7 @@ export class GoogleAuthController {
   /**
    * Google OAuth callback
    */
+  @Public()
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(
@@ -125,6 +129,7 @@ export class GoogleAuthController {
   /**
    * Login/Register with Google ID token (for mobile/SPA)
    */
+  @Public()
   @Post('google/token')
   @ApiOperation({ summary: 'Authenticate with Google ID token' })
   @ApiResponse({ status: 200, type: AuthResponseDto })

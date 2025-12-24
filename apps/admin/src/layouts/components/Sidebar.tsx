@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   Box,
   Drawer,
@@ -37,6 +38,7 @@ import { CustomizerContext } from '../../context/customizerContext';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import { moderationService } from '../../api/services/moderation.service';
+import { selectUser } from '../../store/slices/authSlice';
 
 interface MenuItem {
   id: string;
@@ -46,41 +48,60 @@ interface MenuItem {
   navlabel?: boolean;
   subheader?: string;
   badge?: number;
+  roles?: string[]; // Hangi roller bu menüyü görebilir
 }
 
+// Rol bazlı menü yapısı
+// roles belirtilmezse herkes görebilir
+// SUPER_ADMIN ve ADMIN her şeyi görebilir
+// HOCA: Dashboard, Canlı Yayın, İçerik Yönetimi, Profil
+// USER: Sadece Dashboard ve Profil
 const menuItems: MenuItem[] = [
+  // Dashboard - herkes görebilir
   { id: 'nav-dashboard', title: 'Dashboard', subheader: 'Kontrol Paneli', navlabel: true, icon: IconLayoutDashboard, href: '' },
   { id: 'dashboard', title: 'Dashboard', icon: IconLayoutDashboard, href: '/dashboard' },
-  { id: 'analytics', title: 'Analitik', icon: IconChartBar, href: '/analytics' },
+  { id: 'analytics', title: 'Analitik', icon: IconChartBar, href: '/analytics', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  { id: 'nav-live', title: 'Live', subheader: 'Canlı Yayın', navlabel: true, icon: IconBroadcast, href: '' },
-  { id: 'live-streams', title: 'Yayınlar', icon: IconBroadcast, href: '/live' },
-  { id: 'live-broadcast', title: 'Yayın Başlat', icon: IconMicrophone, href: '/live/broadcast' },
+  // Canlı Yayın - HOCA ve üstü
+  { id: 'nav-live', title: 'Live', subheader: 'Canlı Yayın', navlabel: true, icon: IconBroadcast, href: '', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  { id: 'live-streams', title: 'Yayınlar', icon: IconBroadcast, href: '/live', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  { id: 'live-broadcast', title: 'Yayın Başlat', icon: IconMicrophone, href: '/live/broadcast', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
 
-  { id: 'nav-content', title: 'Content', subheader: 'Content Management', navlabel: true, icon: IconMicrophone, href: '' },
-  { id: 'podcasts', title: 'Podcasts', icon: IconMicrophone, href: '/podcasts' },
-  { id: 'episodes', title: 'Episodes', icon: IconHeadphones, href: '/episodes' },
-  { id: 'categories', title: 'Categories', icon: IconCategory, href: '/categories' },
+  // İçerik Yönetimi - HOCA ve üstü
+  { id: 'nav-content', title: 'Content', subheader: 'İçerik Yönetimi', navlabel: true, icon: IconMicrophone, href: '', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  { id: 'podcasts', title: 'Podcastler', icon: IconMicrophone, href: '/podcasts', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  { id: 'episodes', title: 'Bölümler', icon: IconHeadphones, href: '/episodes', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  { id: 'categories', title: 'Kategoriler', icon: IconCategory, href: '/categories', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  { id: 'nav-users', title: 'Users', subheader: 'User Management', navlabel: true, icon: IconUsers, href: '' },
-  { id: 'users', title: 'Users', icon: IconUsers, href: '/users' },
-  { id: 'hocas', title: 'Hocas', icon: IconUser, href: '/hocas' },
+  // Kullanıcı Yönetimi - sadece ADMIN
+  { id: 'nav-users', title: 'Users', subheader: 'Kullanıcı Yönetimi', navlabel: true, icon: IconUsers, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'users', title: 'Kullanıcılar', icon: IconUsers, href: '/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'hocas', title: 'Hocalar', icon: IconUser, href: '/hocas', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  { id: 'nav-moderation', title: 'Moderation', subheader: 'Moderation', navlabel: true, icon: IconShieldCheck, href: '' },
-  { id: 'moderation', title: 'Moderation Queue', icon: IconShieldCheck, href: '/moderation' },
-  { id: 'comments', title: 'Comments', icon: IconMessage, href: '/comments' },
-  { id: 'reviews', title: 'Reviews', icon: IconStar, href: '/reviews' },
+  // Moderasyon - sadece ADMIN
+  { id: 'nav-moderation', title: 'Moderation', subheader: 'Moderasyon', navlabel: true, icon: IconShieldCheck, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'moderation', title: 'Moderasyon Kuyruğu', icon: IconShieldCheck, href: '/moderation', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'comments', title: 'Yorumlar', icon: IconMessage, href: '/comments', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'reviews', title: 'Değerlendirmeler', icon: IconStar, href: '/reviews', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  { id: 'nav-admin', title: 'Admin', subheader: 'Administration', navlabel: true, icon: IconBuilding, href: '' },
-  { id: 'tenants', title: 'Tenants', icon: IconBuilding, href: '/tenants' },
-  { id: 'notifications', title: 'Notifications', icon: IconBell, href: '/notifications' },
+  // Yönetim - sadece ADMIN
+  { id: 'nav-admin', title: 'Admin', subheader: 'Yönetim', navlabel: true, icon: IconBuilding, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'tenants', title: 'Tenantlar', icon: IconBuilding, href: '/tenants', roles: ['SUPER_ADMIN'] },
+  { id: 'notifications', title: 'Bildirimler', icon: IconBell, href: '/notifications', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  { id: 'nav-settings', title: 'Settings', subheader: 'Ayarlar', navlabel: true, icon: IconSettings, href: '' },
-  { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings' },
-  { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth' },
-  { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms' },
-  { id: 'push-config', title: 'Push Detayları', icon: IconBell, href: '/push' },
-  { id: 'push-logs', title: 'Push Logları', icon: IconHistory, href: '/push/logs' },
+  // Ayarlar - sadece ADMIN
+  { id: 'nav-settings', title: 'Settings', subheader: 'Ayarlar', navlabel: true, icon: IconSettings, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'push-config', title: 'Push Detayları', icon: IconBell, href: '/push', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'push-logs', title: 'Push Logları', icon: IconHistory, href: '/push/logs', roles: ['SUPER_ADMIN', 'ADMIN'] },
+
+  // Hesap & Kişisel - herkes görebilir
+  { id: 'nav-profile', title: 'Profile', subheader: 'Hesap', navlabel: true, icon: IconUser, href: '' },
+  { id: 'profile', title: 'Profilim', icon: IconUser, href: '/profile' },
+  { id: 'my-history', title: 'Dinleme Geçmişi', icon: IconHistory, href: '/my-history' },
+  { id: 'my-favorites', title: 'Favorilerim', icon: IconStar, href: '/my-favorites' },
 ];
 
 const Sidebar: React.FC = () => {
@@ -89,6 +110,9 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const lgUp = useMediaQuery(theme.breakpoints.up('lg'));
   const { isCollapse, isMobileSidebar, setIsMobileSidebar } = useContext(CustomizerContext);
+
+  // Get current user for role-based menu filtering
+  const user = useSelector(selectUser);
 
   // Pending moderation count
   const [pendingCount, setPendingCount] = useState(0);
@@ -130,6 +154,57 @@ const Sidebar: React.FC = () => {
     return location.pathname === href || location.pathname.startsWith(`${href}/`);
   };
 
+  // Filter menu items based on user role
+  // SUPER_ADMIN and ADMIN can see everything
+  // HOCA can only see items without roles restriction or items that include HOCA
+  const canUserSeeItem = (item: MenuItem): boolean => {
+    // If no roles specified, everyone can see it
+    if (!item.roles || item.roles.length === 0) {
+      return true;
+    }
+    // Check if user's role is in the allowed roles
+    if (user && item.roles.includes(user.role)) {
+      return true;
+    }
+    return false;
+  };
+
+  // Filter menu items and also filter out section headers if no items in that section are visible
+  const getFilteredMenuItems = (): MenuItem[] => {
+    const filtered: MenuItem[] = [];
+    let lastNavLabel: MenuItem | null = null;
+    let hasItemsAfterLabel = false;
+
+    for (const item of menuItems) {
+      if (item.navlabel) {
+        // If we had a previous navlabel with items, add it
+        if (lastNavLabel && hasItemsAfterLabel) {
+          filtered.push(lastNavLabel);
+        }
+        // Check if this section header itself has role restrictions
+        if (canUserSeeItem(item)) {
+          lastNavLabel = item;
+          hasItemsAfterLabel = false;
+        } else {
+          lastNavLabel = null;
+        }
+      } else {
+        // Regular menu item
+        if (canUserSeeItem(item)) {
+          if (lastNavLabel && !hasItemsAfterLabel) {
+            filtered.push(lastNavLabel);
+            hasItemsAfterLabel = true;
+          }
+          filtered.push(item);
+        }
+      }
+    }
+
+    return filtered;
+  };
+
+  const filteredMenuItems = getFilteredMenuItems();
+
   const sidebarContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Logo */}
@@ -144,7 +219,7 @@ const Sidebar: React.FC = () => {
       {/* Menu Items */}
       <SimpleBar style={{ maxHeight: 'calc(100vh - 100px)', flex: 1 }}>
         <List sx={{ px: 2, pt: 1 }}>
-          {menuItems.map((item) => {
+          {filteredMenuItems.map((item) => {
             if (item.navlabel) {
               // Hide section headers in mini-sidebar mode
               if (!isSidebarOpen) return null;

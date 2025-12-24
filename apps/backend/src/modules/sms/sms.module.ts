@@ -4,9 +4,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PhoneAuthController } from './phone-auth.controller';
 import { SmsConfigController } from './sms-config.controller';
+import { HocaApplicationController } from './hoca-application.controller';
 import { PhoneAuthService } from './phone-auth.service';
 import { SmsConfigService } from './sms-config.service';
+import { HocaApplicationService } from './hoca-application.service';
 import { NetGsmService } from './providers/netgsm.service';
+import { TwilioService } from './providers/twilio.service';
 import { PrismaService } from '../../infra/prisma.service';
 import { EncryptionModule } from '../../common/encryption';
 
@@ -28,13 +31,15 @@ import { EncryptionModule } from '../../common/encryption';
       inject: [ConfigService],
     }),
   ],
-  controllers: [PhoneAuthController, SmsConfigController],
+  controllers: [PhoneAuthController, SmsConfigController, HocaApplicationController],
   providers: [
     PhoneAuthService,
     SmsConfigService,
+    HocaApplicationService,
     NetGsmService,
+    TwilioService,
     PrismaService,
   ],
-  exports: [PhoneAuthService, SmsConfigService, NetGsmService],
+  exports: [PhoneAuthService, SmsConfigService, HocaApplicationService, NetGsmService, TwilioService],
 })
 export class SmsModule {}

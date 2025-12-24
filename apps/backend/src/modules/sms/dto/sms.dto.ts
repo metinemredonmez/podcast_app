@@ -80,6 +80,12 @@ export class UpdateSmsConfigDto {
   @IsBoolean()
   isEnabled?: boolean;
 
+  @ApiPropertyOptional({ description: 'SMS Provider: NETGSM or TWILIO', enum: ['NETGSM', 'TWILIO'] })
+  @IsOptional()
+  @IsString()
+  provider?: 'NETGSM' | 'TWILIO';
+
+  // NetGSM fields
   @ApiPropertyOptional({ description: 'NetGSM User Code' })
   @IsOptional()
   @IsString()
@@ -95,6 +101,28 @@ export class UpdateSmsConfigDto {
   @IsString()
   netgsmMsgHeader?: string;
 
+  // Twilio fields
+  @ApiPropertyOptional({ description: 'Twilio Account SID' })
+  @IsOptional()
+  @IsString()
+  twilioAccountSid?: string;
+
+  @ApiPropertyOptional({ description: 'Twilio Auth Token (will be encrypted)' })
+  @IsOptional()
+  @IsString()
+  twilioAuthToken?: string;
+
+  @ApiPropertyOptional({ description: 'Twilio From Number (e.g., +1234567890)' })
+  @IsOptional()
+  @IsString()
+  twilioFromNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Twilio Verify Service SID (optional)' })
+  @IsOptional()
+  @IsString()
+  twilioVerifyServiceSid?: string;
+
+  // OTP settings
   @ApiPropertyOptional({ description: 'OTP code length', default: 6 })
   @IsOptional()
   @IsInt()
@@ -131,6 +159,7 @@ export class SmsConfigResponseDto {
   @ApiProperty()
   provider: string;
 
+  // NetGSM fields
   @ApiPropertyOptional()
   netgsmUsercode: string | null;
 
@@ -140,6 +169,20 @@ export class SmsConfigResponseDto {
   @ApiPropertyOptional()
   netgsmMsgHeader: string | null;
 
+  // Twilio fields
+  @ApiPropertyOptional()
+  twilioAccountSid: string | null;
+
+  @ApiProperty({ description: 'Whether Twilio Auth Token is configured' })
+  hasTwilioAuthToken: boolean;
+
+  @ApiPropertyOptional()
+  twilioFromNumber: string | null;
+
+  @ApiPropertyOptional()
+  twilioVerifyServiceSid: string | null;
+
+  // OTP settings
   @ApiProperty()
   otpLength: number;
 

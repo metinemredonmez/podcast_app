@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma.service';
 import { EncryptionService } from '../../common/encryption';
 import { NetGsmService } from './providers/netgsm.service';
+import { TwilioService } from './providers/twilio.service';
 import {
   UpdateSmsConfigDto,
   SmsConfigResponseDto,
@@ -12,9 +13,17 @@ import {
 } from './dto';
 
 interface DecryptedCredentials {
+  provider: 'NETGSM' | 'TWILIO';
+  // NetGSM
   usercode: string;
   password: string;
   msgHeader: string;
+  // Twilio
+  twilioAccountSid: string;
+  twilioAuthToken: string;
+  twilioFromNumber: string;
+  twilioVerifyServiceSid?: string;
+  // Settings
   settings: {
     otpLength: number;
     otpExpiryMins: number;
@@ -31,6 +40,7 @@ export class SmsConfigService {
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
     private readonly netgsm: NetGsmService,
+    private readonly twilio: TwilioService,
   ) {}
 
   /**
@@ -48,6 +58,10 @@ export class SmsConfigService {
         netgsmUsercode: null,
         hasNetgsmPassword: false,
         netgsmMsgHeader: null,
+        twilioAccountSid: null,
+        hasTwilioAuthToken: false,
+        twilioFromNumber: null,
+        twilioVerifyServiceSid: null,
         otpLength: 6,
         otpExpiryMins: 5,
         maxAttempts: 3,
@@ -62,6 +76,10 @@ export class SmsConfigService {
       netgsmUsercode: config.netgsmUsercode,
       hasNetgsmPassword: !!config.netgsmPassword,
       netgsmMsgHeader: config.netgsmMsgHeader,
+      twilioAccountSid: config.twilioAccountSid,
+      hasTwilioAuthToken: !!config.twilioAuthToken,
+      twilioFromNumber: config.twilioFromNumber,
+      twilioVerifyServiceSid: config.twilioVerifyServiceSid,
       otpLength: config.otpLength,
       otpExpiryMins: config.otpExpiryMins,
       maxAttempts: config.maxAttempts,
@@ -82,6 +100,10 @@ export class SmsConfigService {
     if (dto.isEnabled !== undefined) {
       data.isEnabled = dto.isEnabled;
     }
+    if (dto.provider !== undefined) {
+      data.provider = dto.provider;
+    }
+    // NetGSM fields
     if (dto.netgsmUsercode !== undefined) {
       data.netgsmUsercode = dto.netgsmUsercode || null;
     }
@@ -91,6 +113,20 @@ export class SmsConfigService {
     if (dto.netgsmMsgHeader !== undefined) {
       data.netgsmMsgHeader = dto.netgsmMsgHeader || null;
     }
+    // Twilio fields
+    if (dto.twilioAccountSid !== undefined) {
+      data.twilioAccountSid = dto.twilioAccountSid || null;
+    }
+    if (dto.twilioAuthToken) {
+      data.twilioAuthToken = this.encryption.encrypt(dto.twilioAuthToken);
+    }
+    if (dto.twilioFromNumber !== undefined) {
+      data.twilioFromNumber = dto.twilioFromNumber || null;
+    }
+    if (dto.twilioVerifyServiceSid !== undefined) {
+      data.twilioVerifyServiceSid = dto.twilioVerifyServiceSid || null;
+    }
+    // OTP settings
     if (dto.otpLength !== undefined) {
       data.otpLength = dto.otpLength;
     }
@@ -141,6 +177,10 @@ export class SmsConfigService {
           netgsmUsercode: null,
           netgsmPassword: null,
           netgsmMsgHeader: null,
+          twilioAccountSid: null,
+          twilioAuthToken: null,
+          twilioFromNumber: null,
+          twilioVerifyServiceSid: null,
         },
       });
     }
@@ -157,21 +197,49 @@ export class SmsConfigService {
       },
     });
 
-    if (!config?.netgsmUsercode || !config?.netgsmPassword || !config?.netgsmMsgHeader) {
+    if (!config) {
       return null;
     }
 
+    const settings = {
+      otpLength: config.otpLength,
+      otpExpiryMins: config.otpExpiryMins,
+      maxAttempts: config.maxAttempts,
+      resendCooldown: config.resendCooldown,
+    };
+
     try {
+      // Twilio credentials
+      if (config.provider === 'TWILIO') {
+        if (!config.twilioAccountSid || !config.twilioAuthToken || !config.twilioFromNumber) {
+          return null;
+        }
+        return {
+          provider: 'TWILIO',
+          usercode: '',
+          password: '',
+          msgHeader: '',
+          twilioAccountSid: config.twilioAccountSid,
+          twilioAuthToken: this.encryption.decrypt(config.twilioAuthToken),
+          twilioFromNumber: config.twilioFromNumber,
+          twilioVerifyServiceSid: config.twilioVerifyServiceSid || undefined,
+          settings,
+        };
+      }
+
+      // NetGSM credentials (default)
+      if (!config.netgsmUsercode || !config.netgsmPassword || !config.netgsmMsgHeader) {
+        return null;
+      }
       return {
+        provider: 'NETGSM',
         usercode: config.netgsmUsercode,
         password: this.encryption.decrypt(config.netgsmPassword),
         msgHeader: config.netgsmMsgHeader,
-        settings: {
-          otpLength: config.otpLength,
-          otpExpiryMins: config.otpExpiryMins,
-          maxAttempts: config.maxAttempts,
-          resendCooldown: config.resendCooldown,
-        },
+        twilioAccountSid: '',
+        twilioAuthToken: '',
+        twilioFromNumber: '',
+        settings,
       };
     } catch (error) {
       this.logger.error('Failed to decrypt SMS config', error);
@@ -200,11 +268,21 @@ export class SmsConfigService {
       };
     }
 
-    const result = await this.netgsm.testCredentials({
-      usercode: credentials.usercode,
-      password: credentials.password,
-      msgHeader: credentials.msgHeader,
-    });
+    let result: { valid: boolean; message: string };
+
+    if (credentials.provider === 'TWILIO') {
+      result = await this.twilio.testCredentials({
+        accountSid: credentials.twilioAccountSid,
+        authToken: credentials.twilioAuthToken,
+        fromNumber: credentials.twilioFromNumber,
+      });
+    } else {
+      result = await this.netgsm.testCredentials({
+        usercode: credentials.usercode,
+        password: credentials.password,
+        msgHeader: credentials.msgHeader,
+      });
+    }
 
     return {
       success: result.valid,
@@ -232,25 +310,42 @@ export class SmsConfigService {
 
     const message = customMessage || 'Bu bir test mesajıdır. - Admin Panel';
 
-    const result = await this.netgsm.sendSms(
-      {
-        usercode: credentials.usercode,
-        password: credentials.password,
-        msgHeader: credentials.msgHeader,
-      },
-      phone,
-      message,
-    );
+    let result: { success: boolean; messageId?: string; jobId?: string; error?: string };
+    let normalizedPhone: string;
+
+    if (credentials.provider === 'TWILIO') {
+      result = await this.twilio.sendSms(
+        {
+          accountSid: credentials.twilioAccountSid,
+          authToken: credentials.twilioAuthToken,
+          fromNumber: credentials.twilioFromNumber,
+        },
+        phone,
+        message,
+      );
+      normalizedPhone = this.twilio.normalizePhone(phone);
+    } else {
+      result = await this.netgsm.sendSms(
+        {
+          usercode: credentials.usercode,
+          password: credentials.password,
+          msgHeader: credentials.msgHeader,
+        },
+        phone,
+        message,
+      );
+      normalizedPhone = this.netgsm.normalizePhone(phone);
+    }
 
     // Log the test SMS
     await this.prisma.smsLog.create({
       data: {
         tenantId,
-        phone: this.netgsm.normalizePhone(phone),
+        phone: normalizedPhone,
         message,
         type: 'NOTIFICATION',
-        provider: 'NETGSM',
-        providerId: result.jobId,
+        provider: credentials.provider,
+        providerId: result.messageId || result.jobId,
         status: result.success ? 'SENT' : 'FAILED',
         errorMsg: result.error,
         sentAt: result.success ? new Date() : null,

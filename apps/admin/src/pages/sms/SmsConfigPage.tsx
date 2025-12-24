@@ -47,9 +47,16 @@ import { logger } from '../../utils/logger';
 interface SmsConfig {
   isEnabled: boolean;
   provider: string;
+  // NetGSM
   netgsmUsercode: string | null;
   hasNetgsmPassword: boolean;
   netgsmMsgHeader: string | null;
+  // Twilio
+  twilioAccountSid: string | null;
+  hasTwilioAuthToken: boolean;
+  twilioFromNumber: string | null;
+  twilioVerifyServiceSid: string | null;
+  // OTP settings
   otpLength: number;
   otpExpiryMins: number;
   maxAttempts: number;
@@ -109,9 +116,17 @@ const SmsConfigPage: React.FC = () => {
 
   // Form state
   const [isEnabled, setIsEnabled] = useState(false);
+  const [provider, setProvider] = useState<'NETGSM' | 'TWILIO'>('NETGSM');
+  // NetGSM
   const [netgsmUsercode, setNetgsmUsercode] = useState('');
   const [netgsmPassword, setNetgsmPassword] = useState('');
   const [netgsmMsgHeader, setNetgsmMsgHeader] = useState('');
+  // Twilio
+  const [twilioAccountSid, setTwilioAccountSid] = useState('');
+  const [twilioAuthToken, setTwilioAuthToken] = useState('');
+  const [twilioFromNumber, setTwilioFromNumber] = useState('');
+  const [twilioVerifyServiceSid, setTwilioVerifyServiceSid] = useState('');
+  // OTP settings
   const [otpLength, setOtpLength] = useState(6);
   const [otpExpiryMins, setOtpExpiryMins] = useState(5);
   const [maxAttempts, setMaxAttempts] = useState(3);
@@ -144,8 +159,15 @@ const SmsConfigPage: React.FC = () => {
 
       if (data) {
         setIsEnabled(data.isEnabled);
+        setProvider((data.provider as 'NETGSM' | 'TWILIO') || 'NETGSM');
+        // NetGSM
         setNetgsmUsercode(data.netgsmUsercode || '');
         setNetgsmMsgHeader(data.netgsmMsgHeader || '');
+        // Twilio
+        setTwilioAccountSid(data.twilioAccountSid || '');
+        setTwilioFromNumber(data.twilioFromNumber || '');
+        setTwilioVerifyServiceSid(data.twilioVerifyServiceSid || '');
+        // OTP settings
         setOtpLength(data.otpLength);
         setOtpExpiryMins(data.otpExpiryMins);
         setMaxAttempts(data.maxAttempts);
@@ -202,15 +224,22 @@ const SmsConfigPage: React.FC = () => {
 
       const payload: Record<string, unknown> = {
         isEnabled,
+        provider,
         otpLength,
         otpExpiryMins,
         maxAttempts,
         resendCooldown,
       };
 
+      // NetGSM fields
       if (netgsmUsercode) payload.netgsmUsercode = netgsmUsercode;
       if (netgsmPassword) payload.netgsmPassword = netgsmPassword;
       if (netgsmMsgHeader) payload.netgsmMsgHeader = netgsmMsgHeader;
+      // Twilio fields
+      if (twilioAccountSid) payload.twilioAccountSid = twilioAccountSid;
+      if (twilioAuthToken) payload.twilioAuthToken = twilioAuthToken;
+      if (twilioFromNumber) payload.twilioFromNumber = twilioFromNumber;
+      if (twilioVerifyServiceSid) payload.twilioVerifyServiceSid = twilioVerifyServiceSid;
 
       await apiClient.put('/admin/sms/config', payload);
 
@@ -324,7 +353,7 @@ const SmsConfigPage: React.FC = () => {
             SMS Ayarları
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            NetGSM SMS entegrasyonu ve OTP ayarları
+            SMS entegrasyonu (NetGSM / Twilio) ve OTP ayarları
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -332,7 +361,7 @@ const SmsConfigPage: React.FC = () => {
             variant="outlined"
             startIcon={<IconTestPipe size={18} />}
             onClick={handleTestConnection}
-            disabled={!config?.hasNetgsmPassword || testing}
+            disabled={(!config?.hasNetgsmPassword && !config?.hasTwilioAuthToken) || testing}
           >
             {testing ? 'Test Ediliyor...' : 'Bağlantıyı Test Et'}
           </Button>
@@ -476,6 +505,31 @@ const SmsConfigPage: React.FC = () => {
 
           <Divider sx={{ my: 3 }} />
 
+          {/* Provider Selection */}
+          <Box mb={3}>
+            <Typography variant="subtitle2" gutterBottom>
+              SMS Sağlayıcı
+            </Typography>
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant={provider === 'NETGSM' ? 'contained' : 'outlined'}
+                onClick={() => setProvider('NETGSM')}
+                sx={{ minWidth: 120 }}
+              >
+                NetGSM
+              </Button>
+              <Button
+                variant={provider === 'TWILIO' ? 'contained' : 'outlined'}
+                onClick={() => setProvider('TWILIO')}
+                sx={{ minWidth: 120 }}
+              >
+                Twilio
+              </Button>
+            </Stack>
+          </Box>
+
+          <Divider sx={{ my: 3 }} />
+
           {/* Tabs */}
           <Tabs
             value={tabValue}
@@ -484,106 +538,191 @@ const SmsConfigPage: React.FC = () => {
             scrollButtons="auto"
             allowScrollButtonsMobile
           >
-            <Tab icon={<IconSettings size={18} />} iconPosition="start" label="NetGSM" />
+            <Tab icon={<IconSettings size={18} />} iconPosition="start" label={provider === 'TWILIO' ? 'Twilio' : 'NetGSM'} />
             <Tab icon={<IconChartBar size={18} />} iconPosition="start" label="OTP" />
             <Tab icon={<IconHistory size={18} />} iconPosition="start" label="Loglar" />
           </Tabs>
 
-          {/* NetGSM Settings Tab */}
+          {/* Provider Settings Tab */}
           <TabPanel value={tabValue} index={0}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-                NetGSM Hesap Bilgileri
-              </Typography>
-              <Typography variant="body2">
-                NetGSM hesabınızı{' '}
-                <a href="https://www.netgsm.com.tr" target="_blank" rel="noopener noreferrer">
-                  netgsm.com.tr
-                </a>
-                {' '}adresinden oluşturabilirsiniz. API bilgilerinizi "Ayarlar" → "API Bilgileri" bölümünden alabilirsiniz.
-              </Typography>
-            </Alert>
+            {provider === 'NETGSM' ? (
+              <>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    NetGSM Hesap Bilgileri
+                  </Typography>
+                  <Typography variant="body2">
+                    NetGSM hesabınızı{' '}
+                    <a href="https://www.netgsm.com.tr" target="_blank" rel="noopener noreferrer">
+                      netgsm.com.tr
+                    </a>
+                    {' '}adresinden oluşturabilirsiniz. API bilgilerinizi "Ayarlar" → "API Bilgileri" bölümünden alabilirsiniz.
+                  </Typography>
+                </Alert>
 
-            <Stack spacing={3}>
-              <TextField
-                label="Kullanıcı Kodu (Usercode)"
-                value={netgsmUsercode}
-                onChange={(e) => setNetgsmUsercode(e.target.value)}
-                fullWidth
-                placeholder="8501234567"
-                InputProps={{
-                  endAdornment: config?.netgsmUsercode && (
-                    <Chip label="Yapılandırıldı" size="small" color="success" />
-                  ),
-                }}
-              />
-
-              <TextField
-                label="API Şifresi (Password)"
-                value={netgsmPassword}
-                onChange={(e) => setNetgsmPassword(e.target.value)}
-                fullWidth
-                type={showPassword ? 'text' : 'password'}
-                placeholder={config?.hasNetgsmPassword ? '••••••••••••' : 'NetGSM API şifrenizi girin'}
-                InputProps={{
-                  endAdornment: (
-                    <Stack direction="row" spacing={1}>
-                      {config?.hasNetgsmPassword && (
+                <Stack spacing={3}>
+                  <TextField
+                    label="Kullanıcı Kodu (Usercode)"
+                    value={netgsmUsercode}
+                    onChange={(e) => setNetgsmUsercode(e.target.value)}
+                    fullWidth
+                    placeholder="8501234567"
+                    InputProps={{
+                      endAdornment: config?.netgsmUsercode && (
                         <Chip label="Yapılandırıldı" size="small" color="success" />
-                      )}
-                      <IconButton size="small" onClick={() => setShowPassword(!showPassword)}>
-                        {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
-                      </IconButton>
-                    </Stack>
-                  ),
-                }}
-                helperText="Şifre şifrelenmiş olarak saklanır"
-              />
+                      ),
+                    }}
+                  />
 
+                  <TextField
+                    label="API Şifresi (Password)"
+                    value={netgsmPassword}
+                    onChange={(e) => setNetgsmPassword(e.target.value)}
+                    fullWidth
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={config?.hasNetgsmPassword ? '••••••••••••' : 'NetGSM API şifrenizi girin'}
+                    InputProps={{
+                      endAdornment: (
+                        <Stack direction="row" spacing={1}>
+                          {config?.hasNetgsmPassword && (
+                            <Chip label="Yapılandırıldı" size="small" color="success" />
+                          )}
+                          <IconButton size="small" onClick={() => setShowPassword(!showPassword)}>
+                            {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                          </IconButton>
+                        </Stack>
+                      ),
+                    }}
+                    helperText="Şifre şifrelenmiş olarak saklanır"
+                  />
+
+                  <TextField
+                    label="Mesaj Başlığı (Sender ID)"
+                    value={netgsmMsgHeader}
+                    onChange={(e) => setNetgsmMsgHeader(e.target.value)}
+                    fullWidth
+                    placeholder="FIRMAADI"
+                    helperText="NetGSM panelinde tanımlı mesaj başlığınız"
+                    InputProps={{
+                      endAdornment: config?.netgsmMsgHeader && (
+                        <Chip label="Yapılandırıldı" size="small" color="success" />
+                      ),
+                    }}
+                  />
+                </Stack>
+              </>
+            ) : (
+              <>
+                <Alert severity="info" sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                    Twilio Hesap Bilgileri
+                  </Typography>
+                  <Typography variant="body2">
+                    Twilio hesabınızı{' '}
+                    <a href="https://console.twilio.com" target="_blank" rel="noopener noreferrer">
+                      console.twilio.com
+                    </a>
+                    {' '}adresinden oluşturabilirsiniz. Account SID ve Auth Token ana sayfada görünür.
+                  </Typography>
+                </Alert>
+
+                <Stack spacing={3}>
+                  <TextField
+                    label="Account SID"
+                    value={twilioAccountSid}
+                    onChange={(e) => setTwilioAccountSid(e.target.value)}
+                    fullWidth
+                    placeholder="AC..."
+                    InputProps={{
+                      endAdornment: config?.twilioAccountSid && (
+                        <Chip label="Yapılandırıldı" size="small" color="success" />
+                      ),
+                    }}
+                    helperText="Twilio Console ana sayfasında görünür"
+                  />
+
+                  <TextField
+                    label="Auth Token"
+                    value={twilioAuthToken}
+                    onChange={(e) => setTwilioAuthToken(e.target.value)}
+                    fullWidth
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder={config?.hasTwilioAuthToken ? '••••••••••••' : 'Twilio Auth Token'}
+                    InputProps={{
+                      endAdornment: (
+                        <Stack direction="row" spacing={1}>
+                          {config?.hasTwilioAuthToken && (
+                            <Chip label="Yapılandırıldı" size="small" color="success" />
+                          )}
+                          <IconButton size="small" onClick={() => setShowPassword(!showPassword)}>
+                            {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+                          </IconButton>
+                        </Stack>
+                      ),
+                    }}
+                    helperText="Token şifrelenmiş olarak saklanır"
+                  />
+
+                  <TextField
+                    label="Gönderen Numara (From Number)"
+                    value={twilioFromNumber}
+                    onChange={(e) => setTwilioFromNumber(e.target.value)}
+                    fullWidth
+                    placeholder="+1234567890"
+                    helperText="Twilio'dan aldığınız telefon numarası"
+                    InputProps={{
+                      endAdornment: config?.twilioFromNumber && (
+                        <Chip label="Yapılandırıldı" size="small" color="success" />
+                      ),
+                    }}
+                  />
+
+                  <TextField
+                    label="Verify Service SID (Opsiyonel)"
+                    value={twilioVerifyServiceSid}
+                    onChange={(e) => setTwilioVerifyServiceSid(e.target.value)}
+                    fullWidth
+                    placeholder="VA..."
+                    helperText="Twilio Verify servisi kullanacaksanız. Opsiyonel."
+                    InputProps={{
+                      endAdornment: config?.twilioVerifyServiceSid && (
+                        <Chip label="Yapılandırıldı" size="small" color="success" />
+                      ),
+                    }}
+                  />
+                </Stack>
+              </>
+            )}
+
+            {/* Test SMS */}
+            <Divider sx={{ my: 3 }} />
+            <Typography variant="subtitle1" fontWeight={600}>
+              Test SMS Gönder
+            </Typography>
+
+            <Stack direction="row" spacing={2} mt={2}>
               <TextField
-                label="Mesaj Başlığı (Sender ID)"
-                value={netgsmMsgHeader}
-                onChange={(e) => setNetgsmMsgHeader(e.target.value)}
-                fullWidth
-                placeholder="FIRMAADI"
-                helperText="NetGSM panelinde tanımlı mesaj başlığınız"
-                InputProps={{
-                  endAdornment: config?.netgsmMsgHeader && (
-                    <Chip label="Yapılandırıldı" size="small" color="success" />
-                  ),
-                }}
+                label="Telefon Numarası"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                placeholder="05XX XXX XX XX"
+                sx={{ flex: 1 }}
               />
-
-              {/* Test SMS */}
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1" fontWeight={600}>
-                Test SMS Gönder
-              </Typography>
-
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="Telefon Numarası"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  placeholder="05XX XXX XX XX"
-                  sx={{ flex: 1 }}
-                />
-                <TextField
-                  label="Mesaj (İsteğe bağlı)"
-                  value={testMessage}
-                  onChange={(e) => setTestMessage(e.target.value)}
-                  placeholder="Test mesajı"
-                  sx={{ flex: 2 }}
-                />
-                <Button
-                  variant="outlined"
-                  onClick={handleSendTestSms}
-                  disabled={!testPhone || testing}
-                  sx={{ minWidth: 120 }}
-                >
-                  {testing ? <CircularProgress size={20} /> : 'Gönder'}
-                </Button>
-              </Stack>
+              <TextField
+                label="Mesaj (İsteğe bağlı)"
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                placeholder="Test mesajı"
+                sx={{ flex: 2 }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleSendTestSms}
+                disabled={!testPhone || testing}
+                sx={{ minWidth: 120 }}
+              >
+                {testing ? <CircularProgress size={20} /> : 'Gönder'}
+              </Button>
             </Stack>
           </TabPanel>
 
