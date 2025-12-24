@@ -1087,6 +1087,7 @@ model HocaApplication {
   // Kişisel bilgiler
   name                String
   email               String?
+  passwordHash        String?               // Başvuru sırasında girilen şifre (onay sonrası User'a aktarılacak)
   bio                 String?               @db.Text
   avatarUrl           String?
 

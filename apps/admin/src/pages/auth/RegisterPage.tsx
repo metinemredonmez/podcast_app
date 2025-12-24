@@ -59,12 +59,13 @@ const userValidationSchema = yup.object({
 // Hoca validation schema
 const hocaValidationSchema = yup.object({
   name: yup.string().min(2, 'Ad en az 2 karakter olmalı').required('Ad gerekli'),
+  email: yup.string().email('Geçerli bir email girin').required('Email gerekli'),
   phone: yup
     .string()
     .matches(/^(\+90|0)?[0-9]{10}$/, 'Geçerli bir telefon numarası girin')
     .required('Telefon numarası gerekli'),
-  email: yup.string().email('Geçerli bir email girin'),
-  bio: yup.string().min(20, 'Kendinizi en az 20 karakterle tanıtın'),
+  password: yup.string().min(8, 'Şifre en az 8 karakter olmalı').required('Şifre gerekli'),
+  bio: yup.string(),
 });
 
 interface TabPanelProps {
@@ -160,8 +161,9 @@ const RegisterPage: React.FC = () => {
   const hocaFormik = useFormik({
     initialValues: {
       name: '',
-      phone: '',
       email: '',
+      phone: '',
+      password: '',
       bio: '',
       expertise: '',
       organization: '',
@@ -173,11 +175,12 @@ const RegisterPage: React.FC = () => {
       setError(null);
 
       try {
-        // Hoca başvurusu - onay bekleyecek
-        await apiClient.post('/auth/hoca-application/submit', {
-          applicationToken,
+        // Hoca başvurusu - tam kayıt formu ile
+        await apiClient.post('/auth/hoca-application', {
           name: values.name,
-          email: values.email || undefined,
+          email: values.email,
+          phone: values.phone,
+          password: values.password,
           bio: values.bio || undefined,
           expertise: values.expertise || undefined,
           organization: values.organization || undefined,
@@ -187,7 +190,7 @@ const RegisterPage: React.FC = () => {
         // Navigate to application pending page
         navigate('/application-pending', {
           state: {
-            phone: hocaFormik.values.phone,
+            phone: values.phone,
             name: values.name
           }
         });
@@ -507,14 +510,52 @@ const RegisterPage: React.FC = () => {
               Hoca başvuruları incelendikten sonra onaylanır. Onay sonrası size bilgi verilecektir.
             </Alert>
 
-            {/* Step 1: Phone Number */}
-            {phoneStep === 'phone' && (
+            <form onSubmit={hocaFormik.handleSubmit}>
               <Stack spacing={2.5}>
+                <TextField
+                  name="name"
+                  label="Ad Soyad"
+                  fullWidth
+                  required
+                  value={hocaFormik.values.name}
+                  onChange={hocaFormik.handleChange}
+                  onBlur={hocaFormik.handleBlur}
+                  error={hocaFormik.touched.name && Boolean(hocaFormik.errors.name)}
+                  helperText={hocaFormik.touched.name && hocaFormik.errors.name}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconUser size={20} style={{ color: '#666' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
+                <TextField
+                  name="email"
+                  label="Email Adresi"
+                  fullWidth
+                  required
+                  value={hocaFormik.values.email}
+                  onChange={hocaFormik.handleChange}
+                  onBlur={hocaFormik.handleBlur}
+                  error={hocaFormik.touched.email && Boolean(hocaFormik.errors.email)}
+                  helperText={hocaFormik.touched.email && hocaFormik.errors.email}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconMail size={20} style={{ color: '#666' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+
                 <TextField
                   name="phone"
                   label="Telefon Numarası"
                   placeholder="5XX XXX XX XX"
                   fullWidth
+                  required
                   value={hocaFormik.values.phone}
                   onChange={hocaFormik.handleChange}
                   onBlur={hocaFormik.handleBlur}
@@ -530,161 +571,85 @@ const RegisterPage: React.FC = () => {
                   }}
                 />
 
-                <Button
-                  variant="contained"
-                  size="large"
+                <TextField
+                  name="password"
+                  label="Şifre"
+                  type={showPassword ? 'text' : 'password'}
                   fullWidth
-                  onClick={handleSendCode}
-                  disabled={loading || !hocaFormik.values.phone}
-                  sx={{ py: 1.5, fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
-                >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Doğrulama Kodu Gönder'}
-                </Button>
-              </Stack>
-            )}
-
-            {/* Step 2: Verify Code */}
-            {phoneStep === 'code' && (
-              <Stack spacing={2.5}>
-                <Box sx={{ textAlign: 'center', mb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {hocaFormik.values.phone} numarasına gönderilen kodu girin
-                  </Typography>
-                </Box>
+                  required
+                  value={hocaFormik.values.password}
+                  onChange={hocaFormik.handleChange}
+                  onBlur={hocaFormik.handleBlur}
+                  error={hocaFormik.touched.password && Boolean(hocaFormik.errors.password)}
+                  helperText={hocaFormik.touched.password && hocaFormik.errors.password}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <IconLock size={20} style={{ color: '#666' }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                          {showPassword ? <IconEyeOff size={20} /> : <IconEye size={20} />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
 
                 <TextField
-                  label="Doğrulama Kodu"
-                  placeholder="XXXX"
+                  name="expertise"
+                  label="Uzmanlık Alanı (Opsiyonel)"
                   fullWidth
-                  value={verificationCode}
-                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  inputProps={{ maxLength: 6, style: { textAlign: 'center', letterSpacing: '0.5em', fontSize: '1.5rem' } }}
+                  placeholder="Örn: Kur'an-ı Kerim, Hadis, Fıkıh..."
+                  value={hocaFormik.values.expertise}
+                  onChange={hocaFormik.handleChange}
+                />
+
+                <TextField
+                  name="organization"
+                  label="Kurum / Görev Yeri (Opsiyonel)"
+                  fullWidth
+                  placeholder="Örn: Diyanet İşleri Başkanlığı"
+                  value={hocaFormik.values.organization}
+                  onChange={hocaFormik.handleChange}
+                />
+
+                <TextField
+                  name="position"
+                  label="Unvan / Pozisyon (Opsiyonel)"
+                  fullWidth
+                  placeholder="Örn: İmam-Hatip, Müftü, Vaiz..."
+                  value={hocaFormik.values.position}
+                  onChange={hocaFormik.handleChange}
+                />
+
+                <TextField
+                  name="bio"
+                  label="Kendinizi Tanıtın (Opsiyonel)"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={hocaFormik.values.bio}
+                  onChange={hocaFormik.handleChange}
+                  onBlur={hocaFormik.handleBlur}
+                  error={hocaFormik.touched.bio && Boolean(hocaFormik.errors.bio)}
+                  helperText={hocaFormik.touched.bio && hocaFormik.errors.bio || 'Eğitim, deneyim, yayınlar vb.'}
                 />
 
                 <Button
+                  type="submit"
                   variant="contained"
                   size="large"
                   fullWidth
-                  onClick={handleVerifyCode}
-                  disabled={loading || verificationCode.length < 4}
+                  disabled={loading || !hocaFormik.values.name || !hocaFormik.values.email || !hocaFormik.values.phone || !hocaFormik.values.password}
                   sx={{ py: 1.5, fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Doğrula'}
-                </Button>
-
-                <Button
-                  variant="text"
-                  onClick={() => setPhoneStep('phone')}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Numarayı Değiştir
+                  {loading ? <CircularProgress size={24} color="inherit" /> : 'Başvuruyu Gönder'}
                 </Button>
               </Stack>
-            )}
-
-            {/* Step 3: Details */}
-            {phoneStep === 'details' && (
-              <form onSubmit={hocaFormik.handleSubmit}>
-                <Stack spacing={2.5}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Chip
-                      icon={<IconCheck size={16} />}
-                      label={`${hocaFormik.values.phone} doğrulandı`}
-                      color="success"
-                      size="small"
-                    />
-                  </Box>
-
-                  <TextField
-                    name="name"
-                    label="Ad Soyad"
-                    fullWidth
-                    required
-                    value={hocaFormik.values.name}
-                    onChange={hocaFormik.handleChange}
-                    onBlur={hocaFormik.handleBlur}
-                    error={hocaFormik.touched.name && Boolean(hocaFormik.errors.name)}
-                    helperText={hocaFormik.touched.name && hocaFormik.errors.name}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconUser size={20} style={{ color: '#666' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-
-                  <TextField
-                    name="email"
-                    label="Email Adresi (Opsiyonel)"
-                    fullWidth
-                    value={hocaFormik.values.email}
-                    onChange={hocaFormik.handleChange}
-                    onBlur={hocaFormik.handleBlur}
-                    error={hocaFormik.touched.email && Boolean(hocaFormik.errors.email)}
-                    helperText={hocaFormik.touched.email && hocaFormik.errors.email}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <IconMail size={20} style={{ color: '#666' }} />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-
-                  <TextField
-                    name="expertise"
-                    label="Uzmanlık Alanı (Opsiyonel)"
-                    fullWidth
-                    placeholder="Örn: Kur'an-ı Kerim, Hadis, Fıkıh..."
-                    value={hocaFormik.values.expertise}
-                    onChange={hocaFormik.handleChange}
-                  />
-
-                  <TextField
-                    name="organization"
-                    label="Kurum / Görev Yeri (Opsiyonel)"
-                    fullWidth
-                    placeholder="Örn: Diyanet İşleri Başkanlığı"
-                    value={hocaFormik.values.organization}
-                    onChange={hocaFormik.handleChange}
-                  />
-
-                  <TextField
-                    name="position"
-                    label="Unvan / Pozisyon (Opsiyonel)"
-                    fullWidth
-                    placeholder="Örn: İmam-Hatip, Müftü, Vaiz..."
-                    value={hocaFormik.values.position}
-                    onChange={hocaFormik.handleChange}
-                  />
-
-                  <TextField
-                    name="bio"
-                    label="Kendinizi Tanıtın (Opsiyonel)"
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={hocaFormik.values.bio}
-                    onChange={hocaFormik.handleChange}
-                    onBlur={hocaFormik.handleBlur}
-                    error={hocaFormik.touched.bio && Boolean(hocaFormik.errors.bio)}
-                    helperText={hocaFormik.touched.bio && hocaFormik.errors.bio || 'Eğitim, deneyim, yayınlar vb.'}
-                  />
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    disabled={loading || !hocaFormik.values.name}
-                    sx={{ py: 1.5, fontWeight: 600, textTransform: 'none', borderRadius: 2 }}
-                  >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Başvuruyu Gönder'}
-                  </Button>
-                </Stack>
-              </form>
-            )}
+            </form>
           </TabPanel>
 
           {/* Login Link */}

@@ -92,6 +92,100 @@ export class HocaApplicationService {
   }
 
   /**
+   * Direct application submission (without OTP)
+   */
+  async submitDirectApplication(
+    data: {
+      name: string;
+      email: string;
+      phone: string;
+      password: string;
+      bio?: string;
+      expertise?: string;
+      organization?: string;
+      position?: string;
+    },
+    tenantId: string,
+  ): Promise<ApplicationResult> {
+    const normalizedPhone = this.normalizePhone(data.phone);
+
+    // Check if phone already has approved application or user
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          { email: data.email },
+        ],
+      },
+    });
+
+    if (existingUser) {
+      if (existingUser.email === data.email) {
+        throw new ConflictException('Bu email adresi zaten kayıtlı');
+      }
+      throw new ConflictException('Bu telefon numarası zaten kayıtlı');
+    }
+
+    // Check for pending application
+    const pendingApp = await this.prisma.hocaApplication.findFirst({
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          { email: data.email },
+        ],
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+    });
+
+    if (pendingApp) {
+      if (pendingApp.status === 'APPROVED') {
+        throw new ConflictException('Başvurunuz onaylandı. Giriş yapabilirsiniz.');
+      }
+      throw new ConflictException('Bu bilgiler ile bekleyen bir başvuru var');
+    }
+
+    // Delete rejected applications for same phone/email
+    await this.prisma.hocaApplication.deleteMany({
+      where: {
+        OR: [
+          { phone: normalizedPhone },
+          { email: data.email },
+        ],
+        status: 'REJECTED',
+      },
+    });
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    // Create application
+    const application = await this.prisma.hocaApplication.create({
+      data: {
+        tenantId,
+        phone: normalizedPhone,
+        phoneVerified: false, // Will be verified on approval
+        name: data.name,
+        email: data.email,
+        passwordHash,
+        bio: data.bio,
+        expertise: data.expertise,
+        organization: data.organization,
+        position: data.position,
+        status: 'PENDING',
+      },
+    });
+
+    this.logger.log(`New direct Hoca application: ${application.id} - ${data.name}`);
+
+    return {
+      success: true,
+      message: 'Başvurunuz alındı. Onay bekliyor.',
+      applicationId: application.id,
+      status: 'PENDING',
+    };
+  }
+
+  /**
    * Send OTP for Hoca application
    */
   async sendVerificationCode(phone: string, tenantId: string): Promise<SendCodeResult> {

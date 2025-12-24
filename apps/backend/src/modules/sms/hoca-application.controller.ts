@@ -15,32 +15,90 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { TenantId } from '../../common/decorators/tenant-id.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { IsString, IsEmail, IsOptional, MinLength } from 'class-validator';
 
 // DTO classes
 class SendCodeDto {
+  @IsString()
   phone: string;
 }
 
 class VerifyCodeDto {
+  @IsString()
   phone: string;
+
+  @IsString()
   code: string;
 }
 
 class SubmitApplicationDto {
+  @IsString()
   applicationToken: string;
+
+  @IsString()
   name: string;
+
+  @IsOptional()
+  @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsString()
   bio?: string;
+
+  @IsOptional()
+  @IsString()
   expertise?: string;
+
+  @IsOptional()
+  @IsString()
   organization?: string;
+
+  @IsOptional()
+  @IsString()
+  position?: string;
+}
+
+class DirectApplicationDto {
+  @IsString()
+  name: string;
+
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  phone: string;
+
+  @IsString()
+  @MinLength(6)
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsString()
+  expertise?: string;
+
+  @IsOptional()
+  @IsString()
+  organization?: string;
+
+  @IsOptional()
+  @IsString()
   position?: string;
 }
 
 class ApproveApplicationDto {
+  @IsOptional()
+  @IsString()
   notes?: string;
 }
 
 class RejectApplicationDto {
+  @IsString()
   reason: string;
 }
 
@@ -49,8 +107,23 @@ export class HocaApplicationController {
   constructor(private readonly hocaApplicationService: HocaApplicationService) {}
 
   /**
+   * Direct application submission (without OTP verification)
+   * POST /auth/hoca-application
+   */
+  @Public()
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  async submitDirectApplication(
+    @Body() dto: DirectApplicationDto,
+    @TenantId() tenantId: string,
+  ) {
+    return this.hocaApplicationService.submitDirectApplication(dto, tenantId);
+  }
+
+  /**
    * Step 1: Send verification code to phone
    */
+  @Public()
   @Post('send-code')
   @HttpCode(HttpStatus.OK)
   async sendCode(
@@ -63,6 +136,7 @@ export class HocaApplicationController {
   /**
    * Step 2: Verify the code
    */
+  @Public()
   @Post('verify-code')
   @HttpCode(HttpStatus.OK)
   async verifyCode(
@@ -75,6 +149,7 @@ export class HocaApplicationController {
   /**
    * Step 3: Submit application with details
    */
+  @Public()
   @Post('submit')
   @HttpCode(HttpStatus.CREATED)
   async submitApplication(@Body() dto: SubmitApplicationDto) {
@@ -91,6 +166,7 @@ export class HocaApplicationController {
   /**
    * Check application status by phone
    */
+  @Public()
   @Get('status/:phone')
   async checkStatus(@Param('phone') phone: string) {
     return this.hocaApplicationService.checkApplicationStatus(phone);

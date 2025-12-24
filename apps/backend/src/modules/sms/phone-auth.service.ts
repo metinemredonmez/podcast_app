@@ -72,9 +72,14 @@ export class PhoneAuthService {
     const twilioEnabled =
       !!smsConfig?.twilioAccountSid &&
       !!smsConfig?.twilioAuthToken &&
-      !!smsConfig?.twilioPhoneNumber;
+      !!smsConfig?.twilioFromNumber;
 
     const phoneEnabled = smsConfig?.isEnabled && (netgsmEnabled || twilioEnabled);
+
+    // Debug logging
+    this.logger.log(`getAuthProviders - tenantId: ${tenantId}`);
+    this.logger.log(`getAuthProviders - smsConfig: ${JSON.stringify(smsConfig)}`);
+    this.logger.log(`getAuthProviders - netgsmEnabled: ${netgsmEnabled}, twilioEnabled: ${twilioEnabled}, phoneEnabled: ${phoneEnabled}`);
 
     const googleEnabled =
       socialConfig?.googleEnabled &&

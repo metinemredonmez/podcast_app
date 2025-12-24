@@ -97,63 +97,63 @@ async function main(): Promise<void> {
   // Create multiple users with different roles
   const usersData = [
     {
-      email: 'editor1@podcast.dev',
+      email: 'admin1@podcast.dev',
       name: 'Ahmet Yılmaz',
-      role: UserRole.EDITOR,
+      role: UserRole.ADMIN,
       bio: 'İçerik editörü ve podcast moderatörü',
     },
     {
-      email: 'editor2@podcast.dev',
+      email: 'admin2@podcast.dev',
       name: 'Ayşe Demir',
-      role: UserRole.EDITOR,
+      role: UserRole.ADMIN,
       bio: 'Kıdemli içerik editörü',
     },
     {
-      email: 'creator1@podcast.dev',
+      email: 'hoca1@podcast.dev',
       name: 'Mehmet Kaya',
-      role: UserRole.CREATOR,
+      role: UserRole.HOCA,
       bio: 'Tarih ve kültür podcast içerik üreticisi',
     },
     {
-      email: 'creator2@podcast.dev',
+      email: 'hoca2@podcast.dev',
       name: 'Fatma Şahin',
-      role: UserRole.CREATOR,
+      role: UserRole.HOCA,
       bio: 'Din ve ahlak konularında içerik üreticisi',
     },
     {
-      email: 'creator3@podcast.dev',
+      email: 'hoca3@podcast.dev',
       name: 'Ali Özkan',
-      role: UserRole.CREATOR,
+      role: UserRole.HOCA,
       bio: 'Gençlik ve eğitim podcast yapımcısı',
     },
     {
-      email: 'listener1@podcast.dev',
+      email: 'user1@podcast.dev',
       name: 'Zeynep Arslan',
-      role: UserRole.LISTENER,
+      role: UserRole.USER,
       bio: 'Podcast meraklısı dinleyici',
     },
     {
-      email: 'listener2@podcast.dev',
+      email: 'user2@podcast.dev',
       name: 'Mustafa Çelik',
-      role: UserRole.LISTENER,
+      role: UserRole.USER,
       bio: 'Aktif podcast takipçisi',
     },
     {
-      email: 'listener3@podcast.dev',
+      email: 'user3@podcast.dev',
       name: 'Elif Yıldız',
-      role: UserRole.LISTENER,
+      role: UserRole.USER,
       bio: 'Düzenli dinleyici',
     },
     {
-      email: 'listener4@podcast.dev',
+      email: 'user4@podcast.dev',
       name: 'Burak Aydın',
-      role: UserRole.LISTENER,
+      role: UserRole.USER,
       bio: 'Yeni podcast keşfedici',
     },
     {
-      email: 'listener5@podcast.dev',
+      email: 'user5@podcast.dev',
       name: 'Selin Karaca',
-      role: UserRole.LISTENER,
+      role: UserRole.USER,
       bio: 'Podcast tutkunu',
     },
   ];
@@ -489,7 +489,7 @@ async function main(): Promise<void> {
 
   // ==================== FOLLOWS ====================
   console.log('❤️ Creating follows...');
-  const listeners = users.filter((u) => u.role === UserRole.LISTENER);
+  const listeners = users.filter((u) => u.role === UserRole.USER);
   let followCount = 0;
 
   for (const listener of listeners) {
@@ -868,8 +868,8 @@ async function main(): Promise<void> {
   console.log('👥 Creating podcast collaborators...');
   let collaboratorCount = 0;
 
-  const creators = users.filter((u) => u.role === UserRole.CREATOR);
-  const editors = users.filter((u) => u.role === UserRole.EDITOR);
+  const creators = users.filter((u) => u.role === UserRole.HOCA);
+  const editors = users.filter((u) => u.role === UserRole.ADMIN);
 
   // Her podcast için 1-2 collaborator ekle
   for (const podcast of publishedPodcasts.slice(0, 10)) {
