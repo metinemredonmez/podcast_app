@@ -56,8 +56,17 @@ export class S3Service {
     return this.client.putObject(this.bucket, key, body, undefined, meta);
   }
 
-  async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+  async getSignedUrl(key: string, expiresInSeconds = 604800): Promise<string> {
+    // Default: 7 days (604800 seconds) - maximum allowed by S3
     return this.client.presignedGetObject(this.bucket, key, expiresInSeconds);
+  }
+
+  /**
+   * Get public URL for a file (no expiration, requires public bucket policy)
+   */
+  getPublicUrl(key: string): string {
+    const endpoint = this.config.get<string>('storage.endpoint', 'http://localhost:9000');
+    return `${endpoint}/${this.bucket}/${key}`;
   }
 
   async deleteObject(key: string): Promise<void> {

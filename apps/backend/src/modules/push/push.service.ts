@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma.service';
 import { EncryptionService } from '../../common/encryption';
 import {
@@ -11,6 +11,8 @@ import {
   PushConfig,
   PushNotificationLog,
 } from '@prisma/client';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { CreatorBroadcastDto } from './dto';
 import {
   PushProvider,
   PushMessage,
@@ -273,6 +275,70 @@ export class PushService {
         errorMessage: result.error,
         sentAt: new Date(),
       },
+    });
+  }
+
+  async sendCreatorBroadcast(
+    actor: JwtPayload,
+    dto: CreatorBroadcastDto,
+  ): Promise<PushNotificationLog> {
+    if (!['CREATOR', 'HOCA', 'ADMIN', 'SUPER_ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only creators can send broadcast messages.');
+    }
+
+    const tenantId = actor.tenantId;
+    let podcastIds: string[] = [];
+
+    if (dto.podcastId) {
+      const podcast = await this.prisma.podcast.findFirst({
+        where: { id: dto.podcastId, tenantId },
+        select: { id: true, ownerId: true },
+      });
+
+      if (!podcast) {
+        throw new NotFoundException('Podcast not found.');
+      }
+
+      if (!['ADMIN', 'SUPER_ADMIN'].includes(actor.role) && podcast.ownerId !== actor.userId) {
+        throw new ForbiddenException('You do not have access to this podcast.');
+      }
+
+      podcastIds = [podcast.id];
+    } else {
+      const podcasts = await this.prisma.podcast.findMany({
+        where: { tenantId, ownerId: actor.userId },
+        select: { id: true },
+      });
+
+      podcastIds = podcasts.map((p) => p.id);
+    }
+
+    if (podcastIds.length === 0) {
+      throw new BadRequestException('No podcasts found to broadcast.');
+    }
+
+    const followers = await this.prisma.follow.findMany({
+      where: { tenantId, podcastId: { in: podcastIds } },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+
+    const userIds = followers
+      .map((f) => f.userId)
+      .filter((userId) => userId && userId !== actor.userId);
+
+    if (userIds.length === 0) {
+      throw new BadRequestException('No followers found for broadcast.');
+    }
+
+    return this.sendPush(tenantId, {
+      title: dto.title,
+      body: dto.body,
+      imageUrl: dto.imageUrl,
+      data: dto.data,
+      targetType: PushTargetType.USER_IDS,
+      userIds,
+      createdBy: actor.userId,
     });
   }
 

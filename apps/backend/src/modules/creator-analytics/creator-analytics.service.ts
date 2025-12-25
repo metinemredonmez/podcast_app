@@ -14,7 +14,7 @@ export class CreatorAnalyticsService {
 
   async getOverview(user: JwtPayload): Promise<CreatorOverviewDto> {
     // Only CREATOR role can access this
-    if (user.role !== UserRole.CREATOR && user.role !== UserRole.ADMIN) {
+    if (![UserRole.CREATOR, UserRole.ADMIN, UserRole.HOCA, UserRole.SUPER_ADMIN].includes(user.role)) {
       throw new ForbiddenException('Only creators can access creator analytics');
     }
 
@@ -61,7 +61,7 @@ export class CreatorAnalyticsService {
       FROM "ListeningProgress" lp
       INNER JOIN "Episode" e ON lp."episodeId" = e.id
       INNER JOIN "Podcast" p ON e."podcastId" = p.id
-      WHERE p."ownerId" = ${user.userId}::uuid
+      WHERE p."ownerId" = ${user.userId}::text
     `;
 
     const avgCompletionRate = completionStats[0]?.avg_completion ?? 0;
@@ -96,7 +96,7 @@ export class CreatorAnalyticsService {
       throw new NotFoundException('Podcast not found');
     }
 
-    if (podcast.ownerId !== user.userId && user.role !== UserRole.ADMIN) {
+    if (podcast.ownerId !== user.userId && ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role)) {
       throw new ForbiddenException('You do not have access to this podcast analytics');
     }
 
@@ -221,7 +221,7 @@ export class CreatorAnalyticsService {
       throw new NotFoundException('Episode not found');
     }
 
-    if (episode.podcast.ownerId !== user.userId && user.role !== UserRole.ADMIN) {
+    if (episode.podcast.ownerId !== user.userId && ![UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(user.role)) {
       throw new ForbiddenException('You do not have access to this episode analytics');
     }
 
@@ -294,5 +294,60 @@ export class CreatorAnalyticsService {
       })),
       totalComments,
     };
+  }
+
+  async getTopPodcasts(
+    user: JwtPayload,
+    limit = 5,
+  ): Promise<Array<{ id: string; title: string; plays: number; episodes: number; coverImageUrl?: string }>> {
+    if (![UserRole.CREATOR, UserRole.ADMIN, UserRole.HOCA, UserRole.SUPER_ADMIN].includes(user.role)) {
+      throw new ForbiddenException('Only creators can access creator analytics');
+    }
+
+    const playsByPodcast = await this.prisma.analyticsEvent.groupBy({
+      by: ['podcastId'],
+      where: {
+        eventType: 'PODCAST_PLAY',
+        podcastId: { not: null },
+        podcast: { ownerId: user.userId },
+      },
+      _count: { _all: true },
+      orderBy: {
+        _count: {
+          podcastId: 'desc',
+        },
+      },
+      take: limit,
+    });
+
+    const podcastIds = playsByPodcast.map((p) => p.podcastId).filter((id): id is string => id !== null);
+    if (podcastIds.length === 0) {
+      return [];
+    }
+
+    const podcasts = await this.prisma.podcast.findMany({
+      where: { id: { in: podcastIds } },
+      select: {
+        id: true,
+        title: true,
+        coverImageUrl: true,
+        _count: { select: { episodes: true } },
+      },
+    });
+
+    const podcastMap = new Map(podcasts.map((p) => [p.id, p]));
+
+    return playsByPodcast
+      .filter((p) => p.podcastId)
+      .map((p) => {
+        const podcast = podcastMap.get(p.podcastId as string);
+        return {
+          id: p.podcastId as string,
+          title: podcast?.title || 'Unknown',
+          coverImageUrl: podcast?.coverImageUrl,
+          plays: p._count._all,
+          episodes: podcast?._count.episodes || 0,
+        };
+      });
   }
 }

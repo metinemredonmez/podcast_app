@@ -19,7 +19,7 @@ export class AnalyticsController {
   constructor(private readonly service: AnalyticsService) {}
 
   @Get('dashboard')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get dashboard statistics (Admin only)' })
   @ApiResponse({ status: 200, description: 'Dashboard stats' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -29,7 +29,7 @@ export class AnalyticsController {
   }
 
   @Get('top-podcasts')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get top performing podcasts (Admin only)' })
   @ApiResponse({ status: 200, description: 'Top podcasts' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -39,14 +39,14 @@ export class AnalyticsController {
   }
 
   @Get('kpis')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get key performance indicators' })
   getKPIs(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: JwtPayload) {
     return this.service.getKPIs(from, to, user);
   }
 
   @Get('plays')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get plays over time' })
   getPlaysOverTime(
     @Query('from') from: string,
@@ -58,35 +58,35 @@ export class AnalyticsController {
   }
 
   @Get('users')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get user growth over time' })
   getUserGrowth(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: JwtPayload) {
     return this.service.getUserGrowth(from, to, user);
   }
 
   @Get('devices')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get device breakdown' })
   getDeviceBreakdown(@CurrentUser() user: JwtPayload) {
     return this.service.getDeviceBreakdown(user);
   }
 
   @Get('geography')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get geography distribution' })
   getGeography(@CurrentUser() user: JwtPayload) {
     return this.service.getGeography(user);
   }
 
   @Get('peak-hours')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Get peak listening hours' })
   getPeakHours(@CurrentUser() user: JwtPayload) {
     return this.service.getPeakListeningHours(user);
   }
 
   @Get('export/:format')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Export analytics data as CSV or JSON' })
   @ApiResponse({ status: 200, description: 'Export file' })
   async exportData(
@@ -125,7 +125,7 @@ export class AnalyticsController {
   }
 
   @Get('stats')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Aggregate analytics statistics by event type' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -152,7 +152,7 @@ export class AnalyticsController {
   }
 
   @Post()
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Create analytics event immediately' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -161,7 +161,7 @@ export class AnalyticsController {
   }
 
   @Post('queue')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Queue analytics event for asynchronous processing' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -170,7 +170,7 @@ export class AnalyticsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
   @ApiOperation({ summary: 'Delete analytics event' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })

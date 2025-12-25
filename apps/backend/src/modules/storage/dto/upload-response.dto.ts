@@ -6,7 +6,7 @@ export class UploadResponseDto {
   @IsString()
   readonly key!: string;
 
-  @ApiProperty({ description: 'Presigned download URL' })
+  @ApiProperty({ description: 'Public download URL (no expiration)' })
   @IsString()
   @IsUrl()
   readonly url!: string;
@@ -14,10 +14,6 @@ export class UploadResponseDto {
   @ApiProperty({ description: 'Name of the target bucket', example: 'podcast-app' })
   @IsString()
   readonly bucket!: string;
-
-  @ApiProperty({ description: 'URL expiry in seconds', example: 3600 })
-  @IsNumber()
-  readonly expiresIn!: number;
 
   @ApiPropertyOptional({ description: 'Size of the uploaded object in bytes', example: 1048576 })
   @IsOptional()

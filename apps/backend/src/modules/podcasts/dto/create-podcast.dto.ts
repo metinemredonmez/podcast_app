@@ -9,10 +9,14 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { MediaType, MediaQuality } from '../../../common/enums/prisma.enums';
+
+// Maksimum süre: 45 dakika = 2700 saniye
+const MAX_DURATION_SECONDS = 2700;
 
 export class CreatePodcastDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Defaults to current tenant when omitted' })
@@ -110,9 +114,10 @@ export class CreatePodcastDto {
   @IsString()
   thumbnailUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Duration in seconds' })
+  @ApiPropertyOptional({ description: 'Duration in seconds (max 45 minutes = 2700 seconds)', maximum: 2700 })
   @IsOptional()
   @IsNumber()
+  @Max(MAX_DURATION_SECONDS, { message: 'Maksimum süre 45 dakika (2700 saniye) olabilir' })
   duration?: number;
 
   // Metadata

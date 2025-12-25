@@ -16,6 +16,7 @@ interface JoinRoomResult {
 export class RoomManagerService {
   private readonly logger = new Logger(RoomManagerService.name);
   private readonly ROOM_CAPACITY = 20;
+  private readonly MAX_ROOMS = 10;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -71,6 +72,11 @@ export class RoomManagerService {
         where: { streamId },
         orderBy: { roomNumber: 'desc' },
       });
+
+      const currentRoomCount = await this.getRoomCount(streamId);
+      if (currentRoomCount >= this.MAX_ROOMS) {
+        throw new Error('Tüm odalar dolu. Lütfen daha sonra tekrar deneyin.');
+      }
 
       const newRoomNumber = (lastRoom?.roomNumber || 0) + 1;
       room = await this.createRoom(streamId, newRoomNumber);

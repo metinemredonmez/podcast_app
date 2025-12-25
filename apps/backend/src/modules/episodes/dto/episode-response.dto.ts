@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsDate,
   IsNumber,
@@ -44,9 +45,60 @@ export class EpisodeResponseDto {
   @IsNumber()
   duration!: number;
 
-  @ApiProperty()
+  @ApiProperty({ nullable: true })
+  @IsOptional()
   @IsString()
-  audioUrl!: string;
+  audioUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  audioMimeType!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  videoMimeType!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  youtubeUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  externalVideoUrl!: string | null;
+
+  @ApiProperty({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags!: string[];
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  quality!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl!: string | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  podcast?: {
+    id: string;
+    title: string;
+    coverImageUrl?: string | null;
+    mediaType?: string | null;
+  };
 
   @ApiProperty({ nullable: true })
   @IsOptional()
@@ -58,10 +110,23 @@ export class EpisodeResponseDto {
   @IsBoolean()
   isPublished!: boolean;
 
+  @ApiProperty()
+  @IsBoolean()
+  isExplicit!: boolean;
+
+  @ApiProperty()
+  @IsBoolean()
+  isFeatured!: boolean;
+
   @ApiProperty({ nullable: true })
   @IsOptional()
   @IsNumber()
   episodeNumber!: number | null;
+
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsNumber()
+  seasonNumber!: number | null;
 
   @ApiProperty()
   @Type(() => Date)

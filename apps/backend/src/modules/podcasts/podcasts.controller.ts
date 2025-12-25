@@ -3,6 +3,7 @@ import { PodcastsService } from './podcasts.service';
 import { CursorPaginationDto, PaginatedResponseDto } from '../../common/dto/cursor-pagination.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiCursorPaginatedResponse } from '../../common/decorators/api-paginated-response.decorator';
+import { NoCache } from '../../common/decorators/cache.decorator';
 import { CreatePodcastDto } from './dto/create-podcast.dto';
 import { UpdatePodcastDto } from './dto/update-podcast.dto';
 import { SearchPodcastsDto } from './dto/search-podcasts.dto';
@@ -28,6 +29,7 @@ export class PodcastsController {
   ) {}
 
   @Get()
+  @NoCache()
   @ApiOperation({ summary: 'List podcasts with cursor-based pagination' })
   @ApiQuery({ name: 'cursor', required: false, description: 'Base64-encoded id cursor' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max items to return (1-100)', schema: { default: 20 } })
@@ -61,6 +63,7 @@ export class PodcastsController {
   }
 
   @Get('search')
+  @NoCache()
   @ApiOperation({
     summary: 'Search and filter podcasts with cursor-based pagination',
     description: 'Search by title/description, filter by category, owner, and published status',
@@ -106,7 +109,7 @@ export class PodcastsController {
   }
 
   @Post()
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a podcast' })
   @ApiResponse({ status: 201, description: 'Podcast created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -117,7 +120,7 @@ export class PodcastsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast updated' })
@@ -134,7 +137,7 @@ export class PodcastsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
@@ -151,7 +154,7 @@ export class PodcastsController {
   }
 
   @Post(':id/publish')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Publish a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast published', type: PodcastResponseDto })
@@ -167,7 +170,7 @@ export class PodcastsController {
   }
 
   @Post(':id/unpublish')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Unpublish a podcast' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })
   @ApiResponse({ status: 200, description: 'Podcast unpublished', type: PodcastResponseDto })

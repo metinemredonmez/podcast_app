@@ -37,6 +37,9 @@ export class StreamResponseDto {
   @ApiPropertyOptional()
   description: string | null;
 
+  @ApiPropertyOptional({ description: 'Kategori bilgisi' })
+  category?: { id: string; name: string } | null;
+
   @ApiProperty({ type: String, enum: ['SCHEDULED', 'PREPARING', 'LIVE', 'PAUSED', 'ENDED', 'CANCELLED'] })
   status: LiveStreamStatusType;
 

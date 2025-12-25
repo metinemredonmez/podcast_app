@@ -35,7 +35,7 @@ export class StorageController {
   constructor(private readonly service: StorageService) {}
 
   @Post('upload')
-  @Roles(UserRole.ADMIN, UserRole.CREATOR)
+  @Roles(UserRole.ADMIN, UserRole.CREATOR, UserRole.HOCA)
   @ThrottleUpload()
   @ApiOperation({
     summary: 'Upload a file to object storage',
@@ -53,7 +53,6 @@ export class StorageController {
         file: { type: 'string', format: 'binary' },
         prefix: { type: 'string', example: 'covers', nullable: true },
         fileType: { type: 'string', enum: ['audio', 'image', 'video', 'document'], nullable: true },
-        expiresIn: { type: 'number', example: 3600, nullable: true },
       },
       required: ['file'],
     },
@@ -66,12 +65,10 @@ export class StorageController {
     @CurrentUser() user: JwtPayload,
     @Query('prefix') prefix?: string,
     @Query('fileType') fileType?: string,
-    @Query('expiresIn', new DefaultValuePipe(3600), ParseIntPipe) expiresIn?: number,
   ): Promise<UploadResponseDto> {
     const expectedFileType = fileType ? (fileType as FileCategory) : undefined;
     return this.service.uploadFile(file, { userId: user.sub, tenantId: user.tenantId, role: user.role }, {
       prefix,
-      expiresIn,
       expectedFileType,
     });
   }
@@ -90,7 +87,7 @@ export class StorageController {
   }
 
   @Delete('file/*key')
-  @Roles(UserRole.ADMIN, UserRole.CREATOR)
+  @Roles(UserRole.ADMIN, UserRole.CREATOR, UserRole.HOCA)
   @ApiOperation({ summary: 'Delete a file from object storage' })
   @ApiOkResponse({ type: DeleteObjectResponseDto })
   async deleteFile(

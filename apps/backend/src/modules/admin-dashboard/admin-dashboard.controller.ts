@@ -12,7 +12,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @ApiTags('Admin Dashboard')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA)
 @Controller('admin/dashboard')
 export class AdminDashboardController {
   constructor(private readonly service: AdminDashboardService) {}

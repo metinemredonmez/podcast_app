@@ -137,6 +137,9 @@ export class LiveStreamGateway
         },
       );
 
+      const room = await this.roomManager.getRooms(data.streamId);
+      const joinedRoom = room.find((r) => r.id === roomId);
+
       // Socket room'a katıl
       client.join(`stream:${data.streamId}`);
       client.join(`room:${roomId}`);
@@ -160,6 +163,8 @@ export class LiveStreamGateway
         roomNumber,
         hlsUrl: stream.hlsUrl,
         viewerCount,
+        roomCapacity: joinedRoom?.capacity ?? 20,
+        roomCurrentCount: joinedRoom?.currentCount ?? 0,
       };
     } catch (error: any) {
       this.logger.error(`Join stream error: ${error.message}`);

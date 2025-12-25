@@ -11,6 +11,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { FollowsService } from './follows.service';
 import { FollowDto } from './dto/follow.dto';
 import { ListFollowsDto } from './dto/list-follows.dto';
+import { ListFollowersDto } from './dto/list-followers.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -30,6 +31,14 @@ export class FollowsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   list(@Query() query: ListFollowsDto, @CurrentUser() user: JwtPayload) {
     return this.service.listByUser(query, user);
+  }
+
+  @Get('followers')
+  @Roles(UserRole.CREATOR, UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'List followers for creator podcasts' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  listFollowers(@Query() query: ListFollowersDto, @CurrentUser() user: JwtPayload) {
+    return this.service.listFollowers(query, user);
   }
 
   @Post()

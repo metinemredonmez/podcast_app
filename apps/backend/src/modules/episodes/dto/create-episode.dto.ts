@@ -9,10 +9,14 @@ import {
   IsUUID,
   IsUrl,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
+
+// Maksimum süre: 45 dakika = 2700 saniye
+const MAX_DURATION_SECONDS = 2700;
 
 export class CreateEpisodeDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Defaults to current tenant when omitted' })
@@ -52,15 +56,21 @@ export class CreateEpisodeDto {
   @MaxLength(2000)
   description?: string;
 
-  @ApiProperty({ minimum: 1, description: 'Duration in seconds' })
+  @ApiProperty({ minimum: 1, maximum: 2700, description: 'Duration in seconds (max 45 minutes = 2700 seconds)' })
   @IsInt()
   @Min(1)
+  @Max(MAX_DURATION_SECONDS, { message: 'Maksimum süre 45 dakika (2700 saniye) olabilir' })
   duration!: number;
 
   @ApiPropertyOptional({ description: 'Audio file URL (MP3, etc.)' })
   @IsOptional()
   @IsString()
   audioUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Audio MIME type' })
+  @IsOptional()
+  @IsString()
+  audioMimeType?: string;
 
   // Video support
   @ApiPropertyOptional({ description: 'Video file URL (MP4, etc.)' })

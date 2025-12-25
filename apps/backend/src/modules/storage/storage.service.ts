@@ -78,7 +78,8 @@ export class StorageService {
       });
     }
 
-    const url = await this.s3.getSignedUrl(key, expiresIn);
+    // Public URL döndür (süre sınırı yok)
+    const url = this.s3.getPublicUrl(key);
     const sizeBytes =
       typeof file.size === 'number'
         ? file.size
@@ -90,7 +91,6 @@ export class StorageService {
       key,
       url,
       bucket: this.s3.getBucket(),
-      expiresIn,
       sizeBytes,
       mimeType: contentType,
     };
@@ -187,7 +187,8 @@ export class StorageService {
       'x-amz-meta-uploader-id': actor.userId,
     });
 
-    const url = await this.s3.getSignedUrl(key, expiresIn);
+    // Public URL döndür (süre sınırı yok)
+    const url = this.s3.getPublicUrl(key);
 
     this.logger.log(`Stream upload completed: ${originalName}`);
 
@@ -195,7 +196,6 @@ export class StorageService {
       key,
       url,
       bucket: this.s3.getBucket(),
-      expiresIn,
       mimeType: contentType,
     };
   }

@@ -99,7 +99,7 @@ export class EpisodesController {
   }
 
   @Post()
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create an episode' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
@@ -108,7 +108,7 @@ export class EpisodesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update an episode' })
   @ApiResponse({ status: 200, description: 'Episode updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -123,7 +123,7 @@ export class EpisodesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.HOCA, UserRole.ADMIN)
+  @Roles(UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an episode' })
   @ApiQuery({ name: 'tenantId', required: false, description: 'Tenant override (admins only)' })

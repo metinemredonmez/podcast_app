@@ -26,6 +26,11 @@ export class UpdateEpisodeDto {
   @IsString()
   audioUrl?: string;
 
+  @ApiPropertyOptional({ description: 'Audio MIME type' })
+  @IsOptional()
+  @IsString()
+  audioMimeType?: string;
+
   // Video support
   @ApiPropertyOptional({ description: 'Video file URL (MP4, etc.)' })
   @IsOptional()

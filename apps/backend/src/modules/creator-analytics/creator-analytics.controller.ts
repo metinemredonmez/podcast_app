@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreatorAnalyticsService } from './creator-analytics.service';
 import {
@@ -16,7 +16,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 @ApiTags('Creator Analytics')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.CREATOR, UserRole.ADMIN)
+@Roles(UserRole.CREATOR, UserRole.ADMIN, UserRole.HOCA, UserRole.SUPER_ADMIN)
 @Controller('creator/analytics')
 export class CreatorAnalyticsController {
   constructor(private readonly service: CreatorAnalyticsService) {}
@@ -39,6 +39,13 @@ export class CreatorAnalyticsController {
     @CurrentUser() user: JwtPayload,
   ): Promise<PodcastAnalyticsDto> {
     return this.service.getPodcastAnalytics(podcastId, user);
+  }
+
+  @Get('top-podcasts')
+  @ApiOperation({ summary: 'Get creator top podcasts' })
+  @ApiResponse({ status: 200, description: 'Creator top podcasts' })
+  getTopPodcasts(@Query('limit') limit: string = '5', @CurrentUser() user: JwtPayload) {
+    return this.service.getTopPodcasts(user, parseInt(limit, 10));
   }
 
   @Get('episode/:episodeId')

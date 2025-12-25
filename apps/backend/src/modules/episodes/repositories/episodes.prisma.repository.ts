@@ -19,8 +19,18 @@ export class EpisodesPrismaRepository implements EpisodesRepository {
       take: limit + 1,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,
-      where: { tenantId },
+      where: tenantId ? { tenantId } : undefined,
       orderBy: { [orderBy]: orderDirection } as any,
+      include: {
+        podcast: {
+          select: {
+            id: true,
+            title: true,
+            coverImageUrl: true,
+            mediaType: true,
+          },
+        },
+      },
     });
     return rows as unknown as EpisodeModel[];
   }
@@ -29,7 +39,7 @@ export class EpisodesPrismaRepository implements EpisodesRepository {
     const { tenantId, cursor, limit, orderBy = 'publishedAt', orderDirection = 'desc', search, podcastId, isPublished } = options;
 
     // Build where clause
-    const where: any = { tenantId };
+    const where: any = tenantId ? { tenantId } : {};
 
     // Search filter (title OR description contains search term)
     if (search) {
@@ -55,13 +65,35 @@ export class EpisodesPrismaRepository implements EpisodesRepository {
       cursor: cursor ? { id: cursor } : undefined,
       where,
       orderBy: { [orderBy]: orderDirection } as any,
+      include: {
+        podcast: {
+          select: {
+            id: true,
+            title: true,
+            coverImageUrl: true,
+            mediaType: true,
+          },
+        },
+      },
     });
 
     return rows as unknown as EpisodeModel[];
   }
 
   async findById(id: string, tenantId: string): Promise<EpisodeModel | null> {
-    const episode = await this.prisma.episode.findFirst({ where: { id, tenantId } });
+    const episode = await this.prisma.episode.findFirst({
+      where: { id, tenantId },
+      include: {
+        podcast: {
+          select: {
+            id: true,
+            title: true,
+            coverImageUrl: true,
+            mediaType: true,
+          },
+        },
+      },
+    });
     return episode as EpisodeModel | null;
   }
 

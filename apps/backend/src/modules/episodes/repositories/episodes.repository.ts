@@ -9,16 +9,33 @@ export interface EpisodeModel {
   slug: string;
   description: string | null;
   duration: number;
-  audioUrl: string;
+  audioUrl: string | null;
+  audioMimeType: string | null;
+  videoUrl: string | null;
+  videoMimeType: string | null;
+  youtubeUrl: string | null;
+  externalVideoUrl: string | null;
+  tags: string[];
+  quality: string | null;
+  thumbnailUrl: string | null;
   isPublished: boolean;
   publishedAt: Date | null;
+  isExplicit: boolean;
+  isFeatured: boolean;
   episodeNumber: number | null;
+  seasonNumber: number | null;
   createdAt: Date;
   updatedAt: Date;
+  podcast?: {
+    id: string;
+    title: string;
+    coverImageUrl: string | null;
+    mediaType: string | null;
+  } | null;
 }
 
 export interface PaginationOptions {
-  tenantId: string;
+  tenantId?: string;
   cursor?: string;
   limit: number;
   orderBy?: keyof EpisodeModel;
@@ -39,10 +56,20 @@ export interface CreateEpisodeInput {
   slug: string;
   description?: string | null;
   duration: number;
-  audioUrl: string;
+  audioUrl?: string | null;
+  audioMimeType?: string | null;
+  videoUrl?: string | null;
+  videoMimeType?: string | null;
+  youtubeUrl?: string | null;
+  externalVideoUrl?: string | null;
+  tags?: string[];
+  quality?: string | null;
+  thumbnailUrl?: string | null;
   isPublished?: boolean;
   publishedAt?: Date | null;
   episodeNumber?: number | null;
+  seasonNumber?: number | null;
+  isFeatured?: boolean;
 }
 
 export interface UpdateEpisodeInput {
@@ -50,8 +77,19 @@ export interface UpdateEpisodeInput {
   description?: string | null;
   duration?: number;
   audioUrl?: string;
+  audioMimeType?: string | null;
+  videoUrl?: string | null;
+  videoMimeType?: string | null;
+  youtubeUrl?: string | null;
+  externalVideoUrl?: string | null;
+  tags?: string[];
+  quality?: string | null;
+  thumbnailUrl?: string | null;
   isPublished?: boolean;
   publishedAt?: Date | null;
+  episodeNumber?: number | null;
+  seasonNumber?: number | null;
+  isFeatured?: boolean;
 }
 
 export interface EpisodesRepository {

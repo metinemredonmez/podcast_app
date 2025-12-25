@@ -4,13 +4,16 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../../common/enums/prisma.enums';
 import { DashboardStatsDto } from './dto/dashboard-stats.dto';
 
+const isAdminRole = (role: UserRole): boolean =>
+  [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA].includes(role);
+
 @Injectable()
 export class AdminDashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getStats(user: JwtPayload): Promise<DashboardStatsDto> {
     // Only ADMIN can access dashboard stats
-    if (user.role !== UserRole.ADMIN) {
+    if (!isAdminRole(user.role)) {
       throw new ForbiddenException('Only administrators can access dashboard stats');
     }
 

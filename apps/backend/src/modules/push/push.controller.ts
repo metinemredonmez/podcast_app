@@ -35,8 +35,10 @@ import {
   SendPushDto,
   PushLogResponseDto,
   PushStatsResponseDto,
+  CreatorBroadcastDto,
 } from './dto';
 import { PushStatus } from '@prisma/client';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
 interface AuthRequest extends Request {
   user: { userId: string; tenantId: string; role: string };
@@ -205,18 +207,68 @@ export class PushController {
 
   @Post('send')
   @UseGuards(RolesGuard)
-  @Roles('ADMIN', 'EDITOR')
-  @ApiOperation({ summary: 'Send push notification (Admin/Editor only)' })
+  @Roles('ADMIN', 'SUPER_ADMIN', 'EDITOR', 'HOCA')
+  @ApiOperation({ summary: 'Send push notification (Admin/Super Admin/Editor/HOCA only)' })
   @ApiResponse({ status: 201, type: PushLogResponseDto })
   async sendPush(
     @Request() req: AuthRequest,
     @Body() dto: SendPushDto,
   ): Promise<PushLogResponseDto> {
-    const log = await this.pushService.sendPush(req.user.tenantId, {
-      ...dto,
-      scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
-      createdBy: req.user.userId,
-    });
+    let log;
+
+    if (req.user.role === 'HOCA') {
+      const actor = { ...req.user, sub: req.user.userId } as JwtPayload;
+      const podcastId =
+        typeof dto.data?.podcastId === 'string' && dto.data.podcastId.length > 0
+          ? dto.data.podcastId
+          : undefined;
+      log = await this.pushService.sendCreatorBroadcast(actor, {
+        title: dto.title,
+        body: dto.body,
+        imageUrl: dto.imageUrl,
+        data: dto.data,
+        podcastId,
+      });
+    } else {
+      log = await this.pushService.sendPush(req.user.tenantId, {
+        ...dto,
+        scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
+        createdBy: req.user.userId,
+      });
+    }
+
+    return {
+      id: log.id,
+      title: log.title,
+      body: log.body,
+      data: log.data as Record<string, unknown> | null,
+      targetType: log.targetType,
+      targetIds: log.targetIds,
+      totalRecipients: log.totalRecipients,
+      successCount: log.successCount,
+      failureCount: log.failureCount,
+      status: log.status,
+      providerMsgId: log.providerMsgId,
+      errorMessage: log.errorMessage,
+      sentAt: log.sentAt,
+      scheduledAt: log.scheduledAt,
+      createdAt: log.createdAt,
+    };
+  }
+
+  // ==================== CREATOR BROADCAST ====================
+
+  @Post('creator/broadcast')
+  @UseGuards(RolesGuard)
+  @Roles('CREATOR', 'HOCA', 'ADMIN', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Broadcast push notification to creator followers' })
+  @ApiResponse({ status: 201, type: PushLogResponseDto })
+  async broadcastToFollowers(
+    @Request() req: AuthRequest,
+    @Body() dto: CreatorBroadcastDto,
+  ): Promise<PushLogResponseDto> {
+    const actor = { ...req.user, sub: req.user.userId } as JwtPayload;
+    const log = await this.pushService.sendCreatorBroadcast(actor, dto);
 
     return {
       id: log.id,

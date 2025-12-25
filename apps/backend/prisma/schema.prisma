@@ -394,6 +394,7 @@ model Category {
   updatedAt   DateTime @updatedAt
 
   podcasts PodcastCategory[]
+  liveStreams LiveStream[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -1172,6 +1173,8 @@ model LiveStream {
   // Yayın bilgileri
   title           String
   description     String?          @db.Text
+  categoryId      String
+  category        Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   // Teknik bilgiler
   streamKey       String           @unique @default(cuid())
@@ -1186,6 +1189,7 @@ model LiveStream {
   startedAt       DateTime?
   endedAt         DateTime?
   duration        Int?             // Saniye cinsinden
+  maxDuration     Int              @default(2700) // Maksimum süre: 45 dakika = 2700 saniye
 
   // İstatistikler
   peakViewers     Int              @default(0)
@@ -1208,6 +1212,7 @@ model LiveStream {
   @@index([hostId])
   @@index([status, scheduledAt])
   @@index([status, startedAt])
+  @@index([categoryId])
 }
 
 // Canlı yayın odaları

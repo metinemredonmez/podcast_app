@@ -82,7 +82,7 @@ export class LiveStreamController {
    */
   @Post('streams')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yeni yayın oluştur' })
   async createStream(
@@ -90,7 +90,7 @@ export class LiveStreamController {
     @CurrentUser() user: any,
     @Headers('x-tenant-id') tenantId: string,
   ) {
-    return this.liveStreamService.createStream(user.sub, dto, tenantId);
+    return this.liveStreamService.createStream(user.sub, dto, user?.tenantId || tenantId);
   }
 
   /**
@@ -98,7 +98,7 @@ export class LiveStreamController {
    */
   @Post('streams/:id/start')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayını başlat' })
   async startStream(@Param('id') id: string, @CurrentUser() user: any) {
@@ -110,7 +110,7 @@ export class LiveStreamController {
    */
   @Post('streams/:id/pause')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayını duraklat' })
   async pauseStream(@Param('id') id: string, @CurrentUser() user: any) {
@@ -123,7 +123,7 @@ export class LiveStreamController {
    */
   @Post('streams/:id/resume')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayını devam ettir' })
   async resumeStream(@Param('id') id: string, @CurrentUser() user: any) {
@@ -136,7 +136,7 @@ export class LiveStreamController {
    */
   @Post('streams/:id/end')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayını bitir' })
   async endStream(@Param('id') id: string, @CurrentUser() user: any) {
@@ -149,7 +149,7 @@ export class LiveStreamController {
    */
   @Post('streams/:id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayını iptal et' })
   async cancelStream(@Param('id') id: string, @CurrentUser() user: any) {
@@ -162,7 +162,7 @@ export class LiveStreamController {
    */
   @Get('streams/:id/stats')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Yayın istatistikleri (Host için)' })
   async getStreamStats(@Param('id') id: string, @CurrentUser() user: any) {
@@ -174,7 +174,7 @@ export class LiveStreamController {
    */
   @Get('my-streams')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'CREATOR')
+  @Roles('ADMIN', 'CREATOR', 'SUPER_ADMIN', 'HOCA')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Kendi yayınlarımı listele' })
   @ApiQuery({ name: 'status', required: false, enum: ['SCHEDULED', 'PREPARING', 'LIVE', 'PAUSED', 'ENDED', 'CANCELLED'] })

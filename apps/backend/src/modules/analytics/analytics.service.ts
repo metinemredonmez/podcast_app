@@ -8,6 +8,9 @@ import { AnalyticsQueuePayload } from './interfaces/analytics-queue-payload.inte
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../../common/enums/prisma.enums';
 
+const isAdminRole = (role: UserRole): boolean =>
+  [UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.HOCA].includes(role);
+
 export interface AnalyticsStats {
   total: number;
   byEventType: Array<{
@@ -129,7 +132,7 @@ export class AnalyticsService {
     usersGrowth: number;
     playsGrowth: number;
   }> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access dashboard stats');
     }
 
@@ -187,7 +190,7 @@ export class AnalyticsService {
     limit: number,
     actor: JwtPayload,
   ): Promise<Array<{ id: string; title: string; plays: number; episodes: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access top podcasts');
     }
 
@@ -248,7 +251,7 @@ export class AnalyticsService {
     completionChange: number;
     subscribersChange: number;
   }> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -313,7 +316,7 @@ export class AnalyticsService {
     groupBy: 'hour' | 'day' | 'week' | 'month',
     actor: JwtPayload,
   ): Promise<Array<{ timestamp: string; value: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -347,7 +350,7 @@ export class AnalyticsService {
     to: string,
     actor: JwtPayload,
   ): Promise<Array<{ timestamp: string; value: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -376,7 +379,7 @@ export class AnalyticsService {
   }
 
   async getDeviceBreakdown(actor: JwtPayload): Promise<Array<{ device: string; count: number; percentage: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -402,7 +405,7 @@ export class AnalyticsService {
   }
 
   async getGeography(actor: JwtPayload): Promise<Array<{ country: string; countryCode: string; count: number; percentage: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -416,7 +419,7 @@ export class AnalyticsService {
   }
 
   async getPeakListeningHours(actor: JwtPayload): Promise<Array<{ hour: number; count: number }>> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can access analytics');
     }
 
@@ -450,7 +453,7 @@ export class AnalyticsService {
     dailyStats: any[];
     topPodcasts: any[];
   }> {
-    if (actor.role !== UserRole.ADMIN) {
+    if (!isAdminRole(actor.role)) {
       throw new ForbiddenException('Only administrators can export analytics');
     }
 
@@ -574,7 +577,7 @@ export class AnalyticsService {
     if (requestedTenantId === actor.tenantId) {
       return requestedTenantId;
     }
-    if (actor.role === UserRole.ADMIN) {
+    if (isAdminRole(actor.role)) {
       return requestedTenantId;
     }
     throw new ForbiddenException('Access to the requested tenant is not permitted.');

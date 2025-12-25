@@ -102,9 +102,13 @@ export class FavoritesService {
     if (dto.podcastId) {
       const podcast = await this.prisma.podcast.findUnique({
         where: { id: dto.podcastId },
+        select: { id: true, ownerId: true },
       });
       if (!podcast) {
         throw new NotFoundException('Podcast not found');
+      }
+      if (podcast.ownerId === user.userId) {
+        throw new BadRequestException('You cannot favorite your own podcast');
       }
     }
 
@@ -112,9 +116,18 @@ export class FavoritesService {
     if (dto.episodeId) {
       const episode = await this.prisma.episode.findUnique({
         where: { id: dto.episodeId },
+        select: {
+          id: true,
+          podcast: {
+            select: { ownerId: true },
+          },
+        },
       });
       if (!episode) {
         throw new NotFoundException('Episode not found');
+      }
+      if (episode.podcast?.ownerId === user.userId) {
+        throw new BadRequestException('You cannot favorite your own podcast');
       }
     }
 

@@ -6,9 +6,10 @@ import { HlsGeneratorService } from './services/hls-generator.service';
 import { RecordingService } from './services/recording.service';
 import { InfraModule } from '../../infra/infra.module';
 import { WsModule } from '../../ws/ws.module';
+import { S3Module } from '../../infra/s3/s3.module';
 
 @Module({
-  imports: [InfraModule, forwardRef(() => WsModule)],
+  imports: [InfraModule, forwardRef(() => WsModule), S3Module],
   controllers: [LiveStreamController],
   providers: [
     LiveStreamService,

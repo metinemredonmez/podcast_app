@@ -4,6 +4,8 @@ import { FollowDto } from './dto/follow.dto';
 import { ListFollowsDto } from './dto/list-follows.dto';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../../common/enums/prisma.enums';
+import { Prisma } from '@prisma/client';
+import { ListFollowersDto } from './dto/list-followers.dto';
 
 @Injectable()
 export class FollowsService {
@@ -74,6 +76,65 @@ export class FollowsService {
       skip,
       take: limit,
     });
+  }
+
+  async listFollowers(filter: ListFollowersDto, actor: JwtPayload) {
+    if (![UserRole.CREATOR, UserRole.HOCA, UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(actor.role)) {
+      throw new ForbiddenException('Only creators can access followers.');
+    }
+
+    const page = filter.page ?? 1;
+    const limit = filter.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const search = filter.search?.trim();
+
+    const where: Prisma.FollowWhereInput = {
+      tenantId: actor.tenantId,
+      podcast: {
+        ownerId: actor.userId,
+        ...(filter.podcastId ? { id: filter.podcastId } : {}),
+      },
+      ...(search
+        ? {
+            OR: [
+              { user: { name: { contains: search, mode: 'insensitive' } } },
+              { user: { email: { contains: search, mode: 'insensitive' } } },
+              { podcast: { title: { contains: search, mode: 'insensitive' } } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, data] = await Promise.all([
+      this.prisma.follow.count({ where }),
+      this.prisma.follow.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
+            },
+          },
+          podcast: {
+            select: {
+              id: true,
+              title: true,
+              coverImageUrl: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return { data, total, page, limit };
   }
 
   private resolveTenant(requested: string | undefined, actor: JwtPayload): string {
