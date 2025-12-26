@@ -63,10 +63,10 @@ const menuItems: MenuItem[] = [
   { id: 'dashboard', title: 'Dashboard', icon: IconLayoutDashboard, href: '/dashboard' },
   { id: 'analytics', title: 'Analitik', icon: IconChartBar, href: '/analytics', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  // Canlı Yayın - HOCA ve üstü
-  { id: 'nav-live', title: 'Live', subheader: 'Canlı Yayın', navlabel: true, icon: IconBroadcast, href: '', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
-  { id: 'live-streams', title: 'Yayınlar', icon: IconBroadcast, href: '/live', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
-  { id: 'live-broadcast', title: 'Yayın Başlat', icon: IconMicrophone, href: '/live/broadcast', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
+  // Canlı Yayın - herkes görebilir (USER sadece izleyebilir)
+  { id: 'nav-live', title: 'Live', subheader: 'Canlı Yayın', navlabel: true, icon: IconBroadcast, href: '' },
+  { id: 'live-streams', title: 'Yayınlar', icon: IconBroadcast, href: '/live' },
+  { id: 'live-broadcast', title: 'Yayın Başlat', icon: IconMicrophone, href: '/live/broadcast', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA', 'CREATOR'] },
 
   // İçerik Yönetimi - HOCA ve üstü
   { id: 'nav-content', title: 'Content', subheader: 'İçerik Yönetimi', navlabel: true, icon: IconMicrophone, href: '', roles: ['SUPER_ADMIN', 'ADMIN', 'HOCA'] },
@@ -86,21 +86,23 @@ const menuItems: MenuItem[] = [
   { id: 'comments', title: 'Yorumlar', icon: IconMessage, href: '/comments', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { id: 'reviews', title: 'Değerlendirmeler', icon: IconStar, href: '/reviews', roles: ['SUPER_ADMIN', 'ADMIN'] },
 
-  // Yönetim & Ayarlar - sadece ADMIN
-  { id: 'nav-settings', title: 'Settings', subheader: 'Yönetim & Ayarlar', navlabel: true, icon: IconSettings, href: '', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  // Yönetim & Ayarlar - sadece SUPER_ADMIN
+  { id: 'nav-settings', title: 'Settings', subheader: 'Yönetim & Ayarlar', navlabel: true, icon: IconSettings, href: '', roles: ['SUPER_ADMIN'] },
   { id: 'tenants', title: 'Tenantlar', icon: IconBuilding, href: '/tenants', roles: ['SUPER_ADMIN'] },
   { id: 'notifications', title: 'Bildirimler', icon: IconBell, href: '/notifications', roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings', roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth', roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms', roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { id: 'push-config', title: 'Push Detayları', icon: IconBell, href: '/push', roles: ['SUPER_ADMIN', 'ADMIN'] },
-  { id: 'push-logs', title: 'Push Logları', icon: IconHistory, href: '/push/logs', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { id: 'system-settings', title: 'Sistem Ayarları', icon: IconSettings, href: '/settings', roles: ['SUPER_ADMIN'] },
+  { id: 'social-auth', title: 'OAuth Detayları', icon: IconBrandGoogle, href: '/settings/social-auth', roles: ['SUPER_ADMIN'] },
+  { id: 'sms-config', title: 'SMS Detayları', icon: IconDeviceMobile, href: '/settings/sms', roles: ['SUPER_ADMIN'] },
+  { id: 'push-config', title: 'Push Detayları', icon: IconBell, href: '/push', roles: ['SUPER_ADMIN'] },
+  { id: 'push-logs', title: 'Push Logları', icon: IconHistory, href: '/push/logs', roles: ['SUPER_ADMIN'] },
 
   // Hesap & Kişisel - herkes görebilir
   { id: 'nav-profile', title: 'Profile', subheader: 'Hesap', navlabel: true, icon: IconUser, href: '' },
   { id: 'profile', title: 'Profilim', icon: IconUser, href: '/profile' },
   { id: 'my-history', title: 'Dinleme Geçmişi', icon: IconHistory, href: '/my-history' },
   { id: 'my-favorites', title: 'Favorilerim', icon: IconStar, href: '/my-favorites' },
+  { id: 'followers', title: 'Takipçilerim', icon: IconUsers, href: '/followers', roles: ['HOCA', 'CREATOR'] },
+  { id: 'broadcast', title: 'Toplu Mesaj', icon: IconBroadcast, href: '/broadcast', roles: ['HOCA', 'CREATOR', 'ADMIN', 'SUPER_ADMIN'] },
 ];
 
 const Sidebar: React.FC = () => {
@@ -115,8 +117,14 @@ const Sidebar: React.FC = () => {
 
   // Pending moderation count
   const [pendingCount, setPendingCount] = useState(0);
+  const canViewModeration = user?.role && ['SUPER_ADMIN', 'ADMIN'].includes(user.role);
 
   useEffect(() => {
+    if (!canViewModeration) {
+      setPendingCount(0);
+      return;
+    }
+
     const fetchPendingCount = async () => {
       try {
         const stats = await moderationService.getStats();
@@ -130,7 +138,7 @@ const Sidebar: React.FC = () => {
     // Refresh every 60 seconds
     const interval = setInterval(fetchPendingCount, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [canViewModeration]);
 
   const sidebarWidth = 270;
   const miniSidebarWidth = 87;

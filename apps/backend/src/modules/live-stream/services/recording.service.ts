@@ -7,9 +7,11 @@ import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
 
 interface RecordingProcess {
-  process: ChildProcess;
+  process: ChildProcess | null;
+  inputPath: string;
   outputPath: string;
   startTime: Date;
+  writeStream: fs.WriteStream | null;
 }
 
 interface RecordingResult {
@@ -43,55 +45,53 @@ export class RecordingService implements OnModuleDestroy {
   }
 
   /**
-   * Kayıt başlat
+   * Kayıt başlat - WebSocket üzerinden gelen ses verisini toplar
    */
   async startRecording(streamId: string): Promise<void> {
-    const stream = await this.prisma.liveStream.findUnique({
-      where: { id: streamId },
-    });
-
-    if (!stream?.hlsUrl) {
-      this.logger.error(`HLS URL bulunamadı: ${streamId}`);
+    if (this.activeRecordings.has(streamId)) {
+      this.logger.warn(`Recording already active for stream: ${streamId}`);
       return;
     }
 
+    const inputPath = path.join(this.tempDir, `${streamId}.webm`);
     const outputPath = path.join(this.tempDir, `${streamId}.mp3`);
 
-    // FFmpeg ile HLS'i MP3'e kaydet
-    const ffmpeg = spawn('ffmpeg', [
-      '-y',
-      '-i',
-      stream.hlsUrl,
-      '-c:a',
-      'libmp3lame',
-      '-b:a',
-      '128k',
-      '-ar',
-      '44100',
-      '-ac',
-      '2',
-      outputPath,
-    ]);
+    this.logger.log(`Creating recording files at: ${inputPath}`);
 
-    ffmpeg.stderr.on('data', (data) => {
-      this.logger.debug(`Recording FFmpeg [${streamId}]: ${data}`);
-    });
+    // WebM verisini yazmak için stream aç
+    const writeStream = fs.createWriteStream(inputPath);
 
-    ffmpeg.on('error', (err) => {
-      this.logger.error(`Recording error [${streamId}]: ${err.message}`);
-    });
-
-    ffmpeg.on('close', (code) => {
-      this.logger.log(`Recording FFmpeg closed [${streamId}] with code ${code}`);
+    writeStream.on('error', (err) => {
+      this.logger.error(`WriteStream error for ${streamId}: ${err.message}`);
     });
 
     this.activeRecordings.set(streamId, {
-      process: ffmpeg,
+      process: null,
+      inputPath,
       outputPath,
       startTime: new Date(),
+      writeStream,
     });
 
-    this.logger.log(`Recording started: ${streamId}`);
+    this.logger.log(`Recording started (collecting audio): ${streamId}, path: ${inputPath}`);
+  }
+
+  /**
+   * WebSocket'ten gelen ses verisini kaydet
+   */
+  writeAudioChunk(streamId: string, audioBuffer: Buffer): void {
+    const recording = this.activeRecordings.get(streamId);
+    if (!recording || !recording.writeStream) {
+      this.logger.warn(`No active recording for ${streamId}, cannot write audio chunk`);
+      return;
+    }
+
+    try {
+      recording.writeStream.write(audioBuffer);
+      this.logger.debug(`Wrote ${audioBuffer.length} bytes to recording ${streamId}`);
+    } catch (error) {
+      this.logger.error(`Failed to write audio chunk [${streamId}]: ${error}`);
+    }
   }
 
   /**
@@ -105,17 +105,76 @@ export class RecordingService implements OnModuleDestroy {
       return { cdnUrl: '', path: '', duration: 0 };
     }
 
-    // FFmpeg'i durdur
-    recording.process.kill('SIGTERM');
-
-    // İşlemin bitmesini bekle
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    const remotePath = `recordings/${streamId}.mp3`;
-    let cdnUrl = '';
     const duration = Math.floor(
       (Date.now() - recording.startTime.getTime()) / 1000,
     );
+
+    // WriteStream'i kapat
+    if (recording.writeStream) {
+      await new Promise<void>((resolve) => {
+        recording.writeStream!.end(() => resolve());
+      });
+    }
+
+    // WebM dosyası var mı kontrol et
+    if (!fs.existsSync(recording.inputPath)) {
+      this.logger.warn(`Input file not found: ${recording.inputPath}`);
+      this.activeRecordings.delete(streamId);
+      return { cdnUrl: '', path: '', duration };
+    }
+
+    const inputStats = fs.statSync(recording.inputPath);
+    if (inputStats.size < 1000) {
+      this.logger.warn(`Input file too small (${inputStats.size} bytes): ${recording.inputPath}`);
+      fs.unlinkSync(recording.inputPath);
+      this.activeRecordings.delete(streamId);
+      return { cdnUrl: '', path: '', duration };
+    }
+
+    this.logger.log(`Converting WebM to MP3: ${recording.inputPath} (${inputStats.size} bytes)`);
+
+    // FFmpeg ile WebM'i MP3'e dönüştür
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const ffmpeg = spawn('ffmpeg', [
+          '-y',
+          '-i', recording.inputPath,
+          '-c:a', 'libmp3lame',
+          '-b:a', '128k',
+          '-ar', '44100',
+          '-ac', '2',
+          recording.outputPath,
+        ]);
+
+        ffmpeg.stderr.on('data', (data) => {
+          this.logger.debug(`FFmpeg [${streamId}]: ${data}`);
+        });
+
+        ffmpeg.on('error', (err) => {
+          this.logger.error(`FFmpeg error [${streamId}]: ${err.message}`);
+          reject(err);
+        });
+
+        ffmpeg.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`FFmpeg exited with code ${code}`));
+          }
+        });
+      });
+    } catch (error) {
+      this.logger.error(`FFmpeg conversion failed [${streamId}]: ${error}`);
+      // WebM dosyasını temizle
+      if (fs.existsSync(recording.inputPath)) {
+        fs.unlinkSync(recording.inputPath);
+      }
+      this.activeRecordings.delete(streamId);
+      return { cdnUrl: '', path: '', duration };
+    }
+
+    const remotePath = `recordings/${streamId}.mp3`;
+    let cdnUrl = '';
 
     // S3'e yükle
     if (fs.existsSync(recording.outputPath)) {
@@ -124,10 +183,13 @@ export class RecordingService implements OnModuleDestroy {
         await this.s3.putObject(remotePath, buffer, 'audio/mpeg');
         cdnUrl = this.getCdnUrl(remotePath);
 
-        // Local dosyayı sil
+        // Local dosyaları sil
         fs.unlinkSync(recording.outputPath);
+        if (fs.existsSync(recording.inputPath)) {
+          fs.unlinkSync(recording.inputPath);
+        }
 
-        this.logger.log(`Recording uploaded: ${streamId} → ${cdnUrl}`);
+        this.logger.log(`Recording uploaded: ${streamId} → ${cdnUrl} (${duration}s)`);
       } catch (error) {
         this.logger.error(`Recording upload error [${streamId}]: ${error}`);
       }

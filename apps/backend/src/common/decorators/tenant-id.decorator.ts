@@ -8,7 +8,7 @@ export const TenantId = createParamDecorator(
       request.headers['x-tenant-id'] ||
       request.query?.tenantId ||
       request.body?.tenantId ||
-      '1b68c1de-15de-4889-95aa-7ab6b3093111'; // Default tenant
+      'c2e65cb4-f34f-4b28-a99c-752345736adb'; // Default tenant
     return tenantId;
   },
 );

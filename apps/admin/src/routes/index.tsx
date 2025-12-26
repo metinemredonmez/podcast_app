@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { AuthLayout, DashboardLayout } from '../layouts';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RoleGuard } from './RoleGuard';
 import { PageLoader, TablePageLoader } from '../components/common/PageLoader';
 
 // Lazy load pages for code splitting
@@ -22,6 +23,7 @@ import DashboardPage from '../pages/dashboard/DashboardPage';
 // Podcast pages
 const PodcastsPage = lazy(() => import('../pages/podcasts/PodcastsPage'));
 const CreatePodcastPage = lazy(() => import('../pages/podcasts/CreatePodcastPage'));
+const PodcastDetailPage = lazy(() => import('../pages/podcasts/PodcastDetailPage'));
 const EditPodcastPage = lazy(() => import('../pages/podcasts/EditPodcastPage'));
 
 // Episode pages
@@ -62,6 +64,8 @@ const SendNotificationPage = lazy(() => import('../pages/notifications/SendNotif
 const SystemSettingsPage = lazy(() => import('../pages/settings/SystemSettingsPage'));
 const PushConfigPage = lazy(() => import('../pages/push/PushConfigPage'));
 const PushLogsPage = lazy(() => import('../pages/push/PushLogsPage'));
+const FollowersPage = lazy(() => import('../pages/follows/FollowersPage'));
+const BroadcastPage = lazy(() => import('../pages/notifications/BroadcastPage'));
 const SocialAuthConfigPage = lazy(() => import('../pages/social-auth/SocialAuthConfigPage'));
 const SmsConfigPage = lazy(() => import('../pages/sms/SmsConfigPage'));
 
@@ -117,7 +121,8 @@ export const router = createBrowserRouter([
           // Podcasts
           { path: '/podcasts', element: <LazyTablePage component={PodcastsPage} /> },
           { path: '/podcasts/new', element: <LazyPage component={CreatePodcastPage} /> },
-          { path: '/podcasts/:id', element: <LazyPage component={EditPodcastPage} /> },
+          { path: '/podcasts/:id', element: <LazyPage component={PodcastDetailPage} /> },
+          { path: '/podcasts/:id/edit', element: <LazyPage component={EditPodcastPage} /> },
 
           // Episodes
           { path: '/episodes', element: <LazyTablePage component={EpisodesPage} /> },
@@ -136,6 +141,15 @@ export const router = createBrowserRouter([
           { path: '/profile', element: <LazyPage component={ProfilePage} /> },
           { path: '/my-history', element: <LazyPage component={MyHistoryPage} /> },
           { path: '/my-favorites', element: <LazyPage component={MyFavoritesPage} /> },
+          { path: '/followers', element: <LazyPage component={FollowersPage} /> },
+          {
+            path: '/broadcast',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN', 'ADMIN', 'HOCA', 'CREATOR']}>
+                <LazyPage component={BroadcastPage} />
+              </RoleGuard>
+            ),
+          },
 
           // Moderation
           { path: '/moderation', element: <LazyTablePage component={ModerationPage} /> },
@@ -153,12 +167,47 @@ export const router = createBrowserRouter([
           { path: '/notifications', element: <LazyTablePage component={NotificationsPage} /> },
           { path: '/notifications/send', element: <LazyPage component={SendNotificationPage} /> },
 
-          // Settings
-          { path: '/settings', element: <LazyPage component={SystemSettingsPage} /> },
-          { path: '/push', element: <LazyPage component={PushConfigPage} /> },
-          { path: '/push/logs', element: <LazyTablePage component={PushLogsPage} /> },
-          { path: '/settings/social-auth', element: <LazyPage component={SocialAuthConfigPage} /> },
-          { path: '/settings/sms', element: <LazyPage component={SmsConfigPage} /> },
+          // Settings (SUPER_ADMIN only)
+          {
+            path: '/settings',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN']}>
+                <LazyPage component={SystemSettingsPage} />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: '/push',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN']}>
+                <LazyPage component={PushConfigPage} />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: '/push/logs',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN']}>
+                <LazyTablePage component={PushLogsPage} />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: '/settings/social-auth',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN']}>
+                <LazyPage component={SocialAuthConfigPage} />
+              </RoleGuard>
+            ),
+          },
+          {
+            path: '/settings/sms',
+            element: (
+              <RoleGuard roles={['SUPER_ADMIN']}>
+                <LazyPage component={SmsConfigPage} />
+              </RoleGuard>
+            ),
+          },
 
           // Live Streaming
           { path: '/live', element: <LazyTablePage component={LiveStreamsPage} /> },

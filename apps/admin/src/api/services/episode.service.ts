@@ -34,14 +34,14 @@ export interface Episode {
     id: string;
     title: string;
     coverImageUrl?: string;
+    mediaType?: 'AUDIO' | 'VIDEO';
   };
 }
 
 export interface EpisodeListResponse {
   data: Episode[];
-  total: number;
-  page: number;
-  limit: number;
+  nextCursor?: string;
+  hasMore: boolean;
 }
 
 export interface CreateEpisodeDto {
@@ -72,6 +72,7 @@ export interface UpdateEpisodeDto {
   title?: string;
   description?: string;
   audioUrl?: string;
+  audioMimeType?: string;
   duration?: number;
   // Video support
   videoUrl?: string;
@@ -99,22 +100,29 @@ export const episodeService = {
     status?: string;
   }): Promise<EpisodeListResponse> {
     const response = await apiClient.get('/episodes', { params });
-    return response.data;
+    const payload = response.data;
+    if (payload && typeof payload === 'object' && 'data' in payload) {
+      const paginated = payload as EpisodeListResponse & { page?: number; total?: number };
+      if (paginated.hasMore !== undefined || paginated.nextCursor !== undefined || paginated.total !== undefined || paginated.page !== undefined) {
+        return paginated;
+      }
+    }
+    return (payload?.data ?? payload) as EpisodeListResponse;
   },
 
   async get(id: string): Promise<Episode> {
     const response = await apiClient.get(`/episodes/${id}`);
-    return response.data;
+    return (response.data?.data ?? response.data) as Episode;
   },
 
   async create(data: CreateEpisodeDto): Promise<Episode> {
     const response = await apiClient.post('/episodes', data);
-    return response.data;
+    return (response.data?.data ?? response.data) as Episode;
   },
 
   async update(id: string, data: UpdateEpisodeDto): Promise<Episode> {
     const response = await apiClient.patch(`/episodes/${id}`, data);
-    return response.data;
+    return (response.data?.data ?? response.data) as Episode;
   },
 
   async delete(id: string): Promise<void> {
@@ -123,6 +131,6 @@ export const episodeService = {
 
   async getByPodcast(podcastId: string): Promise<Episode[]> {
     const response = await apiClient.get(`/podcasts/${podcastId}/episodes`);
-    return response.data;
+    return (response.data?.data ?? response.data) as Episode[];
   },
 };

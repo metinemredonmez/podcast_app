@@ -25,20 +25,21 @@ import { apiClient } from '../../api/client';
 interface HistoryItem {
   id: string;
   episodeId: string;
+  progressSeconds: number;
+  progressPercentage: number;
+  completed: boolean;
+  lastPlayedAt: string;
   episode: {
     id: string;
     title: string;
+    slug: string;
     duration: number;
-    coverImage?: string;
-    podcast: {
-      id: string;
-      title: string;
-      coverImage?: string;
-    };
+    audioUrl?: string;
+    coverImageUrl?: string;
+    podcastId: string;
+    podcastTitle: string;
+    podcastSlug: string;
   };
-  progress: number;
-  completedAt?: string;
-  lastPlayedAt: string;
 }
 
 const formatDuration = (seconds: number): string => {
@@ -72,15 +73,10 @@ const MyHistoryPage: React.FC = () => {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.get('/users/me/history?limit=50');
-        setHistory(response.data.data || response.data || []);
+        const response = await apiClient.get('/progress/history/recently-played?limit=50');
+        setHistory(response.data.items || []);
       } catch (err: any) {
-        // API henüz yoksa boş göster
-        if (err?.response?.status === 404) {
-          setHistory([]);
-        } else {
-          setError('Dinleme geçmişi yüklenirken bir hata oluştu');
-        }
+        setError('Dinleme geçmişi yüklenirken bir hata oluştu');
       } finally {
         setLoading(false);
       }
@@ -91,8 +87,10 @@ const MyHistoryPage: React.FC = () => {
 
   const handleRemoveFromHistory = async (id: string) => {
     try {
-      await apiClient.delete(`/users/me/history/${id}`);
-      setHistory(history.filter(item => item.id !== id));
+      const item = history.find((entry) => entry.id === id);
+      if (!item) return;
+      await apiClient.delete(`/progress/${item.episodeId}`);
+      setHistory(history.filter((entry) => entry.id !== id));
     } catch {
       // Silme başarısız
     }
@@ -189,7 +187,7 @@ const MyHistoryPage: React.FC = () => {
                   {/* Cover Image */}
                   <Avatar
                     variant="rounded"
-                    src={item.episode?.coverImage || item.episode?.podcast?.coverImage}
+                    src={item.episode?.coverImageUrl}
                     sx={{ width: 80, height: 80 }}
                   >
                     <IconHeadphones size={32} />
@@ -201,14 +199,14 @@ const MyHistoryPage: React.FC = () => {
                       {item.episode?.title || 'Bilinmeyen Bölüm'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" noWrap>
-                      {item.episode?.podcast?.title || 'Bilinmeyen Podcast'}
+                      {item.episode?.podcastTitle || 'Bilinmeyen Podcast'}
                     </Typography>
 
                     {/* Progress Bar */}
                     <Box mt={1.5}>
                       <Stack direction="row" justifyContent="space-between" mb={0.5}>
                         <Typography variant="caption" color="text.secondary">
-                          {item.completedAt ? 'Tamamlandı' : `%${Math.round(item.progress)} dinlendi`}
+                          {item.completed ? 'Tamamlandı' : `%${Math.round(item.progressPercentage)} dinlendi`}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                           {formatDuration(item.episode?.duration || 0)}
@@ -216,14 +214,14 @@ const MyHistoryPage: React.FC = () => {
                       </Stack>
                       <LinearProgress
                         variant="determinate"
-                        value={item.completedAt ? 100 : item.progress}
+                        value={item.completed ? 100 : item.progressPercentage}
                         sx={{
                           height: 6,
                           borderRadius: 3,
                           bgcolor: theme.palette.grey[200],
                           '& .MuiLinearProgress-bar': {
                             borderRadius: 3,
-                            bgcolor: item.completedAt ? theme.palette.success.main : theme.palette.primary.main,
+                            bgcolor: item.completed ? theme.palette.success.main : theme.palette.primary.main,
                           },
                         }}
                       />
@@ -238,7 +236,7 @@ const MyHistoryPage: React.FC = () => {
                         variant="outlined"
                         sx={{ height: 24 }}
                       />
-                      {item.completedAt && (
+                      {item.completed && (
                         <Chip
                           label="Tamamlandı"
                           size="small"

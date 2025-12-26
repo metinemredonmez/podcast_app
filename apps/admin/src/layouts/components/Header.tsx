@@ -46,7 +46,7 @@ const Header: React.FC = () => {
   const { user, logout } = useAuth();
 
   // Admin rolleri kontrolü
-  const isAdmin = user?.role && ['SUPER_ADMIN', 'ADMIN', 'HOCA'].includes(user.role);
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
 
   const toggleTheme = () => {
     setActiveMode(activeMode === 'light' ? 'dark' : 'light');
@@ -257,7 +257,7 @@ const Header: React.FC = () => {
                     <IconUser size={18} style={{ marginRight: 8 }} />
                     Profil
                   </MuiMenuItem>
-                  {isAdmin && (
+                  {isSuperAdmin && (
                     <MuiMenuItem onClick={() => { setProfileOpen(false); navigate('/settings'); }}>
                       <IconSettings size={18} style={{ marginRight: 8 }} />
                       Ayarlar

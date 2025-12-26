@@ -15,6 +15,16 @@ import {
   Tabs,
   IconButton,
   Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Paper,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   IconBroadcast,
@@ -25,6 +35,9 @@ import {
   IconPlus,
   IconHistory,
   IconRefresh,
+  IconDotsVertical,
+  IconDownload,
+  IconTrash,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../api/client';
@@ -40,6 +53,10 @@ interface Stream {
   title: string;
   description: string | null;
   status: string;
+  category?: {
+    id: string;
+    name: string;
+  } | null;
   host: StreamHost;
   hlsUrl: string | null;
   viewerCount: number;
@@ -74,6 +91,10 @@ const LiveStreamsPage: React.FC = () => {
   const [pastStreams, setPastStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
   const fetchStreams = async () => {
     setLoading(true);
@@ -186,7 +207,10 @@ const LiveStreamsPage: React.FC = () => {
           </Typography>
         )}
 
-        <Stack direction="row" spacing={3}>
+        <Stack direction="row" spacing={2} flexWrap="wrap">
+          {stream.category?.name && (
+            <Chip size="small" label={stream.category.name} variant="outlined" />
+          )}
           {stream.status === 'LIVE' && (
             <Stack direction="row" alignItems="center" spacing={0.5}>
               <IconUsers size={16} />
@@ -240,6 +264,39 @@ const LiveStreamsPage: React.FC = () => {
       </Typography>
     </Box>
   );
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, stream: Stream) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedStream(stream);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedStream(null);
+  };
+
+  const handleChangePage = (_: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleDeleteStream = async (streamId: string) => {
+    if (!window.confirm('Bu yayını silmek istediğinize emin misiniz?')) {
+      return;
+    }
+    try {
+      await apiClient.delete(`/live/streams/${streamId}`);
+      setPastStreams((prev) => prev.filter((s) => s.id !== streamId));
+      handleMenuClose();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Silme işlemi başarısız';
+      setError(message);
+    }
+  };
 
   return (
     <Box>
@@ -343,28 +400,172 @@ const LiveStreamsPage: React.FC = () => {
         )}
       </TabPanel>
 
-      {/* Geçmiş Yayınlar */}
+      {/* Geçmiş Yayınlar - Tablo Formatı */}
       <TabPanel value={tabValue} index={2}>
         {loading ? (
-          <Grid container spacing={3}>
-            {[1, 2, 3, 4].map((i) => (
-              <Grid item xs={12} md={6} lg={4} key={i}>
-                <Skeleton variant="rectangular" height={180} sx={{ borderRadius: 2 }} />
-              </Grid>
+          <Box>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} variant="rectangular" height={60} sx={{ borderRadius: 1, mb: 1 }} />
             ))}
-          </Grid>
+          </Box>
         ) : pastStreams.length === 0 ? (
           <EmptyState message="Henüz kaydedilmiş yayın yok" icon={IconHistory} />
         ) : (
-          <Grid container spacing={3}>
-            {pastStreams.map((stream) => (
-              <Grid item xs={12} md={6} lg={4} key={stream.id}>
-                <StreamCard stream={stream} showStatus />
-              </Grid>
-            ))}
-          </Grid>
+          <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Yayın</TableCell>
+                    <TableCell>Kategori</TableCell>
+                    <TableCell>Süre</TableCell>
+                    <TableCell>Tarih</TableCell>
+                    <TableCell>Durum</TableCell>
+                    <TableCell align="right">İşlemler</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pastStreams
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((stream) => (
+                      <TableRow
+                        key={stream.id}
+                        hover
+                        onClick={() => stream.recordingUrl && navigate(`/live/${stream.id}`)}
+                        sx={{
+                          '&:last-child td, &:last-child th': { border: 0 },
+                          cursor: stream.recordingUrl ? 'pointer' : 'default',
+                          opacity: stream.recordingUrl ? 1 : 0.7,
+                        }}
+                      >
+                        <TableCell>
+                          <Stack direction="row" spacing={2} alignItems="center">
+                            <Avatar
+                              src={stream.host?.avatarUrl || ''}
+                              sx={{ width: 40, height: 40, bgcolor: 'primary.main' }}
+                            >
+                              {stream.host?.name?.[0]}
+                            </Avatar>
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight={600}>
+                                {stream.title}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {stream.host?.name}
+                              </Typography>
+                            </Box>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          {stream.category?.name ? (
+                            <Chip
+                              label={stream.category.name}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <IconClock size={16} />
+                            <Typography variant="body2">
+                              {formatDuration(stream.duration)}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">
+                            {formatDate(stream.endedAt)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label="Sona Erdi"
+                            size="small"
+                            color="default"
+                          />
+                        </TableCell>
+                        <TableCell align="right">
+                          <Stack direction="row" spacing={1} justifyContent="flex-end" alignItems="center">
+                            {stream.recordingUrl ? (
+                              <Tooltip title="Kaydı Dinle">
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/live/${stream.id}`);
+                                  }}
+                                >
+                                  <IconPlayerPlay size={18} />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              <Typography variant="caption" color="text.disabled">
+                                Kayıt yok
+                              </Typography>
+                            )}
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMenuOpen(e, stream);
+                              }}
+                            >
+                              <IconDotsVertical size={18} />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={pastStreams.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              labelRowsPerPage="Sayfa başına:"
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+            />
+          </Paper>
         )}
       </TabPanel>
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        {selectedStream?.recordingUrl && (
+          <MenuItem
+            onClick={() => {
+              window.open(selectedStream.recordingUrl!, '_blank');
+              handleMenuClose();
+            }}
+          >
+            <IconDownload size={18} style={{ marginRight: 8 }} />
+            İndir
+          </MenuItem>
+        )}
+        <MenuItem
+          onClick={() => {
+            if (selectedStream) {
+              handleDeleteStream(selectedStream.id);
+            }
+          }}
+          sx={{ color: 'error.main' }}
+        >
+          <IconTrash size={18} style={{ marginRight: 8 }} />
+          Sil
+        </MenuItem>
+      </Menu>
     </Box>
   );
 };

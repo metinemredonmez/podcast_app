@@ -94,7 +94,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
             displayEmpty
           >
             <MenuItem value="">
-              <em>All</em>
+              <em>Tumu</em>
             </MenuItem>
             {definition.options?.map((option) => (
               <MenuItem key={option.value} value={option.value}>
@@ -160,7 +160,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Stack spacing={2}>
               <DatePicker
-                label="From"
+                label="Baslangic"
                 value={dateRangeValue.from ? new Date(dateRangeValue.from) : null}
                 onChange={(date) =>
                   onFilterChange(definition.key, {
@@ -171,7 +171,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 slotProps={{ textField: { size: 'small', fullWidth: true } }}
               />
               <DatePicker
-                label="To"
+                label="Bitis"
                 value={dateRangeValue.to ? new Date(dateRangeValue.to) : null}
                 onChange={(date) =>
                   onFilterChange(definition.key, {
@@ -217,7 +217,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Stack direction="row" alignItems="center" spacing={1}>
               <IconFilter size={20} />
-              <Typography variant="h6">Filters</Typography>
+              <Typography variant="h6">Filtreler</Typography>
               {activeFilterCount > 0 && (
                 <Chip label={activeFilterCount} size="small" color="primary" />
               )}
@@ -238,7 +238,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
               endIcon={<IconChevronDown size={16} />}
               onClick={(e) => setSavedFiltersAnchorEl(e.currentTarget)}
             >
-              Load Saved Filter
+              Kayitli Filtreler
             </Button>
             <Menu
               anchorEl={savedFiltersAnchorEl}
@@ -298,14 +298,14 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   onClick={() => setSaveDialogOpen(true)}
                   disabled={activeFilterCount === 0}
                 >
-                  Save Filter
+                  Filtre Kaydet
                 </Button>
                 <Stack direction="row" spacing={1}>
                   <Button fullWidth variant="outlined" size="small" onClick={onReset}>
-                    Reset
+                    Sifirla
                   </Button>
                   <Button fullWidth variant="contained" size="small" onClick={onClose}>
-                    Apply
+                    Uygula
                   </Button>
                 </Stack>
               </>
@@ -314,7 +314,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Filter name"
+                  placeholder="Filtre adi"
                   value={filterName}
                   onChange={(e) => setFilterName(e.target.value)}
                   autoFocus
@@ -329,7 +329,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       setFilterName('');
                     }}
                   >
-                    Cancel
+                    Iptal
                   </Button>
                   <Button
                     fullWidth
@@ -338,7 +338,7 @@ export const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     onClick={handleSaveFilter}
                     disabled={!filterName.trim()}
                   >
-                    Save
+                    Kaydet
                   </Button>
                 </Stack>
               </>

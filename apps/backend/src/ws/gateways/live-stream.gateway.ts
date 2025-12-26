@@ -15,6 +15,7 @@ import { StreamingSession, LiveStreamStatus } from '@prisma/client';
 import { RoomManagerService } from '../../modules/live-stream/services/room-manager.service';
 import { LiveStreamService } from '../../modules/live-stream/live-stream.service';
 import { HlsGeneratorService } from '../../modules/live-stream/services/hls-generator.service';
+import { RecordingService } from '../../modules/live-stream/services/recording.service';
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
   .split(',')
@@ -46,6 +47,8 @@ export class LiveStreamGateway
     private readonly streamService: LiveStreamService,
     @Inject(forwardRef(() => HlsGeneratorService))
     private readonly hlsGenerator: HlsGeneratorService,
+    @Inject(forwardRef(() => RecordingService))
+    private readonly recordingService: RecordingService,
   ) {}
 
   afterInit() {
@@ -256,23 +259,74 @@ export class LiveStreamGateway
   }
 
   /**
-   * Ses verisi gönder (Hoca → Server → HLS)
+   * Gerçek zamanlı ses verisi (Hoca → Server → Dinleyiciler)
+   * Twitter Spaces / Clubhouse tarzı anlık ses akışı
+   * Raw PCM Int16 formatında gönderiliyor
    */
-  @UseGuards(WsAuthGuard)
   @SubscribeMessage('audio-data')
   async handleAudioData(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { streamId: string; audioBuffer: ArrayBuffer },
+    @MessageBody() data: { streamId: string; pcmData: number[]; sampleRate: number },
   ) {
-    if (!client.data?.isHost) {
-      return { success: false, error: 'Sadece host ses gönderebilir' };
-    }
-
     try {
-      const buffer = Buffer.from(data.audioBuffer);
-      await this.hlsGenerator.writeAudioData(data.streamId, buffer);
+      // Debug: PCM data kontrolü
+      const pcmLength = data.pcmData?.length || 0;
+      if (pcmLength === 0) {
+        this.logger.warn(`[audio-data] Empty PCM data from client ${client.id}`);
+        return { success: false, error: 'Empty PCM data' };
+      }
+
+      // Her 20 chunk'ta bir logla
+      const chunkCount = client.data?.audioChunkCount || 0;
+      client.data.audioChunkCount = chunkCount + 1;
+      if (client.data.audioChunkCount % 20 === 1) {
+        const roomSize = this.server.sockets.adapter.rooms.get(`stream:${data.streamId}`)?.size || 0;
+        this.logger.log(
+          `[audio-data] PCM Chunk #${client.data.audioChunkCount} from stream ${data.streamId}, samples: ${pcmLength}, sampleRate: ${data.sampleRate}, room size: ${roomSize}`,
+        );
+      }
+
+      // 🔴 GERÇEK ZAMANLI AUDIO RELAY: PCM verisini anında dinleyicilere ilet
+      // Host hariç tüm dinleyicilere gönder (client.to = broadcast to room except sender)
+      client.to(`stream:${data.streamId}`).emit('audio-stream', {
+        streamId: data.streamId,
+        pcmData: data.pcmData, // Raw PCM Int16 data
+        sampleRate: data.sampleRate,
+        timestamp: Date.now(),
+      });
+
       return { success: true };
     } catch (error: any) {
+      this.logger.error(`Audio data error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * WebM ses verisi - kayıt için (Hoca → Server → Recording Service)
+   * HLS ve VOD için kullanılır
+   */
+  @SubscribeMessage('audio-recording')
+  async handleAudioRecording(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { streamId: string; audioBuffer: ArrayBuffer },
+  ) {
+    try {
+      if (!data.audioBuffer || data.audioBuffer.byteLength === 0) {
+        return { success: false, error: 'Empty audio buffer' };
+      }
+
+      const buffer = Buffer.from(data.audioBuffer);
+
+      // Ses verisini kayıt servisine yaz
+      this.recordingService.writeAudioChunk(data.streamId, buffer);
+
+      // HLS için de yaz
+      await this.hlsGenerator.writeAudioData(data.streamId, buffer);
+
+      return { success: true };
+    } catch (error: any) {
+      this.logger.error(`Audio recording error: ${error.message}`);
       return { success: false, error: error.message };
     }
   }

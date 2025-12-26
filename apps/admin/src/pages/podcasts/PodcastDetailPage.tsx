@@ -24,6 +24,7 @@ import {
 import {
   IconArrowLeft,
   IconEdit,
+  IconTrash,
   IconPlayerPlay,
   IconPlayerPause,
   IconVolume,
@@ -55,6 +56,13 @@ const PodcastDetailPage: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const getMediaElement = () => {
+    if (!podcast) return null;
+    const hasVideo = Boolean(podcast.videoUrl || podcast.youtubeUrl || podcast.externalVideoUrl);
+    const preferVideo = podcast.mediaType === 'VIDEO' && hasVideo;
+    return preferVideo ? videoRef.current : audioRef.current;
+  };
+
   useEffect(() => {
     if (id) {
       fetchPodcast();
@@ -76,7 +84,7 @@ const PodcastDetailPage: React.FC = () => {
   };
 
   const togglePlay = () => {
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (!mediaElement) return;
 
     if (isPlaying) {
@@ -88,14 +96,14 @@ const PodcastDetailPage: React.FC = () => {
   };
 
   const handleTimeUpdate = () => {
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (mediaElement) {
       setCurrentTime(mediaElement.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (mediaElement) {
       setDuration(mediaElement.duration);
     }
@@ -103,7 +111,7 @@ const PodcastDetailPage: React.FC = () => {
 
   const handleSeek = (_: Event, value: number | number[]) => {
     const time = value as number;
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (mediaElement) {
       mediaElement.currentTime = time;
       setCurrentTime(time);
@@ -113,7 +121,7 @@ const PodcastDetailPage: React.FC = () => {
   const handleVolumeChange = (_: Event, value: number | number[]) => {
     const vol = value as number;
     setVolume(vol);
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (mediaElement) {
       mediaElement.volume = vol;
     }
@@ -125,7 +133,7 @@ const PodcastDetailPage: React.FC = () => {
   };
 
   const toggleMute = () => {
-    const mediaElement = podcast?.mediaType === 'VIDEO' ? videoRef.current : audioRef.current;
+    const mediaElement = getMediaElement();
     if (mediaElement) {
       mediaElement.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -145,6 +153,18 @@ const PodcastDetailPage: React.FC = () => {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    const confirmed = window.confirm('Bu podcast silinsin mi?');
+    if (!confirmed) return;
+    try {
+      await podcastService.delete(id);
+      navigate('/podcasts');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Podcast silinemedi');
+    }
   };
 
   if (loading) {
@@ -188,13 +208,23 @@ const PodcastDetailPage: React.FC = () => {
             Podcast Detay
           </Typography>
         </Stack>
-        <Button
-          variant="outlined"
-          startIcon={<IconEdit size={20} />}
-          onClick={() => navigate(`/podcasts/${id}/edit`)}
-        >
-          Duzenle
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<IconEdit size={20} />}
+            onClick={() => navigate(`/podcasts/${id}/edit`)}
+          >
+            Duzenle
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<IconTrash size={20} />}
+            onClick={handleDelete}
+          >
+            Sil
+          </Button>
+        </Stack>
       </Stack>
 
       <Grid container spacing={3}>
@@ -223,7 +253,7 @@ const PodcastDetailPage: React.FC = () => {
                     )}
                     <Chip
                       icon={podcast.mediaType === 'VIDEO' ? <IconVideo size={14} /> : <IconMusic size={14} />}
-                      label={podcast.mediaType === 'BOTH' ? 'Ses & Video' : podcast.mediaType === 'VIDEO' ? 'Video' : 'Ses'}
+                      label={podcast.mediaType === 'VIDEO' ? 'Video' : podcast.mediaType === 'AUDIO' ? 'Ses' : 'Video'}
                       size="small"
                       variant="outlined"
                     />

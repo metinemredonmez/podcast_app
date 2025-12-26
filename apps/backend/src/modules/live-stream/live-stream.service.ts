@@ -44,11 +44,17 @@ export class LiveStreamService {
     // Host yetkisi kontrol (ADMIN veya CREATOR)
     const host = await this.prisma.user.findUnique({
       where: { id: hostId },
-      select: { role: true, name: true, avatarUrl: true },
+      select: { role: true, name: true, avatarUrl: true, tenantId: true },
     });
 
     if (!host || ![UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.CREATOR, UserRole.HOCA].includes(host.role)) {
       throw new ForbiddenException('Yayın yapma yetkiniz yok');
+    }
+
+    const resolvedTenantId = tenantId || host.tenantId;
+
+    if (!resolvedTenantId) {
+      throw new BadRequestException('Tenant bilgisi bulunamadı');
     }
 
     // Aktif yayın var mı kontrol
@@ -70,19 +76,22 @@ export class LiveStreamService {
       throw new BadRequestException('Zaten aktif bir yayınınız var');
     }
 
-    // Yayın oluştur
-    const category = await this.prisma.category.findFirst({
-      where: { id: dto.categoryId, tenantId },
-      select: { id: true },
+    // Yayın oluştur - kategori kontrolü (tenant bağımsız)
+    const category = await this.prisma.category.findUnique({
+      where: { id: dto.categoryId },
+      select: { id: true, tenantId: true },
     });
 
     if (!category) {
       throw new BadRequestException('Kategori bulunamadı');
     }
 
+    // Kategori'nin tenant'ını kullan (cross-tenant kategori kullanımına izin ver)
+    const streamTenantId = category.tenantId || resolvedTenantId;
+
     const stream = await this.prisma.liveStream.create({
       data: {
-        tenantId,
+        tenantId: streamTenantId,
         hostId,
         title: dto.title,
         description: dto.description,
@@ -98,6 +107,7 @@ export class LiveStreamService {
         host: {
           select: { id: true, name: true, avatarUrl: true },
         },
+        category: { select: { id: true, name: true } },
       },
     });
 
@@ -159,15 +169,13 @@ export class LiveStreamService {
       },
       include: {
         host: { select: { id: true, name: true, avatarUrl: true } },
+        category: { select: { id: true, name: true } },
       },
     });
 
-    // Kayıt başlat
+    // Kayıt başlat - hemen başla çünkü WebSocket'ten ses verisi gelecek
     if (stream.isRecorded) {
-      // Biraz bekle ki HLS hazır olsun
-      setTimeout(() => {
-        this.recording.startRecording(streamId);
-      }, 5000);
+      await this.recording.startRecording(streamId);
     }
 
     if (updatedStream.maxDuration) {
@@ -323,13 +331,18 @@ export class LiveStreamService {
 
   /**
    * Aktif yayınları listele
+   * Canlı yayınlar herkes tarafından görülebilir - tenantId filtrelemesi yapılmaz
    */
-  async getActiveStreams(tenantId: string): Promise<StreamResponseDto[]> {
+  async getActiveStreams(_tenantId?: string): Promise<StreamResponseDto[]> {
+    // Tüm LIVE yayınları getir - tenant filtrelemesi yok
+    const where = {
+      status: LiveStreamStatus.LIVE,
+    };
+
+    this.logger.log(`[getActiveStreams] Tüm LIVE yayınlar sorgulanıyor`);
+
     const streams = await this.prisma.liveStream.findMany({
-      where: {
-        tenantId,
-        status: LiveStreamStatus.LIVE,
-      },
+      where,
       include: {
         host: { select: { id: true, name: true, avatarUrl: true } },
         category: { select: { id: true, name: true } },
@@ -337,6 +350,8 @@ export class LiveStreamService {
       },
       orderBy: { startedAt: 'desc' },
     });
+
+    this.logger.log(`[getActiveStreams] Found ${streams.length} streams`);
 
     return await Promise.all(streams.map(async (s) => ({
       ...(await this.formatStreamResponse(s, false)),
@@ -349,12 +364,16 @@ export class LiveStreamService {
    * Planlanan yayınları listele
    */
   async getScheduledStreams(tenantId: string): Promise<StreamResponseDto[]> {
+    const where: any = {
+      status: LiveStreamStatus.SCHEDULED,
+      scheduledAt: { gte: new Date() },
+    };
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
+
     const streams = await this.prisma.liveStream.findMany({
-      where: {
-        tenantId,
-        status: LiveStreamStatus.SCHEDULED,
-        scheduledAt: { gte: new Date() },
-      },
+      where,
       include: {
         host: { select: { id: true, name: true, avatarUrl: true } },
         category: { select: { id: true, name: true } },
@@ -439,10 +458,12 @@ export class LiveStreamService {
     limit = 20,
   ): Promise<{ streams: StreamResponseDto[]; total: number }> {
     const where: any = {
-      tenantId,
       status: LiveStreamStatus.ENDED,
-      recordingUrl: { not: null },
     };
+
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
 
     if (hostId) {
       where.hostId = hostId;
@@ -498,6 +519,44 @@ export class LiveStreamService {
       ...(await this.formatStreamResponse(s, true)),
       viewerCount: s._count?.listeners || 0,
     }))) as StreamResponseDto[];
+  }
+
+  /**
+   * Yayını sil (sadece ADMIN/SUPER_ADMIN)
+   */
+  async deleteStream(streamId: string, userId: string): Promise<void> {
+    const stream = await this.prisma.liveStream.findUnique({
+      where: { id: streamId },
+    });
+
+    if (!stream) {
+      throw new NotFoundException('Yayın bulunamadı');
+    }
+
+    // Aktif yayınları silmeye izin verme
+    if ([LiveStreamStatus.LIVE, LiveStreamStatus.PAUSED].includes(stream.status)) {
+      throw new BadRequestException('Aktif yayınlar silinemez');
+    }
+
+    // İlişkili verileri sil
+    await this.prisma.$transaction(async (tx) => {
+      // Dinleyici kayıtlarını sil
+      await tx.streamListener.deleteMany({
+        where: { streamId },
+      });
+
+      // Oda kayıtlarını sil
+      await tx.streamRoom.deleteMany({
+        where: { streamId },
+      });
+
+      // Yayını sil
+      await tx.liveStream.delete({
+        where: { id: streamId },
+      });
+    });
+
+    this.logger.log(`Yayın silindi: ${streamId} (User: ${userId})`);
   }
 
   // ==================== HELPER METHODS ====================

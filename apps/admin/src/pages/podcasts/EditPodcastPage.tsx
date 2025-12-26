@@ -93,6 +93,13 @@ const EditPodcastPage: React.FC = () => {
     severity: 'success',
   });
 
+  const handleMediaTypeChange = (_: React.MouseEvent<HTMLElement>, newValue: string | null) => {
+    if (!newValue) return;
+    formik.setFieldValue('mediaType', newValue);
+    const target = newValue === 'VIDEO' ? 'video' : 'audio';
+    navigate(`/episodes?media=${target}`);
+  };
+
   // Fetch podcast and categories
   useEffect(() => {
     const fetchData = async () => {
@@ -168,9 +175,10 @@ const EditPodcastPage: React.FC = () => {
           isFeatured: values.isFeatured,
         };
 
-        const updated = await podcastService.update(id, updateData);
-        setPodcast(updated);
+        await podcastService.update(id, updateData);
         setSnackbar({ open: true, message: 'Podcast başarıyla güncellendi', severity: 'success' });
+        // Başarılı güncelleme sonrası podcasts listesine yönlendir
+        setTimeout(() => navigate('/podcasts'), 1000);
       } catch (err: any) {
         const message = err.response?.data?.message || 'Podcast güncellenemedi';
         setError(message);
@@ -415,9 +423,7 @@ const EditPodcastPage: React.FC = () => {
                     <ToggleButtonGroup
                       value={formik.values.mediaType}
                       exclusive
-                      onChange={(_, newValue) => {
-                        if (newValue) formik.setFieldValue('mediaType', newValue);
-                      }}
+                      onChange={handleMediaTypeChange}
                       fullWidth
                       sx={{ mb: 1 }}
                     >
@@ -670,7 +676,7 @@ const EditPodcastPage: React.FC = () => {
                   <Button
                     type="submit"
                     variant="contained"
-                    disabled={saving || !formik.dirty}
+                    disabled={saving}
                     startIcon={saving ? <CircularProgress size={18} color="inherit" /> : <IconDeviceFloppy size={18} />}
                     sx={{ minWidth: 140 }}
                   >

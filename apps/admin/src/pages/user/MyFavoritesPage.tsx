@@ -27,13 +27,11 @@ import { apiClient } from '../../api/client';
 
 interface FavoritePodcast {
   id: string;
-  podcastId: string;
   podcast: {
     id: string;
     title: string;
     description?: string;
-    coverImage?: string;
-    episodeCount?: number;
+    coverImageUrl?: string | null;
     owner?: {
       name: string;
     };
@@ -43,16 +41,14 @@ interface FavoritePodcast {
 
 interface FavoriteEpisode {
   id: string;
-  episodeId: string;
   episode: {
     id: string;
     title: string;
     duration: number;
-    coverImage?: string;
+    audioUrl?: string | null;
     podcast: {
       id: string;
       title: string;
-      coverImage?: string;
     };
   };
   createdAt: string;
@@ -99,12 +95,12 @@ const MyFavoritesPage: React.FC = () => {
     const fetchFavorites = async () => {
       try {
         setLoading(true);
-        const [podcastsRes, episodesRes] = await Promise.all([
-          apiClient.get('/users/me/favorites/podcasts?limit=50').catch(() => ({ data: [] })),
-          apiClient.get('/users/me/favorites/episodes?limit=50').catch(() => ({ data: [] })),
-        ]);
-        setPodcasts(podcastsRes.data.data || podcastsRes.data || []);
-        setEpisodes(episodesRes.data.data || episodesRes.data || []);
+        const response = await apiClient.get('/favorites');
+        const favorites = response.data || [];
+        const favoritePodcasts = favorites.filter((fav: any) => !!fav.podcast);
+        const favoriteEpisodes = favorites.filter((fav: any) => !!fav.episode);
+        setPodcasts(favoritePodcasts);
+        setEpisodes(favoriteEpisodes);
       } catch (err: any) {
         setError('Favoriler yüklenirken bir hata oluştu');
       } finally {
@@ -117,7 +113,7 @@ const MyFavoritesPage: React.FC = () => {
 
   const handleRemovePodcast = async (id: string) => {
     try {
-      await apiClient.delete(`/users/me/favorites/podcasts/${id}`);
+      await apiClient.delete(`/favorites/${id}`);
       setPodcasts(podcasts.filter(item => item.id !== id));
     } catch {
       // Silme başarısız
@@ -126,7 +122,7 @@ const MyFavoritesPage: React.FC = () => {
 
   const handleRemoveEpisode = async (id: string) => {
     try {
-      await apiClient.delete(`/users/me/favorites/episodes/${id}`);
+      await apiClient.delete(`/favorites/${id}`);
       setEpisodes(episodes.filter(item => item.id !== id));
     } catch {
       // Silme başarısız
@@ -248,7 +244,7 @@ const MyFavoritesPage: React.FC = () => {
                   >
                     <Avatar
                       variant="rounded"
-                      src={item.podcast?.coverImage}
+                      src={item.podcast?.coverImageUrl || undefined}
                       sx={{
                         position: 'absolute',
                         top: 0,
@@ -282,13 +278,6 @@ const MyFavoritesPage: React.FC = () => {
                       {item.podcast?.owner?.name || 'Bilinmeyen Hoca'}
                     </Typography>
                     <Stack direction="row" spacing={1} mt={2}>
-                      {item.podcast?.episodeCount && (
-                        <Chip
-                          size="small"
-                          label={`${item.podcast.episodeCount} bölüm`}
-                          variant="outlined"
-                        />
-                      )}
                       <Chip
                         size="small"
                         icon={<IconStar size={14} />}
@@ -327,7 +316,7 @@ const MyFavoritesPage: React.FC = () => {
                     {/* Cover Image */}
                     <Avatar
                       variant="rounded"
-                      src={item.episode?.coverImage || item.episode?.podcast?.coverImage}
+                      src={item.episode?.podcast?.coverImageUrl || undefined}
                       sx={{ width: 72, height: 72 }}
                     >
                       <IconHeadphones size={28} />

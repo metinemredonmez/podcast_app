@@ -85,9 +85,10 @@ export class RoomManagerService {
       );
     }
 
-    // Listener kaydı oluştur
-    await this.prisma.liveListener.create({
-      data: {
+    // Listener kaydı oluştur veya güncelle (upsert ile race condition önleme)
+    await this.prisma.liveListener.upsert({
+      where: { sessionId },
+      create: {
         streamId,
         roomId: room.id,
         userId,
@@ -95,6 +96,11 @@ export class RoomManagerService {
         deviceType: deviceInfo?.deviceType,
         userAgent: deviceInfo?.userAgent,
         ipAddress: deviceInfo?.ipAddress,
+      },
+      update: {
+        // Tekrar katılıyorsa leftAt'i temizle
+        leftAt: null,
+        joinedAt: new Date(),
       },
     });
 

@@ -45,7 +45,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         break;
 
       case 'checkbox':
-        displayValue = value ? 'Yes' : 'No';
+        displayValue = value ? 'Evet' : 'Hayir';
         if (!value) return null; // Don't show unchecked checkboxes
         break;
 
@@ -92,7 +92,7 @@ export const FilterChips: React.FC<FilterChipsProps> = ({
         ))}
         {activeFilters.length > 1 && (
           <Button size="small" onClick={onClearAll} sx={{ mb: 1 }}>
-            Clear all
+            Hepsini temizle
           </Button>
         )}
       </Stack>

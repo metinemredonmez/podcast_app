@@ -2,11 +2,11 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
-  Headers,
   ParseIntPipe,
   DefaultValuePipe,
 } from '@nestjs/common';
@@ -16,6 +16,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
+import { TenantId } from '../../common/decorators/tenant-id.decorator';
 import { LiveStreamService } from './live-stream.service';
 import { CreateStreamDto } from './dto/create-stream.dto';
 import { LiveStreamStatus } from '@prisma/client';
@@ -33,7 +34,7 @@ export class LiveStreamController {
   @Get('streams')
   @Public()
   @ApiOperation({ summary: 'Aktif canlı yayınları listele' })
-  async getActiveStreams(@Headers('x-tenant-id') tenantId: string) {
+  async getActiveStreams(@TenantId() tenantId: string) {
     return this.liveStreamService.getActiveStreams(tenantId);
   }
 
@@ -43,7 +44,7 @@ export class LiveStreamController {
   @Get('streams/scheduled')
   @Public()
   @ApiOperation({ summary: 'Planlanan yayınları listele' })
-  async getScheduledStreams(@Headers('x-tenant-id') tenantId: string) {
+  async getScheduledStreams(@TenantId() tenantId: string) {
     return this.liveStreamService.getScheduledStreams(tenantId);
   }
 
@@ -67,7 +68,7 @@ export class LiveStreamController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async getPastStreams(
-    @Headers('x-tenant-id') tenantId: string,
+    @TenantId() tenantId: string,
     @Query('hostId') hostId?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
@@ -88,7 +89,7 @@ export class LiveStreamController {
   async createStream(
     @Body() dto: CreateStreamDto,
     @CurrentUser() user: any,
-    @Headers('x-tenant-id') tenantId: string,
+    @TenantId() tenantId: string,
   ) {
     return this.liveStreamService.createStream(user.sub, dto, user?.tenantId || tenantId);
   }
@@ -183,5 +184,18 @@ export class LiveStreamController {
     @Query('status') status?: string,
   ) {
     return this.liveStreamService.getMyStreams(user.sub, status);
+  }
+
+  /**
+   * Yayını sil
+   */
+  @Delete('streams/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'SUPER_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Yayını sil' })
+  async deleteStream(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.liveStreamService.deleteStream(id, user.sub);
+    return { success: true };
   }
 }

@@ -89,7 +89,7 @@ const CreatePodcastPage: React.FC = () => {
       title: '',
       description: '',
       categoryId: '',
-      coverImage: '',
+      coverImageUrl: '',
       mediaType: 'AUDIO',
       defaultQuality: 'HD',
       // Audio/Video fields
@@ -113,8 +113,8 @@ const CreatePodcastPage: React.FC = () => {
         await podcastService.create({
           title: values.title,
           description: values.description || undefined,
-          categoryIds: values.categoryId ? [values.categoryId] : undefined,
-          coverImageUrl: values.coverImage || undefined,
+          categoryId: values.categoryId || undefined,
+          coverImageUrl: values.coverImageUrl || undefined,
           mediaType: values.mediaType as any,
           defaultQuality: values.defaultQuality as any,
           // Media fields
@@ -436,13 +436,13 @@ const CreatePodcastPage: React.FC = () => {
                     prefix="podcast-covers"
                     aspectRatio="1:1"
                     previewWidth={200}
-                    currentImageUrl={formik.values.coverImage || undefined}
+                    currentImageUrl={formik.values.coverImageUrl || undefined}
                     placeholderImage="/images/default-podcast-cover.svg"
                     onUploadComplete={(response) => {
-                      formik.setFieldValue('coverImage', response.url);
+                      formik.setFieldValue('coverImageUrl', response.url);
                     }}
                     onRemove={() => {
-                      formik.setFieldValue('coverImage', '');
+                      formik.setFieldValue('coverImageUrl', '');
                     }}
                     disabled={loading}
                   />

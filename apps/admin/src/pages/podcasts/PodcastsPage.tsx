@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
   CardContent,
   Typography,
   Button,
+  ButtonGroup,
   Stack,
   TextField,
   InputAdornment,
@@ -48,6 +49,7 @@ import {
   IconVideo,
 } from '@tabler/icons-react';
 import { podcastService, Podcast } from '../../api/services/podcast.service';
+import { categoryService, Category } from '../../api/services/category.service';
 import { useBulkSelection } from '../../hooks/useBulkSelection';
 import { BulkActions, commonBulkActions } from '../../components/table';
 import { ExportDialog, ExportColumn } from '../../components/export';
@@ -73,6 +75,7 @@ const PodcastsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   // Player Modal state
   const [playingPodcast, setPlayingPodcast] = useState<Podcast | null>(null);
@@ -84,12 +87,6 @@ const PodcastsPage: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Bulk selection
-  const bulkSelection = useBulkSelection({
-    currentPageIds: podcasts.map((p) => p.id),
-    totalCount: total,
-  });
 
   // Export
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -108,42 +105,46 @@ const PodcastsPage: React.FC = () => {
   // Filters
   const [filterSidebarOpen, setFilterSidebarOpen] = useState(false);
 
-  const filterDefinitions: FilterDefinition[] = [
+  const filterDefinitions: FilterDefinition[] = useMemo(() => [
     {
       key: 'category',
-      label: 'Category',
+      label: 'Kategori',
       type: 'multiselect',
-      options: [
-        { value: 'technology', label: 'Technology' },
-        { value: 'business', label: 'Business' },
-        { value: 'education', label: 'Education' },
-        { value: 'health', label: 'Health & Fitness' },
-        { value: 'entertainment', label: 'Entertainment' },
-        { value: 'news', label: 'News & Politics' },
-      ],
+      options: categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+      })),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Durum',
       type: 'select',
       options: [
-        { value: 'published', label: 'Published' },
-        { value: 'draft', label: 'Draft' },
-        { value: 'archived', label: 'Archived' },
+        { value: 'published', label: 'Yayinda' },
+        { value: 'draft', label: 'Taslak' },
+      ],
+    },
+    {
+      key: 'mediaType',
+      label: 'Medya Turu',
+      type: 'select',
+      options: [
+        { value: 'AUDIO', label: 'Ses' },
+        { value: 'VIDEO', label: 'Video' },
       ],
     },
     {
       key: 'createdAt',
-      label: 'Created Date',
+      label: 'Olusturma Tarihi',
       type: 'daterange',
     },
     {
       key: 'minEpisodes',
-      label: 'Minimum Episodes',
+      label: 'Minimum Bolum',
       type: 'number',
-      placeholder: 'e.g. 10',
+      placeholder: 'orn. 10',
     },
-  ];
+  ], [categories]);
 
   const {
     filters,
@@ -181,8 +182,75 @@ const PodcastsPage: React.FC = () => {
   };
 
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await categoryService.list();
+        setCategories(data);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
     fetchPodcasts();
   }, [page, rowsPerPage, search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [filters, search]);
+
+  const filteredPodcasts = useMemo(() => {
+    let result = podcasts;
+    const categoryFilter = filters.category as string[] | undefined;
+    const statusFilter = filters.status as string | undefined;
+    const mediaFilter = filters.mediaType as string | undefined;
+    const dateRange = filters.createdAt as { from?: string; to?: string } | undefined;
+    const minEpisodes = Number(filters.minEpisodes || 0);
+
+    if (categoryFilter && categoryFilter.length > 0) {
+      result = result.filter((podcast) =>
+        podcast.categories?.some((category) => categoryFilter.includes(category.id)),
+      );
+    }
+
+    if (statusFilter === 'published') {
+      result = result.filter((podcast) => podcast.isPublished);
+    } else if (statusFilter === 'draft') {
+      result = result.filter((podcast) => !podcast.isPublished);
+    }
+
+    if (mediaFilter === 'AUDIO' || mediaFilter === 'VIDEO') {
+      result = result.filter((podcast) => podcast.mediaType === mediaFilter);
+    }
+
+    if (dateRange?.from || dateRange?.to) {
+      const from = dateRange.from ? new Date(dateRange.from).getTime() : undefined;
+      const to = dateRange.to ? new Date(dateRange.to).getTime() : undefined;
+      result = result.filter((podcast) => {
+        const created = new Date(podcast.createdAt).getTime();
+        if (from !== undefined && created < from) return false;
+        if (to !== undefined && created > to) return false;
+        return true;
+      });
+    }
+
+    if (minEpisodes > 0) {
+      result = result.filter((podcast) => (podcast._count?.episodes ?? 0) >= minEpisodes);
+    }
+
+    return result;
+  }, [podcasts, filters]);
+
+  const displayTotal = activeFilterCount > 0 ? filteredPodcasts.length : total;
+  const displayPodcasts = filteredPodcasts;
+
+  // Bulk selection
+  const bulkSelection = useBulkSelection({
+    currentPageIds: displayPodcasts.map((p) => p.id),
+    totalCount: displayTotal,
+  });
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, podcast: Podcast) => {
     setAnchorEl(event.currentTarget);
@@ -196,7 +264,7 @@ const PodcastsPage: React.FC = () => {
 
   const handleEdit = () => {
     if (selectedPodcast) {
-      navigate(`/podcasts/${selectedPodcast.id}`);
+      navigate(`/podcasts/${selectedPodcast.id}/edit`);
     }
     handleMenuClose();
   };
@@ -222,7 +290,7 @@ const PodcastsPage: React.FC = () => {
       fetchPodcasts();
     } else if (actionId === 'export') {
       // Export selected podcasts
-      const selectedPodcasts = podcasts.filter((p) => ids.includes(p.id));
+      const selectedPodcasts = displayPodcasts.filter((p) => ids.includes(p.id));
       setExportData(selectedPodcasts);
       setExportDialogOpen(true);
     } else if (actionId.startsWith('status-')) {
@@ -233,7 +301,7 @@ const PodcastsPage: React.FC = () => {
   };
 
   const handleExportAll = () => {
-    setExportData(podcasts);
+    setExportData(displayPodcasts);
     setExportDialogOpen(true);
   };
 
@@ -344,18 +412,18 @@ const PodcastsPage: React.FC = () => {
             Manage all podcasts in the platform
           </Typography>
         </Box>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Tooltip title="Refresh">
-            <IconButton onClick={fetchPodcasts} disabled={loading}>
-              <IconRefresh size={20} />
-            </IconButton>
-          </Tooltip>
-          <Button variant="outlined" startIcon={<IconFilter size={20} />} onClick={() => setFilterSidebarOpen(true)}>
-            Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
-          </Button>
-          <Button variant="outlined" startIcon={<IconDownload size={20} />} onClick={handleExportAll}>
-            Export
-          </Button>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <ButtonGroup variant="outlined" size="small">
+            <Button onClick={fetchPodcasts} disabled={loading} startIcon={<IconRefresh size={18} />}>
+              Refresh
+            </Button>
+            <Button startIcon={<IconFilter size={18} />} onClick={() => setFilterSidebarOpen(true)}>
+              Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            </Button>
+            <Button startIcon={<IconDownload size={18} />} onClick={handleExportAll}>
+              Export
+            </Button>
+          </ButtonGroup>
           <Button variant="contained" startIcon={<IconPlus size={20} />} onClick={() => navigate('/podcasts/new')}>
             Add Podcast
           </Button>
@@ -442,7 +510,7 @@ const PodcastsPage: React.FC = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {podcasts.length === 0 ? (
+                    {displayPodcasts.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} align="center">
                           <Typography color="text.secondary" py={4}>
@@ -451,8 +519,14 @@ const PodcastsPage: React.FC = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      podcasts.map((podcast) => (
-                        <TableRow key={podcast.id} hover selected={bulkSelection.isSelected(podcast.id)}>
+                      displayPodcasts.map((podcast) => (
+                        <TableRow
+                          key={podcast.id}
+                          hover
+                          selected={bulkSelection.isSelected(podcast.id)}
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/podcasts/${podcast.id}`)}
+                        >
                           <TableCell padding="checkbox">
                             <Checkbox
                               checked={bulkSelection.isSelected(podcast.id)}
@@ -541,7 +615,7 @@ const PodcastsPage: React.FC = () => {
 
               <TablePagination
                 component="div"
-                count={total}
+                count={displayTotal}
                 page={page}
                 onPageChange={(_, newPage) => setPage(newPage)}
                 rowsPerPage={rowsPerPage}

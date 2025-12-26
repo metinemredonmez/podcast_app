@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
   CardContent,
   Typography,
-  Button,
   Stack,
   TextField,
   InputAdornment,
@@ -18,26 +17,19 @@ import {
   TablePagination,
   Chip,
   IconButton,
-  Menu,
-  MenuItem,
   CircularProgress,
   Alert,
-  Checkbox,
   Tooltip,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   IconSearch,
-  IconPlus,
-  IconDotsVertical,
-  IconEdit,
-  IconTrash,
   IconPlayerPlay,
   IconClock,
   IconRefresh,
 } from '@tabler/icons-react';
 import { episodeService, Episode } from '../../api/services/episode.service';
-import { useBulkSelection } from '../../hooks/useBulkSelection';
-import { BulkActions, commonBulkActions } from '../../components/table';
 import { logger } from '../../utils/logger';
 
 const formatDuration = (seconds: number): string => {
@@ -48,6 +40,7 @@ const formatDuration = (seconds: number): string => {
 
 const EpisodesPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,14 +48,7 @@ const EpisodesPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [total, setTotal] = useState(0);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
-
-  // Bulk selection
-  const bulkSelection = useBulkSelection({
-    currentPageIds: episodes.map((e) => e.id),
-    totalCount: total,
-  });
+  const [mediaFilter, setMediaFilter] = useState<'all' | 'audio' | 'video'>('all');
 
   const fetchEpisodes = async () => {
     setLoading(true);
@@ -74,7 +60,7 @@ const EpisodesPage: React.FC = () => {
         search: search || undefined,
       });
       setEpisodes(response.data || []);
-      setTotal(response.total || 0);
+      setTotal(response.hasMore ? (page + 2) * rowsPerPage : (page * rowsPerPage) + (response.data?.length || 0));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to load episodes');
       setEpisodes([]);
@@ -87,54 +73,31 @@ const EpisodesPage: React.FC = () => {
     fetchEpisodes();
   }, [page, rowsPerPage, search]);
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, episode: Episode) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedEpisode(episode);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedEpisode(null);
-  };
-
-  const handleDelete = async () => {
-    if (selectedEpisode) {
-      try {
-        await episodeService.delete(selectedEpisode.id);
-        fetchEpisodes();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Failed to delete episode');
-      }
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const media = params.get('media');
+    if (media === 'audio' || media === 'video' || media === 'all') {
+      setMediaFilter(media);
     }
-    handleMenuClose();
-  };
+  }, [location.search]);
+
+  const filteredEpisodes = episodes.filter((episode) => {
+    if (mediaFilter === 'all') return true;
+    const podcastMedia = episode.podcast?.mediaType;
+    if (mediaFilter === 'audio') {
+      return podcastMedia === 'AUDIO';
+    }
+    return podcastMedia === 'VIDEO';
+  });
 
   const handleBulkAction = async (actionId: string) => {
-    const ids = Array.from(bulkSelection.selectedIds);
-
-    if (actionId === 'delete') {
-      await Promise.all(ids.map((id) => episodeService.delete(id)));
-      fetchEpisodes();
-    } else if (actionId === 'export') {
+    if (actionId === 'export') {
       // TODO: Implement export functionality
-      logger.info('Exporting episodes:', ids);
+      logger.info('Exporting episodes');
     } else if (actionId.startsWith('status-')) {
       const status = actionId.replace('status-', '');
       // TODO: Implement bulk status update
-      logger.info('Updating status to:', status, 'for:', ids);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'success';
-      case 'draft':
-        return 'warning';
-      case 'scheduled':
-        return 'info';
-      default:
-        return 'default';
+      logger.info('Updating status to:', status);
     }
   };
 
@@ -156,13 +119,6 @@ const EpisodesPage: React.FC = () => {
               <IconRefresh size={20} />
             </IconButton>
           </Tooltip>
-          <Button
-            variant="contained"
-            startIcon={<IconPlus size={20} />}
-            onClick={() => navigate('/episodes/new')}
-          >
-            Add Episode
-          </Button>
         </Stack>
       </Stack>
 
@@ -177,13 +133,18 @@ const EpisodesPage: React.FC = () => {
       <Card>
         <CardContent>
           {/* Search & Filters */}
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            mb={3}
+            alignItems={{ xs: 'stretch', sm: 'center' }}
+          >
             <TextField
               placeholder="Search episodes..."
               size="small"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: { xs: '100%', sm: 300 } }}
+              sx={{ minWidth: { xs: '100%', sm: 260 }, flexGrow: 1, maxWidth: { sm: 520 } }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -192,23 +153,27 @@ const EpisodesPage: React.FC = () => {
                 ),
               }}
             />
+            <Tabs
+              value={mediaFilter}
+              onChange={(_, value) => {
+                setMediaFilter(value);
+                const params = new URLSearchParams(location.search);
+                if (value === 'all') {
+                  params.delete('media');
+                } else {
+                  params.set('media', value);
+                }
+                navigate({ search: params.toString() }, { replace: true });
+              }}
+              textColor="primary"
+              indicatorColor="primary"
+              sx={{ minHeight: 36, flexShrink: 0 }}
+            >
+              <Tab value="all" label="Tümü" sx={{ minHeight: 36 }} />
+              <Tab value="audio" label="Ses" sx={{ minHeight: 36 }} />
+              <Tab value="video" label="Video" sx={{ minHeight: 36 }} />
+            </Tabs>
           </Stack>
-
-          {/* Bulk Actions */}
-          <BulkActions
-            selectedCount={bulkSelection.selectedCount}
-            totalCount={total}
-            isAllPagesSelected={bulkSelection.isAllPagesSelected}
-            onClearSelection={bulkSelection.clearSelection}
-            onSelectAllPages={bulkSelection.toggleSelectAllPages}
-            actions={[
-              commonBulkActions.delete('Are you sure you want to delete the selected episodes?'),
-              commonBulkActions.export(),
-              commonBulkActions.changeStatus('published'),
-              commonBulkActions.changeStatus('draft'),
-            ]}
-            onAction={handleBulkAction}
-          />
 
           {/* Table */}
           {loading ? (
@@ -221,23 +186,15 @@ const EpisodesPage: React.FC = () => {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={bulkSelection.isAllSelected}
-                          indeterminate={bulkSelection.selectedCount > 0 && !bulkSelection.isAllSelected}
-                          onChange={bulkSelection.toggleSelectAll}
-                        />
-                      </TableCell>
                       <TableCell>Episode</TableCell>
                       <TableCell>Podcast</TableCell>
                       <TableCell>Duration</TableCell>
                       <TableCell>Plays</TableCell>
                       <TableCell>Status</TableCell>
-                      <TableCell align="right">Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {episodes.length === 0 ? (
+                    {filteredEpisodes.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} align="center">
                           <Typography color="text.secondary" py={4}>
@@ -246,14 +203,13 @@ const EpisodesPage: React.FC = () => {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      episodes.map((episode) => (
-                        <TableRow key={episode.id} hover selected={bulkSelection.isSelected(episode.id)}>
-                          <TableCell padding="checkbox">
-                            <Checkbox
-                              checked={bulkSelection.isSelected(episode.id)}
-                              onChange={() => bulkSelection.toggleSelectItem(episode.id)}
-                            />
-                          </TableCell>
+                      filteredEpisodes.map((episode) => (
+                        <TableRow
+                          key={episode.id}
+                          hover
+                          sx={{ cursor: 'pointer' }}
+                          onClick={() => navigate(`/episodes/${episode.id}`)}
+                        >
                           <TableCell>
                             <Stack direction="row" spacing={2} alignItems="center">
                               <Box
@@ -274,7 +230,7 @@ const EpisodesPage: React.FC = () => {
                                   {episode.title}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                  Episode #{episode.episodeNumber}
+                                  Episode #{episode.episodeNumber ?? '-'}
                                 </Typography>
                               </Box>
                             </Stack>
@@ -300,14 +256,6 @@ const EpisodesPage: React.FC = () => {
                               color={episode.isPublished ? 'success' : 'warning'}
                             />
                           </TableCell>
-                          <TableCell align="right">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleMenuOpen(e, episode)}
-                            >
-                              <IconDotsVertical size={18} />
-                            </IconButton>
-                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -332,23 +280,6 @@ const EpisodesPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <MenuItem onClick={() => { navigate(`/episodes/${selectedEpisode?.id}`); handleMenuClose(); }}>
-          <IconEdit size={18} style={{ marginRight: 8 }} />
-          Edit
-        </MenuItem>
-        <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-          <IconTrash size={18} style={{ marginRight: 8 }} />
-          Delete
-        </MenuItem>
-      </Menu>
     </Box>
   );
 };

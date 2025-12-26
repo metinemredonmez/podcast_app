@@ -69,6 +69,7 @@ export class HttpCacheInterceptor implements NestInterceptor {
       '/api/docs',
       '/api/auth',
       '/api/users/me', // Always fresh user data
+      '/api/live', // Live streaming should always be real-time
     ];
 
     return skipPatterns.some((pattern) => url.includes(pattern));

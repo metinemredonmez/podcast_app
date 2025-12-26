@@ -101,6 +101,44 @@ const CreateEpisodePage: React.FC = () => {
       setError(null);
 
       try {
+        const mediaType = selectedPodcast?.mediaType ?? 'AUDIO';
+        const audioProvided = Boolean(values.audioUrl);
+        const videoProvided = Boolean(values.videoUrl || values.youtubeUrl || values.externalVideoUrl);
+        const durationValid = Number(values.duration) > 0 && Number.isFinite(Number(values.duration));
+        if (mediaType === 'AUDIO') {
+          if (!audioProvided) {
+            setError('Sesli podcast için bölüm ses dosyası gerekli.');
+            return;
+          }
+          if (videoProvided) {
+            setError('Sesli podcast için video eklenemez.');
+            return;
+          }
+          if (!durationValid) {
+            setError('Sesli bölüm için süre gerekli.');
+            return;
+          }
+        } else if (mediaType === 'VIDEO') {
+          if (!videoProvided) {
+            setError('Video podcast için video kaynağı gerekli.');
+            return;
+          }
+          if (audioProvided) {
+            setError('Video podcast için ses dosyası eklenemez.');
+            return;
+          }
+          if (!durationValid) {
+            setError('Video bölüm için süre gerekli. YouTube/Harici URL ise manuel girin.');
+            return;
+          }
+        } else if (!audioProvided && !videoProvided) {
+          setError('En az bir ses veya video kaynağı ekleyin.');
+          return;
+        } else if (!durationValid) {
+          setError('Süre gerekli. YouTube/Harici URL ise manuel girin.');
+          return;
+        }
+
         await episodeService.create({
           title: values.title,
           description: values.description || undefined,
@@ -110,14 +148,15 @@ const CreateEpisodePage: React.FC = () => {
           youtubeUrl: values.youtubeUrl || undefined,
           externalVideoUrl: values.externalVideoUrl || undefined,
           thumbnailUrl: values.thumbnailUrl || undefined,
-          duration: values.duration || undefined,
+          duration: values.duration ? Number(values.duration) : undefined,
           episodeNumber: values.episodeNumber ? Number(values.episodeNumber) : undefined,
           seasonNumber: values.seasonNumber ? Number(values.seasonNumber) : undefined,
           tags: values.tags?.length ? values.tags : undefined,
           quality: values.quality || undefined,
           isFeatured: values.isFeatured,
         });
-        navigate('/episodes');
+        const targetFilter = mediaType === 'VIDEO' ? 'video' : 'audio';
+        navigate(`/episodes?media=${targetFilter}`);
       } catch (err: any) {
         const message = err.response?.data?.message || 'Bölüm oluşturulamadı';
         setError(message);
@@ -129,6 +168,21 @@ const CreateEpisodePage: React.FC = () => {
 
   // Get selected podcast info
   const selectedPodcast = podcasts.find((p) => p.id === formik.values.podcastId);
+  const mediaType = selectedPodcast?.mediaType ?? 'AUDIO';
+  const allowAudio = mediaType !== 'VIDEO';
+  const allowVideo = mediaType !== 'AUDIO';
+
+  useEffect(() => {
+    if (!selectedPodcast) return;
+    if (mediaType === 'AUDIO') {
+      formik.setFieldValue('videoUrl', '');
+      formik.setFieldValue('youtubeUrl', '');
+      formik.setFieldValue('externalVideoUrl', '');
+    }
+    if (mediaType === 'VIDEO') {
+      formik.setFieldValue('audioUrl', '');
+    }
+  }, [mediaType, selectedPodcast?.id]);
 
   return (
     <Box>
@@ -182,10 +236,10 @@ const CreateEpisodePage: React.FC = () => {
                         {podcasts.map((podcast) => (
                           <MenuItem key={podcast.id} value={podcast.id}>
                             <Stack direction="row" spacing={1} alignItems="center">
-                              {podcast.coverImage ? (
+                              {podcast.coverImageUrl ? (
                                 <Box
                                   component="img"
-                                  src={podcast.coverImage}
+                                  src={podcast.coverImageUrl}
                                   alt={podcast.title}
                                   sx={{ width: 24, height: 24, borderRadius: 0.5, objectFit: 'cover' }}
                                 />
@@ -212,10 +266,10 @@ const CreateEpisodePage: React.FC = () => {
                         Seçilen Podcast
                       </Typography>
                       <Stack direction="row" spacing={2} alignItems="center">
-                        {selectedPodcast.coverImage ? (
+                        {selectedPodcast.coverImageUrl ? (
                           <Box
                             component="img"
-                            src={selectedPodcast.coverImage}
+                            src={selectedPodcast.coverImageUrl}
                             alt={selectedPodcast.title}
                             sx={{ width: 48, height: 48, borderRadius: 1, objectFit: 'cover' }}
                           />
@@ -239,7 +293,7 @@ const CreateEpisodePage: React.FC = () => {
                             {selectedPodcast.title}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {selectedPodcast.episodeCount || 0} bölüm
+                            {selectedPodcast._count?.episodes || 0} bölüm
                           </Typography>
                         </Box>
                       </Stack>
@@ -277,58 +331,61 @@ const CreateEpisodePage: React.FC = () => {
                     }
                   />
 
-                  {/* Audio Upload */}
-                  <AudioUpload
-                    label="Ses Dosyası"
-                    prefix="episodes"
-                    currentAudioUrl={formik.values.audioUrl || undefined}
-                    onUploadComplete={(response) => {
-                      formik.setFieldValue('audioUrl', response.url);
-                    }}
-                    onDurationChange={(duration) => {
-                      formik.setFieldValue('duration', duration);
-                    }}
-                    onRemove={() => {
-                      formik.setFieldValue('audioUrl', '');
-                      if (!formik.values.videoUrl) {
-                        formik.setFieldValue('duration', 0);
-                      }
-                    }}
-                    disabled={loading}
-                  />
+                  {allowAudio && (
+                    <AudioUpload
+                      label="Ses Dosyası"
+                      prefix="episodes"
+                      currentAudioUrl={formik.values.audioUrl || undefined}
+                      onUploadComplete={(response) => {
+                        formik.setFieldValue('audioUrl', response.url);
+                      }}
+                      onDurationChange={(duration) => {
+                        formik.setFieldValue('duration', duration);
+                      }}
+                      onRemove={() => {
+                        formik.setFieldValue('audioUrl', '');
+                        if (!formik.values.videoUrl) {
+                          formik.setFieldValue('duration', 0);
+                        }
+                      }}
+                      disabled={loading}
+                    />
+                  )}
 
                   {/* Video Upload */}
-                  <VideoUpload
-                    label="Video Dosyası / YouTube / Harici URL"
-                    prefix="episodes"
-                    currentVideoUrl={formik.values.videoUrl || undefined}
-                    currentYoutubeUrl={formik.values.youtubeUrl || undefined}
-                    currentExternalUrl={formik.values.externalVideoUrl || undefined}
-                    onUploadComplete={(response) => {
-                      formik.setFieldValue('videoUrl', response.url);
-                      formik.setFieldValue('youtubeUrl', '');
-                      formik.setFieldValue('externalVideoUrl', '');
-                    }}
-                    onDurationChange={(duration) => {
-                      formik.setFieldValue('duration', duration);
-                    }}
-                    onYoutubeUrlChange={(url) => {
-                      formik.setFieldValue('youtubeUrl', url);
-                      formik.setFieldValue('videoUrl', '');
-                      formik.setFieldValue('externalVideoUrl', '');
-                    }}
-                    onExternalUrlChange={(url) => {
-                      formik.setFieldValue('externalVideoUrl', url);
-                      formik.setFieldValue('videoUrl', '');
-                      formik.setFieldValue('youtubeUrl', '');
-                    }}
-                    onRemove={() => {
-                      formik.setFieldValue('videoUrl', '');
-                      formik.setFieldValue('youtubeUrl', '');
-                      formik.setFieldValue('externalVideoUrl', '');
-                    }}
-                    disabled={loading}
-                  />
+                  {allowVideo && (
+                    <VideoUpload
+                      label="Video Dosyası / YouTube / Harici URL"
+                      prefix="episodes"
+                      currentVideoUrl={formik.values.videoUrl || undefined}
+                      currentYoutubeUrl={formik.values.youtubeUrl || undefined}
+                      currentExternalUrl={formik.values.externalVideoUrl || undefined}
+                      onUploadComplete={(response) => {
+                        formik.setFieldValue('videoUrl', response.url);
+                        formik.setFieldValue('youtubeUrl', '');
+                        formik.setFieldValue('externalVideoUrl', '');
+                      }}
+                      onDurationChange={(duration) => {
+                        formik.setFieldValue('duration', duration);
+                      }}
+                      onYoutubeUrlChange={(url) => {
+                        formik.setFieldValue('youtubeUrl', url);
+                        formik.setFieldValue('videoUrl', '');
+                        formik.setFieldValue('externalVideoUrl', '');
+                      }}
+                      onExternalUrlChange={(url) => {
+                        formik.setFieldValue('externalVideoUrl', url);
+                        formik.setFieldValue('videoUrl', '');
+                        formik.setFieldValue('youtubeUrl', '');
+                      }}
+                      onRemove={() => {
+                        formik.setFieldValue('videoUrl', '');
+                        formik.setFieldValue('youtubeUrl', '');
+                        formik.setFieldValue('externalVideoUrl', '');
+                      }}
+                      disabled={loading}
+                    />
+                  )}
 
                   {/* Thumbnail Upload */}
                   <ImageUpload
@@ -380,23 +437,25 @@ const CreateEpisodePage: React.FC = () => {
 
                   {/* Quality & Featured */}
                   <Stack direction="row" spacing={2} alignItems="center">
-                    <TextField
-                      select
-                      fullWidth
-                      id="quality"
-                      name="quality"
-                      label="Video Kalitesi"
-                      value={formik.values.quality}
-                      onChange={formik.handleChange}
-                      disabled={loading}
-                    >
-                      <MenuItem value="">Seçiniz</MenuItem>
-                      {QUALITY_OPTIONS.map((option) => (
-                        <MenuItem key={option} value={option}>
-                          {option}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                    {allowVideo && (
+                      <TextField
+                        select
+                        fullWidth
+                        id="quality"
+                        name="quality"
+                        label="Video Kalitesi"
+                        value={formik.values.quality}
+                        onChange={formik.handleChange}
+                        disabled={loading}
+                      >
+                        <MenuItem value="">Seçiniz</MenuItem>
+                        {QUALITY_OPTIONS.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    )}
 
                     <FormControlLabel
                       control={
@@ -430,7 +489,9 @@ const CreateEpisodePage: React.FC = () => {
                       error={formik.touched.duration && Boolean(formik.errors.duration)}
                       helperText={
                         (formik.touched.duration && formik.errors.duration) ||
-                        (formik.values.duration ? `${formatDuration(formik.values.duration)}` : 'Ses/video yükleyince otomatik hesaplanır')
+                        (formik.values.duration
+                          ? `${formatDuration(formik.values.duration)}`
+                          : 'Ses/video yükleyince otomatik hesaplanır. YouTube/Harici URL için manuel girin.')
                       }
                     />
                     <TextField

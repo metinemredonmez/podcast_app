@@ -22,9 +22,12 @@ import {
   IconTrendingDown,
   IconHeart,
   IconHistory,
+  IconPlayerPlay,
 } from '@tabler/icons-react';
 import { dashboardService, DashboardStats, TopPodcast } from '../../api/services/dashboard.service';
 import { selectUser } from '../../store/slices/authSlice';
+import { apiClient } from '../../api/client';
+import { podcastService, Podcast } from '../../api/services/podcast.service';
 
 interface StatCardProps {
   title: string;
@@ -132,16 +135,51 @@ const formatTimeAgo = (dateString: string): string => {
   return date.toLocaleDateString('tr-TR');
 };
 
+const formatDuration = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+interface HistoryItem {
+  id: string;
+  episodeId: string;
+  progressSeconds: number;
+  progressPercentage: number;
+  completed: boolean;
+  lastPlayedAt: string;
+  episode: {
+    id: string;
+    title: string;
+    duration: number;
+    coverImageUrl?: string;
+    podcastTitle: string;
+  };
+}
+
+interface CreatorOverview {
+  totalPodcasts: number;
+  totalEpisodes: number;
+  totalPlays: number;
+  totalFollowers: number;
+  avgCompletionRate: number;
+  totalComments: number;
+}
+
 const DashboardPage: React.FC = () => {
   const theme = useTheme();
   const user = useSelector(selectUser);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [creatorOverview, setCreatorOverview] = useState<CreatorOverview | null>(null);
+  const [recentCreatorPodcasts, setRecentCreatorPodcasts] = useState<Podcast[]>([]);
   const [topPodcasts, setTopPodcasts] = useState<TopPodcast[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [recentHistory, setRecentHistory] = useState<HistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Admin rolleri - bu roller admin istatistiklerini görebilir
-  const isAdmin = user?.role && ['SUPER_ADMIN', 'ADMIN', 'HOCA'].includes(user.role);
+  const isAdmin = user?.role && ['SUPER_ADMIN', 'ADMIN'].includes(user.role);
+  const isHoca = user?.role === 'HOCA';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,7 +187,7 @@ const DashboardPage: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Sadece admin rolleri için istatistikleri çek
+        // Sadece admin rolleri için global istatistikleri çek
         if (isAdmin) {
           const [statsData, topPodcastsData] = await Promise.all([
             dashboardService.getStats(),
@@ -157,6 +195,36 @@ const DashboardPage: React.FC = () => {
           ]);
           setStats(statsData);
           setTopPodcasts(topPodcastsData);
+        } else if (isHoca) {
+          const [overviewResponse, topPodcastsResponse, recentPodcastsResponse] = await Promise.all([
+            apiClient.get('/creator/analytics/overview'),
+            apiClient.get('/creator/analytics/top-podcasts', { params: { limit: 5 } }),
+            podcastService.list({ limit: 5 }),
+          ]);
+
+          setCreatorOverview(overviewResponse.data);
+          setTopPodcasts(
+            (topPodcastsResponse.data || []).map((p: any) => ({
+              id: p.id,
+              title: p.title,
+              coverImageUrl: p.coverImageUrl,
+              playCount: p.plays || 0,
+            })),
+          );
+          const recentPodcastsData = Array.isArray(recentPodcastsResponse)
+            ? recentPodcastsResponse
+            : recentPodcastsResponse.data || [];
+          setRecentCreatorPodcasts(recentPodcastsData);
+        }
+
+        try {
+          setHistoryLoading(true);
+          const historyResponse = await apiClient.get('/progress/history/recently-played?limit=5');
+          setRecentHistory(historyResponse.data.items || []);
+        } catch {
+          setRecentHistory([]);
+        } finally {
+          setHistoryLoading(false);
         }
       } catch (err: any) {
         console.error('Dashboard fetch error:', err);
@@ -172,38 +240,81 @@ const DashboardPage: React.FC = () => {
     };
 
     fetchData();
-  }, [isAdmin]);
+  }, [isAdmin, isHoca]);
 
-  const statCards = [
-    {
-      title: 'Toplam Podcast',
-      value: stats?.totalPodcasts ?? 0,
-      change: stats?.growthMetrics?.podcastsGrowth ?? 0,
-      icon: <IconMicrophone size={24} color="#fff" />,
-      color: theme.palette.primary.main,
-    },
-    {
-      title: 'Toplam Bölüm',
-      value: stats?.totalEpisodes ?? 0,
-      change: stats?.growthMetrics?.episodesGrowth ?? 0,
-      icon: <IconHeadphones size={24} color="#fff" />,
-      color: theme.palette.secondary.main,
-    },
-    {
-      title: 'Aktif Kullanıcı',
-      value: stats?.totalUsers ?? 0,
-      change: stats?.growthMetrics?.usersGrowth ?? 0,
-      icon: <IconUsers size={24} color="#fff" />,
-      color: theme.palette.success.main,
-    },
-    {
-      title: 'Toplam Dinlenme',
-      value: stats?.totalPlays ?? 0,
-      change: 0,
-      icon: <IconChartBar size={24} color="#fff" />,
-      color: theme.palette.warning.main,
-    },
-  ];
+  const statCards = isHoca
+    ? [
+        {
+          title: 'Toplam Podcast',
+          value: creatorOverview?.totalPodcasts ?? 0,
+          change: 0,
+          icon: <IconMicrophone size={24} color="#fff" />,
+          color: theme.palette.primary.main,
+        },
+        {
+          title: 'Toplam Bölüm',
+          value: creatorOverview?.totalEpisodes ?? 0,
+          change: 0,
+          icon: <IconHeadphones size={24} color="#fff" />,
+          color: theme.palette.secondary.main,
+        },
+        {
+          title: 'Takipçi',
+          value: creatorOverview?.totalFollowers ?? 0,
+          change: 0,
+          icon: <IconUsers size={24} color="#fff" />,
+          color: theme.palette.success.main,
+        },
+        {
+          title: 'Toplam Dinlenme',
+          value: creatorOverview?.totalPlays ?? 0,
+          change: 0,
+          icon: <IconChartBar size={24} color="#fff" />,
+          color: theme.palette.warning.main,
+        },
+      ]
+    : [
+        {
+          title: 'Toplam Podcast',
+          value: stats?.totalPodcasts ?? 0,
+          change: stats?.growthMetrics?.podcastsGrowth ?? 0,
+          icon: <IconMicrophone size={24} color="#fff" />,
+          color: theme.palette.primary.main,
+        },
+        {
+          title: 'Toplam Bölüm',
+          value: stats?.totalEpisodes ?? 0,
+          change: stats?.growthMetrics?.episodesGrowth ?? 0,
+          icon: <IconHeadphones size={24} color="#fff" />,
+          color: theme.palette.secondary.main,
+        },
+        {
+          title: 'Aktif Kullanıcı',
+          value: stats?.totalUsers ?? 0,
+          change: stats?.growthMetrics?.usersGrowth ?? 0,
+          icon: <IconUsers size={24} color="#fff" />,
+          color: theme.palette.success.main,
+        },
+        {
+          title: 'Toplam Dinlenme',
+          value: stats?.totalPlays ?? 0,
+          change: 0,
+          icon: <IconChartBar size={24} color="#fff" />,
+          color: theme.palette.warning.main,
+        },
+      ];
+
+  const recentPodcasts = isHoca
+    ? recentCreatorPodcasts.map((podcast) => ({
+        id: podcast.id,
+        title: podcast.title,
+        owner: {
+          name: user?.name || 'Hoca',
+          email: user?.email || '',
+        },
+        createdAt: podcast.createdAt,
+      }))
+    : stats?.recentPodcasts ?? [];
 
   // Calculate max plays for progress bar
   const maxPlays = topPodcasts.length > 0
@@ -211,7 +322,7 @@ const DashboardPage: React.FC = () => {
     : 1;
 
   // USER için özel dashboard
-  if (!isAdmin) {
+  if (!isAdmin && !isHoca) {
     return (
       <Box>
         {/* Page Header */}
@@ -411,13 +522,13 @@ const DashboardPage: React.FC = () => {
                     </Stack>
                   ))}
                 </Stack>
-              ) : !stats?.recentPodcasts?.length ? (
+              ) : recentPodcasts.length === 0 ? (
                 <Typography color="text.secondary" textAlign="center" py={4}>
                   Henüz podcast bulunmuyor
                 </Typography>
               ) : (
                 <Stack divider={<Box sx={{ borderBottom: `1px solid ${theme.palette.divider}` }} />}>
-                  {stats.recentPodcasts.map((podcast) => (
+                  {recentPodcasts.map((podcast) => (
                     <RecentItem
                       key={podcast.id}
                       title={podcast.title}
@@ -431,6 +542,63 @@ const DashboardPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Recent History */}
+      <Box mt={3}>
+        <Card>
+          <CardContent>
+            <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+              <IconHistory size={18} />
+              <Typography variant="h6" fontWeight={600}>
+                Son Dinlenenler
+              </Typography>
+            </Stack>
+            {historyLoading ? (
+              <Stack spacing={2}>
+                {[1, 2, 3].map((i) => (
+                  <Stack key={i} direction="row" spacing={2} alignItems="center">
+                    <Skeleton variant="circular" width={40} height={40} />
+                    <Box flex={1}>
+                      <Skeleton width="70%" height={20} />
+                      <Skeleton width="50%" height={16} />
+                    </Box>
+                  </Stack>
+                ))}
+              </Stack>
+            ) : recentHistory.length === 0 ? (
+              <Typography color="text.secondary" textAlign="center" py={2}>
+                Henüz dinleme geçmişi bulunmuyor
+              </Typography>
+            ) : (
+              <Stack divider={<Box sx={{ borderBottom: `1px solid ${theme.palette.divider}` }} />}>
+                {recentHistory.map((item) => (
+                  <Stack key={item.id} direction="row" spacing={2} alignItems="center" py={1.5}>
+                    <Avatar src={item.episode.coverImageUrl} sx={{ width: 40, height: 40 }}>
+                      <IconPlayerPlay size={18} />
+                    </Avatar>
+                    <Box flex={1} minWidth={0}>
+                      <Typography variant="subtitle2" fontWeight={600} noWrap>
+                        {item.episode.title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {item.episode.podcastTitle}
+                      </Typography>
+                    </Box>
+                    <Stack alignItems="flex-end">
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDuration(item.episode.duration || 0)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatTimeAgo(item.lastPlayedAt)}
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                ))}
+              </Stack>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 };

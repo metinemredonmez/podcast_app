@@ -16,6 +16,7 @@ import {
   Paper,
   Divider,
   CircularProgress,
+  MenuItem,
 } from '@mui/material';
 import {
   IconMicrophone,
@@ -32,8 +33,10 @@ import {
 import { io, Socket } from 'socket.io-client';
 import { apiClient } from '../../api/client';
 import { logger } from '../../utils/logger';
+import { categoryService, Category } from '../../api/services/category.service';
 
 type StreamStatus = 'idle' | 'preparing' | 'live' | 'paused' | 'ended';
+type RecordingMode = 'continuous' | 'ptt'; // continuous = sürekli kayıt, ptt = bas konuş
 
 interface RoomStats {
   roomNumber: number;
@@ -53,20 +56,40 @@ const LiveBroadcastPage: React.FC = () => {
   const [streamId, setStreamId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [stats, setStats] = useState<StreamStats | null>(null);
   const [duration, setDuration] = useState(0);
   const [micPermission, setMicPermission] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recordingMode, setRecordingMode] = useState<RecordingMode>('continuous');
+  const [isPTTActive, setIsPTTActive] = useState(false); // Bas Konuş aktif mi
 
   // Refs
   const socketRef = useRef<Socket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const data = await categoryService.list();
+        setCategories(data || []);
+      } catch {
+        setCategories([]);
+      }
+    };
+
+    fetchCategories();
+
     return () => {
       stopBroadcast();
       socketRef.current?.disconnect();
@@ -91,7 +114,10 @@ const LiveBroadcastPage: React.FC = () => {
   // Socket.IO bağlantısı
   const connectSocket = useCallback(() => {
     const token = localStorage.getItem('accessToken');
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // VITE_API_BASE_URL = http://localhost:3300/api -> http://localhost:3300
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3300/api';
+    const baseUrl = apiBaseUrl.replace('/api', '');
+    console.log('[Socket] Connecting to:', `${baseUrl}/live`);
 
     socketRef.current = io(`${baseUrl}/live`, {
       auth: { token },
@@ -100,6 +126,11 @@ const LiveBroadcastPage: React.FC = () => {
 
     socketRef.current.on('connect', () => {
       logger.info('Socket connected');
+      console.log('[Socket] Connected to /live namespace, socket id:', socketRef.current?.id);
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('[Socket] Connection error:', error.message);
     });
 
     socketRef.current.on('stream-stats', (data: StreamStats) => {
@@ -117,6 +148,10 @@ const LiveBroadcastPage: React.FC = () => {
       setError('Yayın başlığı gerekli');
       return;
     }
+    if (!categoryId) {
+      setError('Kategori seçimi gerekli');
+      return;
+    }
 
     const hasMic = await checkMicPermission();
     if (!hasMic) return;
@@ -129,6 +164,7 @@ const LiveBroadcastPage: React.FC = () => {
       const createRes = await apiClient.post('/live/streams', {
         title,
         description,
+        categoryId,
       });
       const newStreamId = createRes.data.id;
       setStreamId(newStreamId);
@@ -137,16 +173,25 @@ const LiveBroadcastPage: React.FC = () => {
       // 2. Socket bağlan
       connectSocket();
 
-      // Host olarak katıl
-      socketRef.current?.emit(
-        'host-join',
-        { streamId: newStreamId },
-        (response: { success: boolean; error?: string }) => {
-          if (!response.success) {
-            throw new Error(response.error);
-          }
-        },
-      );
+      // Socket bağlantısı async - host-join connect event'inde yapılacak
+      // streamId'yi socket data'ya kaydet
+      if (socketRef.current) {
+        socketRef.current.once('connect', () => {
+          console.log('[Broadcast] Socket connected, joining as host...');
+          socketRef.current?.emit(
+            'host-join',
+            { streamId: newStreamId },
+            (response: { success: boolean; error?: string }) => {
+              if (response.success) {
+                console.log('[Broadcast] Host joined successfully');
+              } else {
+                console.error('[Broadcast] Host join failed:', response.error);
+                setError(response.error || 'Host katılımı başarısız');
+              }
+            },
+          );
+        });
+      }
 
       // 3. Mikrofon aç
       const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -158,9 +203,85 @@ const LiveBroadcastPage: React.FC = () => {
       });
       streamRef.current = mediaStream;
 
-      // 4. MediaRecorder başlat
+      // 4. Web Audio API - Waveform görselleştirme için
+      console.log('[Broadcast] Setting up Web Audio API for waveform...');
+      const audioContext = new AudioContext({ sampleRate: 44100 });
+      audioCtxRef.current = audioContext;
+      console.log('[Broadcast] AudioContext state:', audioContext.state);
+
+      // AudioContext suspended olabilir, resume et
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+        console.log('[Broadcast] AudioContext resumed, state:', audioContext.state);
+      }
+
+      const source = audioContext.createMediaStreamSource(mediaStream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyserRef.current = analyser;
+      console.log('[Broadcast] Analyser created, fftSize:', analyser.fftSize);
+
+      // Waveform için bağlantı
+      source.connect(analyser);
+      // Sesi çıkışa vermemek için sessiz gain
+      const silentGain = audioContext.createGain();
+      silentGain.gain.value = 0;
+      analyser.connect(silentGain);
+      silentGain.connect(audioContext.destination);
+      console.log('[Broadcast] Audio graph connected: source -> analyser -> silentGain -> destination');
+
+      // 5. Raw PCM Audio Streaming (Web Audio API ScriptProcessor)
+      // WebM chunk'lar çalışmadı çünkü header gerekiyor. PCM raw data ile gönderiyoruz.
+      console.log('[Broadcast] Setting up raw PCM audio streaming...');
+
+      const BUFFER_SIZE = 4096; // ~93ms at 44100Hz
+      const scriptProcessor = audioContext.createScriptProcessor(BUFFER_SIZE, 1, 1);
+
+      // Source'u scriptProcessor'a bağla
+      source.disconnect(); // Önce analyser'dan kopar
+      source.connect(analyser); // Waveform için
+      source.connect(scriptProcessor); // PCM data için
+      scriptProcessor.connect(silentGain); // Sessiz çıkış
+
+      let audioChunkCount = 0;
+      scriptProcessor.onaudioprocess = (event) => {
+        if (!socketRef.current?.connected) return;
+
+        const inputData = event.inputBuffer.getChannelData(0);
+
+        // Float32 -> Int16 dönüşümü (daha küçük boyut)
+        const int16Data = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        // PCM verisini gönder
+        socketRef.current.emit('audio-data', {
+          streamId: newStreamId,
+          pcmData: Array.from(int16Data),
+          sampleRate: audioContext.sampleRate,
+        });
+
+        audioChunkCount++;
+        if (audioChunkCount % 20 === 0) {
+          console.log(`[Broadcast] Sent ${audioChunkCount} PCM chunks (${int16Data.length * 2} bytes, ${audioContext.sampleRate}Hz)`);
+        }
+      };
+
+      // ScriptProcessor ref'ini sakla (cleanup için)
+      (audioCtxRef.current as any).scriptProcessor = scriptProcessor;
+
+      // MediaRecorder'ı sadece kayıt için kullan (HLS/VOD)
+      console.log('[Broadcast] Setting up MediaRecorder for recording...');
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
       const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: 'audio/webm;codecs=opus',
+        mimeType,
         audioBitsPerSecond: 128000,
       });
       mediaRecorderRef.current = mediaRecorder;
@@ -168,7 +289,8 @@ const LiveBroadcastPage: React.FC = () => {
       mediaRecorder.ondataavailable = async (event) => {
         if (event.data.size > 0 && socketRef.current?.connected) {
           const arrayBuffer = await event.data.arrayBuffer();
-          socketRef.current.emit('audio-data', {
+          // Sadece kayıt için gönder (HLS/VOD için)
+          socketRef.current.emit('audio-recording', {
             streamId: newStreamId,
             audioBuffer: arrayBuffer,
           });
@@ -178,10 +300,27 @@ const LiveBroadcastPage: React.FC = () => {
       // 5. Yayını başlat
       await apiClient.post(`/live/streams/${newStreamId}/start`);
 
-      // Kayıt başlat (her 1 saniyede veri gönder)
-      mediaRecorder.start(1000);
+      // MediaRecorder'ı kayıt için başlat
+      mediaRecorder.start(1000); // Her saniye bir chunk
+      console.log('[Broadcast] Real-time PCM audio streaming started');
 
       setStatus('live');
+
+      // Waveform çizimini başlat (status live olduktan sonra, canvas görünür olacak)
+      // Birden fazla deneme yap çünkü React DOM'u güncellemesi zaman alabilir
+      const tryStartWaveform = (attempts = 0) => {
+        if (attempts > 10) {
+          console.warn('[Broadcast] Waveform canvas not found after 10 attempts');
+          return;
+        }
+        if (waveformCanvasRef.current && analyserRef.current) {
+          console.log('[Broadcast] Starting waveform visualization');
+          startWaveformDraw();
+        } else {
+          setTimeout(() => tryStartWaveform(attempts + 1), 100);
+        }
+      };
+      tryStartWaveform();
 
       // Timer başlat
       timerRef.current = setInterval(() => {
@@ -254,6 +393,16 @@ const LiveBroadcastPage: React.FC = () => {
 
     // Mikrofonu kapat
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+      analyserRef.current = null;
+      gainRef.current = null;
+    }
 
     // API'ye bildir
     if (streamId) {
@@ -291,7 +440,144 @@ const LiveBroadcastPage: React.FC = () => {
     setStats(null);
     setTitle('');
     setDescription('');
+    setCategoryId('');
     setError(null);
+    setIsPTTActive(false);
+  };
+
+  // PTT - Bas Konuş başlat
+  const startPTT = () => {
+    if (!mediaRecorderRef.current || status !== 'live' || recordingMode !== 'ptt') return;
+
+    try {
+      if (mediaRecorderRef.current.state === 'inactive') {
+        mediaRecorderRef.current.start(250); // 🔴 250ms = düşük gecikme
+        setIsPTTActive(true);
+        console.log('[PTT] Recording started (250ms intervals for real-time)');
+      }
+    } catch (err) {
+      console.error('[PTT] Start error:', err);
+    }
+  };
+
+  // PTT - Bas Konuş durdur
+  const stopPTT = () => {
+    if (!mediaRecorderRef.current || recordingMode !== 'ptt') return;
+
+    try {
+      if (mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
+        setIsPTTActive(false);
+        console.log('[PTT] Recording stopped');
+
+        // Yeniden kullanım için mediaRecorder'ı yeniden oluştur
+        if (streamRef.current) {
+          const newRecorder = new MediaRecorder(streamRef.current, {
+            mimeType: 'audio/webm;codecs=opus',
+            audioBitsPerSecond: 128000,
+          });
+          newRecorder.ondataavailable = async (event) => {
+            if (event.data.size > 0 && socketRef.current?.connected && streamId) {
+              const arrayBuffer = await event.data.arrayBuffer();
+              console.log(`[PTT] Sending audio data: ${arrayBuffer.byteLength} bytes`);
+              socketRef.current.emit('audio-data', {
+                streamId,
+                audioBuffer: arrayBuffer,
+              });
+            }
+          };
+          mediaRecorderRef.current = newRecorder;
+        }
+      }
+    } catch (err) {
+      console.error('[PTT] Stop error:', err);
+    }
+  };
+
+  // Sadece waveform çizimi (AudioContext zaten startBroadcast'te oluşturuldu)
+  const startWaveformDraw = () => {
+    console.log('[Waveform] startWaveformDraw called');
+    console.log('[Waveform] Canvas ref:', !!waveformCanvasRef.current);
+    console.log('[Waveform] Analyser ref:', !!analyserRef.current);
+
+    if (!waveformCanvasRef.current || !analyserRef.current) {
+      console.warn('[Waveform] Missing canvas or analyser ref');
+      return;
+    }
+
+    const analyser = analyserRef.current;
+    const canvas = waveformCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.warn('[Waveform] Could not get 2D context');
+      return;
+    }
+
+    let frameCount = 0;
+    const draw = () => {
+      const { width, height } = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+      const nextWidth = Math.floor(width * ratio);
+      const nextHeight = Math.floor(height * ratio);
+      if (canvas.width !== nextWidth) canvas.width = nextWidth;
+      if (canvas.height !== nextHeight) canvas.height = nextHeight;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      const bufferLength = analyser.fftSize;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(dataArray);
+
+      // Debug: Her 60 frame'de bir ses seviyesini logla
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        const maxVal = Math.max(...dataArray);
+        const minVal = Math.min(...dataArray);
+        console.log(`[Waveform] Frame ${frameCount}, Audio range: ${minVal}-${maxVal} (128 = silence)`);
+      }
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(12, 19, 32, 0.6)';
+      ctx.fillRect(0, 0, width, height);
+
+      const gradient = ctx.createLinearGradient(0, 0, width, 0);
+      gradient.addColorStop(0, 'rgba(94, 129, 255, 0.95)');
+      gradient.addColorStop(0.5, 'rgba(109, 200, 255, 0.95)');
+      gradient.addColorStop(1, 'rgba(94, 129, 255, 0.95)');
+
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = gradient;
+      ctx.shadowColor = 'rgba(94, 129, 255, 0.45)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+
+      const sliceWidth = width / bufferLength;
+      let x = 0;
+      for (let i = 0; i < bufferLength; i += 1) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * height) / 2;
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        x += sliceWidth;
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      rafRef.current = requestAnimationFrame(draw);
+    };
+
+    if (!rafRef.current) {
+      console.log('[Waveform] Starting animation loop');
+      draw();
+    }
+  };
+
+  // Eski fonksiyon - artık kullanılmıyor, geriye dönük uyumluluk için boş bırakıldı
+  const startWaveform = (_mediaStream: MediaStream) => {
+    // Bu fonksiyon artık kullanılmıyor
+    // Waveform çizimi startBroadcast içinde yapılıyor
   };
 
   return (
@@ -362,6 +648,19 @@ const LiveBroadcastPage: React.FC = () => {
                     inputProps={{ maxLength: 100 }}
                   />
                   <TextField
+                    select
+                    label="Kategori *"
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    fullWidth
+                  >
+                    {categories.map((category) => (
+                      <MenuItem key={category.id} value={category.id}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
                     label="Açıklama"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -371,6 +670,36 @@ const LiveBroadcastPage: React.FC = () => {
                     rows={3}
                     inputProps={{ maxLength: 500 }}
                   />
+
+                  {/* Kayıt Modu Seçimi */}
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" mb={1}>
+                      Kayıt Modu:
+                    </Typography>
+                    <Stack direction="row" spacing={1}>
+                      <Chip
+                        label="Sürekli Kayıt"
+                        color={recordingMode === 'continuous' ? 'primary' : 'default'}
+                        onClick={() => setRecordingMode('continuous')}
+                        variant={recordingMode === 'continuous' ? 'filled' : 'outlined'}
+                      />
+                      <Chip
+                        label="Bas Konuş"
+                        color={recordingMode === 'ptt' ? 'primary' : 'default'}
+                        onClick={() => setRecordingMode('ptt')}
+                        variant={recordingMode === 'ptt' ? 'filled' : 'outlined'}
+                      />
+                    </Stack>
+                    <Typography variant="caption" color="text.secondary" mt={1}>
+                      {recordingMode === 'continuous'
+                        ? 'Mikrofon sürekli açık kalır, tüm sesler kaydedilir.'
+                        : 'Butona basılı tutarak konuşun, bırakınca ses kesilir.'}
+                    </Typography>
+                  </Box>
+
+                  <Typography variant="caption" color="text.secondary">
+                    Maksimum süre 45 dakika. Süre dolunca yayın otomatik kapanır.
+                  </Typography>
                 </Stack>
               )}
 
@@ -389,6 +718,59 @@ const LiveBroadcastPage: React.FC = () => {
                 </Paper>
               )}
 
+              {(status === 'live' || status === 'paused') && (
+                <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                  <Box
+                    component="canvas"
+                    ref={waveformCanvasRef}
+                    sx={{ width: '100%', height: 120, display: 'block' }}
+                  />
+                </Paper>
+              )}
+
+              {/* Bas Konuş Butonu (sadece PTT modunda ve yayın canlıyken) */}
+              {status === 'live' && recordingMode === 'ptt' && (
+                <Box mb={3}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    onMouseDown={startPTT}
+                    onMouseUp={stopPTT}
+                    onMouseLeave={stopPTT}
+                    onTouchStart={startPTT}
+                    onTouchEnd={stopPTT}
+                    sx={{
+                      py: 4,
+                      fontSize: '1.25rem',
+                      backgroundColor: isPTTActive ? 'error.main' : 'primary.main',
+                      '&:hover': {
+                        backgroundColor: isPTTActive ? 'error.dark' : 'primary.dark',
+                      },
+                      transition: 'all 0.2s ease',
+                      transform: isPTTActive ? 'scale(0.98)' : 'scale(1)',
+                    }}
+                  >
+                    <Stack direction="row" alignItems="center" spacing={2}>
+                      {isPTTActive ? (
+                        <>
+                          <IconMicrophone size={32} />
+                          <span>KONUŞUYOR...</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconMicrophoneOff size={32} />
+                          <span>BASILI TUTARAK KONUŞ</span>
+                        </>
+                      )}
+                    </Stack>
+                  </Button>
+                  <Typography variant="caption" color="text.secondary" textAlign="center" display="block" mt={1}>
+                    {isPTTActive ? '🔴 Ses kaydediliyor...' : 'Konuşmak için butona basılı tutun'}
+                  </Typography>
+                </Box>
+              )}
+
               {/* Kontrol Butonları */}
               <Stack direction="row" spacing={2}>
                 {status === 'idle' && (
@@ -397,7 +779,7 @@ const LiveBroadcastPage: React.FC = () => {
                     color="primary"
                     size="large"
                     onClick={startBroadcast}
-                    disabled={loading || !title.trim()}
+                    disabled={loading || !title.trim() || !categoryId}
                     startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <IconMicrophone />}
                     fullWidth
                   >
